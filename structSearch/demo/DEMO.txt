@@ -1,0 +1,2 @@
+In order to run this demo application, you will have to compile the application, and to run it in
+debug or release mode.

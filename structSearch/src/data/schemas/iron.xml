@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<schema>
+	<version>0.1</version>
+	<prefLabel>irON schema</prefLabel>
+
+	<attributeList>
+		<iron_prefLabel>
+			<prefLabel>preferred label</prefLabel>
+			<description>Prefered label to use to refer to a record</description>
+			
+			<allowedType>Object</allowedType>
+			
+			<allowedValue>
+				<primitive>String</primitive>
+			</allowedValue>
+			
+			<maxValues>1</maxValues>
+		</iron_prefLabel>
+		<iron_altLabel>
+			<prefLabel>alternative label</prefLabel>
+			<description>Alternative label to use to refer to a record</description>
+			
+			<allowedType>Object</allowedType>
+			
+			<allowedValue>
+				<primitive>String</primitive>
+			</allowedValue>
+		</iron_altLabel>
+		<iron_description>
+			<prefLabel>description</prefLabel>
+			<description>Description of a record</description>
+			
+			<allowedType>Object</allowedType>
+			
+			<allowedValue>
+				<primitive>String</primitive>
+			</allowedValue>
+		</iron_description>
+		<iron_prefURL>
+			<prefLabel>preferred url</prefLabel>
+			<description>Preferred URL where to find related information to a record</description>
+			
+			<allowedType>Object</allowedType>
+			
+			<allowedValue>
+				<primitive>String</primitive>
+			</allowedValue>
+		</iron_prefURL>
+	</attributeList>
+</schema>

@@ -1,0 +1,473 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--- 
+
+  The sMap component is used to display cartographic information related to a record. 
+  The cartographic information come from a GIS shape file. This shape file is compressed 
+  by the ClearMaps Builder Air application. The generated map file is then loaded by this 
+  component.
+    
+  A record that is related to such a GIS map file is normally represented by a feature 
+  within the map. Multiple features can belong to that map, and each feature can represent 
+  different records. Each feature can be selectable and clickable. 
+
+  @author Frederick Giasson, Structured Dynamics LLC.
+ 
+  @see http://github.com/sunlightlabs/clearmaps/
+-->
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml"
+  xmlns:toolbox = "com.flextoolbox.controls.*"
+  creationComplete="init()" xmlns:components="com.sd.semantic.components.*" width="100%" height="100%"
+  horizontalScrollPolicy="off" verticalScrollPolicy="off" xmlns:utilities="com.sd.semantic.utilities.*">
+  <mx:Script>
+    <![CDATA[
+
+    import com.flextoolbox.controls.*;
+    import com.sd.semantic.components.map.*;
+    import com.sd.semantic.events.*;
+    import com.sd.semantic.settings.MapSettings;
+    import com.sd.semantic.utilities.SpriteUIComponent;
+    import com.sd.semantic.core.Resultset;
+    
+    import flash.events.MouseEvent;
+    
+    import mx.controls.Alert;
+    import mx.core.Application;
+    
+    import org.sunlightlabs.ClearMaps.Feature;
+    import org.sunlightlabs.ClearMaps.Layer;
+
+    import mx.effects.easing.*;
+      
+    /** Core varibles shared amongst all semantic controls */
+
+    /** 
+     * Specifies that this component is a semantic component. If a component in a Flex application is a semantic
+     * semantic component, this means that other semantic component can't behave differently depending of the "kind"
+     * (semantic or not) of components that are present in the layout. This variable is just to specify is a component
+     * is a semantic one or not.
+     */
+    public var semanticComponent:Boolean = true;
+
+    /**
+     * Specifies that this control is required within a display cluster.
+     * This means that if we have a SemanticHBox that has 2 required semantic
+     * components and that these components have removed themselves from the display
+     * this means that the parent layout cluster (the smeantic hbox), will remove
+     * itself as well. If a semantic component is marked as not required (required=false)
+     * it means that it won't be considered by the semantic hbox. So, even if such a semantic
+     * component has data in it, its parent cluster can remove itself.
+     */
+    public var required:Boolean = true;
+
+    /** Target record attributes to display in the component */
+    public var targetAttributes:Array = [];
+
+    /** Target record types to display in the component */
+    public var targetTypes:Array = [];
+
+    /** Specifies if the sControl's targetAttribute has been bound to a know semantic control. */
+    public var bound:Boolean = false;
+      
+    private var _semanticDataProvider:Resultset;
+
+    /** Input records. This is a Resultset structure (see the structXML XML data structure) */
+    public function get semanticDataProvider():Resultset
+    {
+      return (_semanticDataProvider);
+    }
+
+    public function set semanticDataProvider(value:Resultset):void
+    {
+      _semanticDataProvider = value;
+
+      if(_initialized)
+      {
+        loadMapData();
+      }
+    }
+
+    /** Specifies what attribute(s) of a record have been bound to this semantic component */
+    public var boundAttributes:Array = [];
+
+    /** Specifies if the component has already been initialized or not. */
+    private var _initialized:Boolean = false;
+
+    /** Main map tool class */
+    private var mapTool:MapTool;
+
+    /** Map settings */
+    private var settings:MapSettings;
+
+    /** List of selected map layers to be displayed to the user */
+    private var selectedMaps:Array /* of map prefLabel */ = [];   
+      
+    /** Zoom-in control icon */
+    [Bindable]
+    [Embed(source = "/assets/imgs/zoom_in.png")]private var zoomInIcon:Class;
+
+    /** Zoom-out control icon */
+    [Bindable]
+    [Embed(source = "/assets/imgs/zoom_out.png")]private var zoomOutIcon:Class;
+
+    /** X offset of the component in the layout */
+    private var offsetX:Number;
+      
+    /** Y offset of the component in the layout */
+    private var offsetY:Number;
+      
+    /** Invalidate the map to redraw it */
+    public function invalidate():void
+    {
+      loadMapData();
+    }
+
+    /** Initialize the map component */
+    public function init():void
+    {
+      if(_initialized == false)
+      {
+        if(_semanticDataProvider != null)
+        {
+          /**
+          * Load settings
+          * 
+          * Check if the application that embede this semantic component defined its 
+          * baseAppUrl. If it didn't, we simply use the default local location "./"
+          */
+          
+          /** Base URL of the flex component */
+          var baseUrl:String = "./";
+
+          if(Application.application.baseAppUrl && Application.application.baseAppUrl != "")
+          {
+            baseUrl = Application.application.baseAppUrl;
+          }
+
+          /** URL Loader for the map settings file */
+          var settingsLoader:URLLoader = new URLLoader();
+          settingsLoader.load(new URLRequest(baseUrl + "settings/sMap.xml"));
+          settingsLoader.addEventListener(Event.COMPLETE, processSettingsHandler);
+          
+          /** Keep track of the attributes, from the record, that have been bound to this control. */
+          if(targetAttributes.length > 0)
+          {
+            for each(var tAttr in targetAttributes)
+            {
+              boundAttributes.push(tAttr);
+            }
+          }          
+        }
+
+        _initialized = true;
+      }
+    }
+
+    /**
+     * Select a target record in the component.
+     * 
+     * @param record Target subject record to be selected in the component. This object is expected to have
+     *               a "uri" property that is used to find the record to select in the component.
+     */
+    public function selectRecord(record:Object):void
+    {
+      /** Make sure that the target record has the uri property defined */
+      if(record.hasOwnProperty("uri"))
+      {
+        for each(var layer:Layer in mapTool.map.layers)
+        {
+          for each(var feature:Feature in layer.features)
+          {
+            if((feature.recordBaseUri + feature.exturi) == record.uri)
+            {
+             layer.selectFeature(feature);
+            }
+          }
+        }
+      }
+    }
+    
+    /**
+     * Unselect all possible selected records in the chart
+     */
+    public function unselectRecords():void
+    {
+      /** Remove all states of all AxiisSprites of this component */
+      for each(var layer:Layer in mapTool.map.layers)
+      {
+        layer.selectFeature(null);
+      }
+    }      
+      
+    /**
+    * Get, parse and process the map settings 
+    * 
+    * @param event URLLoader success/failure event
+    */
+    private function processSettingsHandler(event:Event):void
+    {
+      /** Check if there is any load/parsing error */
+      var isError:Boolean = false;
+
+      try
+      {
+        /** Create the MapSettings class from the XML file */
+        settings = new MapSettings(new XML(event.target.data));
+      }
+      catch(error:Error)
+      {
+        Alert.show("Can't load settings file '/settings/sMap.xml'. The map tool won't be displayed.");
+        isError = true;
+      }
+
+      if(!isError)
+      {
+        if(settings.error == true)
+        {
+          Alert.show(
+            "Required settings are missing in the settings file '/settings/sMap.xml'. The map tool won't be displayed.");
+          isError = true;
+        }
+      }
+
+      /** If the setting file is properly loaded, we continue to process the map componet */
+      if(!isError)
+      {
+        /** Check if we enable or disable the zoom buttons */
+        if(!settings.enableZoom)
+        {
+          zoomInControl.visible = false;
+          zoomInControl.includeInLayout = false;
+          zoomOutControl.visible = false;
+          zoomOutControl.includeInLayout = false;
+          zoomText.visible = false;
+          zoomText.includeInLayout = false;
+        }
+
+        this.mapTool = new MapTool(settings, targetAttributes, semanticDataProvider);
+
+        /** Show the maps selection panel if there are more than one layer for that target record */
+        if(this.mapTool.map.layers.length > 1)
+        {
+          if(settings.displayMapLayersSelector)
+          {
+            this.panelMaps.visible = true;
+            this.panelMaps.includeInLayout = true;
+            this.panelMaps.alpha = 1;
+          }
+          
+          /** Populate the panel */
+          var panelItems:Array = [];
+          
+          /** Background colors for each item in the layer selection list related to each layer fill color */
+          var backgroundColors:Array = [];
+          
+          var iColor:uint = 0;
+          
+          for each(var layer:Layer in mapTool.map.layers)
+          {
+            var item:Array = [];
+            
+            item["prefLabel"] = layer.title;
+            item["enabled"] = "enabled";
+            item["layer"] = layer;
+            item["selected"] = true;
+            
+            panelItems.push(item);
+            
+            backgroundColors.push(mapTool.layerColors[iColor]);
+            iColor++;
+          }
+          
+          /** fill a few black items in case that the number of layers doesn't overflow the list component. */
+          for(var i:int; i < 50; i++)
+          {
+            backgroundColors.push(0x000000);
+          }
+          
+          mapsCheckboxesListControl.dataProvider = panelItems;
+          mapsCheckboxesListControl.itemBackgroundColors = backgroundColors;
+        }
+        
+        loadMapData();
+
+        this.addChildAt(new SpriteUIComponent(mapTool), 0);
+
+        /** Handle mouse drag&drop of the map */
+        this.addEventListener(MouseEvent.MOUSE_DOWN, startDragging);
+        this.addEventListener(MouseEvent.MOUSE_UP, stopDragging);
+
+        /** Handle resize of the convas so that we */
+        this.addEventListener(Event.RESIZE, scaleMapToFit);
+      }
+      
+      this.removeEventListener(Event.COMPLETE, processSettingsHandler);
+    }
+
+    /** Load the data used by the map */
+    private function loadMapData():void
+    {
+      this.mapTool.semanticDataProvider = this._semanticDataProvider;
+    }
+
+    /** Scale the generated map to fit the space available for the component */
+    private function scaleMapToFit(event:Event):void
+    {
+      this.mapTool.fitToCanvas();
+    }
+
+    /** This function is called when the mouse button is pressed. */
+    private function startDragging(event:MouseEvent):void
+    {
+      /** Check if we enable or disable the map move behavior */
+      if(settings.enableMapMove)
+      {
+        /** 
+        * Record the difference (offset) between where
+        * the cursor was when the mouse button was pressed and the x, y
+        * coordinate of the circle when the mouse button was pressed.
+        */
+        offsetX = event.stageX - this.mapTool.x;
+        offsetY = event.stageY - this.mapTool.y;
+
+        stage.addEventListener(MouseEvent.MOUSE_MOVE, dragMap);
+      }
+    }
+
+    /** This function is called when the mouse button is released. */
+    private function stopDragging(event:MouseEvent):void
+    {
+      /** Check if we enable or disable the map move behavior */
+      if(settings.enableMapMove)
+      {
+        stage.removeEventListener(MouseEvent.MOUSE_MOVE, dragMap);
+      }
+    }
+
+    /** 
+    * This function is called every time the mouse moves,
+    * as long as the mouse button is pressed down.
+    */
+    private function dragMap(event:MouseEvent):void
+    {
+      /** Check if we enable or disable the map move behavior */
+      if(settings.enableMapMove)
+      {
+        /** 
+        * Move the map to the location of the cursor, maintaining
+        * the offset between the cursor's location and the
+        * location of the dragged object.
+        */
+        this.mapTool.x = event.stageX - offsetX;
+        this.mapTool.y = event.stageY - offsetY;
+
+        event.updateAfterEvent();
+      }
+    }
+
+    /** Zoom-in the map: make it bigger */
+    private function zoomIn():void
+    {
+      if(this.mapTool.scaleX < 1.9)
+      {
+        this.mapTool.scaleX += 0.1;
+      }
+
+      if(this.mapTool.scaleY < 1.9)
+      {
+        this.mapTool.scaleY += 0.1;
+      }
+    }
+
+    /** Zoom-out the map: make it smaller */
+    private function zoomOut():void
+    {
+      if(this.mapTool.scaleX > 0.1)
+      {
+        this.mapTool.scaleX -= 0.1;
+      }
+
+      if(this.mapTool.scaleY > 0.1)
+      {
+        this.mapTool.scaleY -= 0.1;
+      }
+    }
+
+    /** Toggle the extension of the layers panel */
+    private function toggleLayersPanel(e:MouseEvent):void
+    {
+      if(e.currentTarget.label== 'Select/Unselect Map Layers')
+      {
+        panelOut.play();
+      }
+      else
+      {
+        panelIn.play();
+      }
+    }
+      
+    ]]>
+  </mx:Script>
+
+  <mx:Style>
+    LinkButton {
+      rollOverColor: #000000;
+      selectionColor: #000000;
+      color: #ffffff;
+      textRollOverColor: #ffffff;
+      textAlign: center;
+    }
+  </mx:Style>
+  
+  <mx:Move id="panelOut" target="{panelMaps}" yTo="0" effectEnd="layersPanelTogglingButton.label='Close'" 
+           duration="1500" easingFunction="Bounce.easeOut"/>        
+  <mx:Move id="panelIn" target="{panelMaps}" yTo="-110" effectEnd="layersPanelTogglingButton.label='Select/Unselect Map Layers'" 
+           duration="1000" easingFunction="Bounce.easeIn"/>    
+  
+  <mx:HBox paddingTop="25" paddingLeft="5" styleName="sMap">
+    <mx:Image id="zoomInControl" styleName="zoomInControl" source="{zoomInIcon}" useHandCursor="true" buttonMode="true"
+      click="zoomIn();"/>
+
+    <mx:Text id="zoomText" styleName="zoomText" text="zoom"/>
+
+    <mx:Image id="zoomOutControl" source="{zoomOutIcon}" useHandCursor="true" buttonMode="true" click="zoomOut();"/>
+  </mx:HBox>
+  
+  <!--mx:Panel id = "panelMaps" title = "Maps" styleName = "panelMaps" height = "200" width="300" visible="false" includeInLayout="false" y="25"-->
+  <mx:Canvas id="panelMaps" width="100%" height="130" y="-110" backgroundColor="#000000" visible="false" includeInLayout="false">
+        
+    <toolbox:CheckBoxList id = "mapsCheckboxesListControl" styleName="mapsCheckboxesListControl" width = "100%" height = "100%"
+                          labelField = "prefLabel" enabledField = "enabled" change = "onNeCheckboxChange(event);">
+      <mx:Script>
+        <![CDATA[
+          
+          /** Show/hide map layers depending if a checkbox has been checked or un-checked */
+          private function onNeCheckboxChange(event:Event):void
+          {
+            /** check if the concept has been selected or unselected */
+            if(this.selectedMaps.indexOf(event.itemRenderer.data.prefLabel) == -1)
+            {
+              this.selectedMaps.push(event.itemRenderer.data.prefLabel);
+              
+              var layer:Layer = event.itemRenderer.data.layer as Layer;
+              
+              layer.visible = false;
+            }
+            else
+            {
+              this.selectedMaps.splice(this.selectedMaps.indexOf(event.itemRenderer.data.prefLabel), 1);
+              
+              var layer:Layer = event.itemRenderer.data.layer as Layer;
+              
+              layer.visible = true;              
+            }
+          }
+        ]]>
+      </mx:Script>
+    </toolbox:CheckBoxList>
+    
+    <mx:LinkButton id="layersPanelTogglingButton" width="100%"  height="21" bottom="0" horizontalCenter="0" label="Select/Unselect Map Layers" click="toggleLayersPanel(event)"/>
+    
+  </mx:Canvas>
+  <!--/mx:Panel-->  
+  
+</mx:Canvas>

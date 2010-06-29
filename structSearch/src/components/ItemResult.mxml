@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:semantic="com.sd.semantic.components.*" height="175"
+  width="240" horizontalAlign="center">
+  <mx:Script>
+    <![CDATA[
+
+    import com.sd.semantic.core.Schema;
+    import mx.core.Application;
+
+    [Bindable]public var schema:Schema = Application.application.schema;
+
+    public function fixTitle(event:Event):void
+    {
+      if(event.currentTarget.text.length > 20)
+      {
+        event.currentTarget.text = event.currentTarget.text.substr(0, 20) + "...";
+      }
+    }
+
+    ]]>
+  </mx:Script>
+
+  <semantic:sText text="[[iron_prefLabel]]" fontWeight="bold" fontSize="14" render="fixTitle(event)"
+    semanticDataProvider="{data.semanticDataProvider}"/>
+
+  <semantic:sImage targetAttributes="foaf_thumbnail" semanticDataProvider="{data.semanticDataProvider}"/>
+</mx:VBox>

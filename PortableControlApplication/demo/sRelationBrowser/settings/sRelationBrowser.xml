@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='UTF-8'?>
+
+<!-- Default relation browser settings file. Modify it for the purpose of your application -->
+
+<settings>
+
+  <!-- behavior of the browser when the user click on a story or wikipedia link -->
+  <navigatorBehavior>_blank</navigatorBehavior>
+
+  <!-- Display the "concept information" section. -->
+  <displayConceptsInformation>true</displayConceptsInformation>
+
+
+
+
+  <!-- Disabled for the purpose of the demo because we don't want them to be dependant on a structWSF endpoint -->
+
+  <!-- Display the "related stories" section. -->
+  <displayRelatedStories>false</displayRelatedStories>
+
+  <!-- URI of the property describing the relationship between a concept and a story -->
+  <relatedStoryRelation>http://umbel.org/umbel#isAbout</relatedStoryRelation>
+
+  <!-- URI of the property defining the label to use to display the name of a related story -->
+  <relatedStoryLabel>http://purl.org/ontology/iron#prefLabel</relatedStoryLabel>
+  
+  <!-- URI of the dataset where the stories records are indexed -->
+  <storiesDataset>-</storiesDataset>
+  
+  <!-- structWSF sparql web service endpoint -->
+  <sparqlWebServiceEndpoint>-</sparqlWebServiceEndpoint>
+  
+  <!-- URL of the structView module where the stories can be viewed when clicked by the user -->
+  <structViewUrl>-</structViewUrl>
+  
+</settings>

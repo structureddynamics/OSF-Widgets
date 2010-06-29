@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+
+<!-- Default general settings file. Modify it for the purpose of your application -->
+
+<settings>
+  <!-- list of attributes used as prefLabel if prefLabel is not available for a given record -->
+  <prefLabelAttributes>[http://purl.org/ontology/iron#prefLabel]</prefLabelAttributes>
+  
+  <!-- Location of the theme asset to load at runtime. This theme has to be a CSS file compiled in SWF  -->
+  <theme>brownieTheme.swf</theme>
+</settings>

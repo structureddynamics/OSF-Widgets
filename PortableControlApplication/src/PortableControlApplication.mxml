@@ -1,0 +1,361 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:axiis="http://www.axiis.org/2009"
+  xmlns:degrafa="http://www.degrafa.com/2007" xmlns:charts="org.axiis.charts.*"
+  xmlns:geometry="com.degrafa.geometry.*" xmlns:components="com.sd.semantic.components.*" layout="absolute"
+  creationComplete="init()">
+  
+  <mx:Script>
+    <![CDATA[
+
+    import mx.controls.Alert; 
+    import mx.events.StyleEvent;
+    import flash.xml.XMLDocument;
+    import flash.utils.getQualifiedClassName;
+    import org.sunlightlabs.ClearMaps.FeatureEvent;
+    import com.sd.semantic.core.*;
+    import com.sd.semantic.components.sControl;
+    import com.sd.semantic.events.SchemaLoadedEvent;
+    import com.sd.semantic.settings.GeneralSettings;
+
+    /**
+    * The purpose of this application is to select the proper semantic component to use
+    * for a given datasource (a single record or a set of records).
+    * Given an data source input, the PortableControlApplication will embed the proper
+    * semantic component to use to display the information.
+    */
+
+    /** Internal ontological structure of the portable component application */
+    public var schema:Schema = new Schema();
+
+    /** Defined namespaces of the application */
+    public var namespaces:Namespaces = new Namespaces();
+
+    /** Target attribute(s) to find a semantic component to use to display related information */
+    public var targetAttributes:Array /* attribute URIs */ = [];
+
+    /** Target types(s) to find the a semantic component to use */
+    public var targetTypes:Array /* types URIs */ = [];
+
+    /** Target records(s) to bind to the semantic component */
+    public var targetRecords:Array /* records URIs */ = [];
+
+    /** FlashVars used to communite data to the semantic component application */
+
+    /** Specifies a specific URL where component settings files can be found */
+    [Bindable]public var baseAppUrl:String = "";
+
+    /** Direct input data if size is smaller than 65k bytes. Used for input data case #1 */
+    [Bindable]public var inputData:String = "";
+
+    /** 
+    * Reference to one or multiple target attributes to display in the control 
+    * Attributes are seperated by the semi-column character ";" 
+    */
+    [Bindable]public var inputTargetAttributes:String = "";
+
+    /** 
+    * Reference to one or multiple target types of records to display in the control 
+    * Types are seperated by the semi-column character ";" 
+    */
+    [Bindable]public var inputTargetTypes:String = "";
+
+    /** 
+    * Reference to one or multiple target records  to display in the control 
+    * Records are seperated by the semi-column character ";" 
+    */
+    [Bindable]public var inputTargetRecords:String = "";
+
+    /** 
+    * Reference to one or multiple target schemas URLs 
+    * Schemas are seperated by the semi-column character ";" 
+    */
+    [Bindable]public var inputSchemas:String = "";
+
+    /** 
+    * The following variables are used to get the information needed to get the
+    * data from a web service query if the inputData variable is empty. 
+    */
+
+    /** structWSF base web services endpoints URL (example: http://mydomain.com/ws/) */
+    [Bindable]public var inputWebService:String = "";
+
+    /** Webservice HTTP query parameters */
+    [Bindable]public var inputParameters:String = "";
+
+    /** HTTP method to use to send the HTTP query (GET or POST) */
+    [Bindable]public var inputMethod:String = "";
+
+
+    /** Number of schemas to load for this application */
+    private var schemaToLoad:int;
+
+    /** Number of schemas loaded, at a given time, for this application */
+    private var schemaLoaded:int;
+
+    private var generalSettings:GeneralSettings;
+
+
+    /**
+    * Initialization function ran once the application's creation is complete. It aggregates all the information
+    * needed: records descriptions and schema definition. Then it creates and embed a sControl to display
+    * information related to the target record(s).
+    */
+    private function init():void
+    {
+      /** Get all input flash variables */
+      if(Application.application.parameters.baseAppUrl)
+      {
+        baseAppUrl = Application.application.parameters.baseAppUrl;
+      }
+
+      if(Application.application.parameters.inputData)
+      {
+        inputData = Application.application.parameters.inputData;
+      }
+
+      if(Application.application.parameters.inputTargetAttributes)
+      {
+        inputTargetAttributes = Application.application.parameters.inputTargetAttributes;
+      }
+
+      if(Application.application.parameters.inputTargetTypes)
+      {
+        inputTargetTypes = Application.application.parameters.inputTargetTypes;
+      }
+
+      if(Application.application.parameters.inputTargetRecords)
+      {
+        inputTargetRecords = Application.application.parameters.inputTargetRecords;
+      }
+
+      if(Application.application.parameters.inputSchemas)
+      {
+        inputSchemas = Application.application.parameters.inputSchemas;
+      }
+
+      if(Application.application.parameters.inputWebService)
+      {
+        inputWebService = Application.application.parameters.inputWebService;
+      }
+
+      if(Application.application.parameters.inputParameters)
+      {
+        inputParameters = Application.application.parameters.inputParameters;
+      }
+
+      if(Application.application.parameters.inputMethod)
+      {
+        inputMethod = Application.application.parameters.inputMethod;
+      }
+
+      /**
+      * Initialize the ontological structure used to describe records manipulated by
+      * this semantic component application
+      *  
+      * Two sources can be exploited:
+      *   (1) local schema file(s)
+      *   (2) remote schema file(s)
+      */
+
+      /** Load all local schema files needed by this semantic application */
+      if(inputSchemas != "")
+      {
+        var schemas:Array = inputSchemas.split(";");
+
+        schemaToLoad = schemas.length;
+
+        for each(var schemaUrl:String in schemas)
+        {
+          schema.loadSchema(schemaUrl);
+          schema.addEventListener(SchemaLoadedEvent.SCHEMA_LOADED, schemaLoadedHandler);
+        }
+      }
+    }
+
+    /** Event handler used to manage what schemas as been downloaded */
+    private function schemaLoadedHandler(event:SchemaLoadedEvent):void
+    {
+      if(event.type == "schemaLoaded")
+      {
+        this.schemaLoaded++;
+
+        /** If all target schemas have been loaded, we continue the process of the application */
+        if(this.schemaToLoad == this.schemaLoaded)
+        {
+
+          /** The next step, once we have the schema loaded, is to load the settings */
+
+          /**  
+          * Check if the application that embede this semantic component defined its 
+          * baseAppUrl. If it didn't, we simply use the default local location "./".
+          */
+          var baseUrl:String = "./";
+
+          if(Application.application.baseAppUrl && Application.application.baseAppUrl != "")
+          {
+            baseUrl = Application.application.baseAppUrl;
+          }
+
+          /** Load the general settings */
+          var settingsLoader:URLLoader = new URLLoader();
+          settingsLoader.load(new URLRequest(baseUrl + "settings/General.xml"));
+          settingsLoader.addEventListener(Event.COMPLETE, processGeneralSettingsHandler);
+        }
+      }
+    }
+
+    /** Map the settings file(s) to the setting classe(s) */
+    private function processGeneralSettingsHandler(event:Event):void
+    {
+      var isError:Boolean = false;
+
+      try
+      {
+        /** Generate a settings class instance from the XML settings file */
+        generalSettings = new GeneralSettings(new XML(event.target.data));
+      }
+      catch(error:Error)
+      {
+        Alert.show(
+          "Can't load settings file '/settings/General.xml'. The Semantic Component Application tool won't be displayed.");
+        isError = true;
+      }
+
+      if(!isError)
+      {
+        if(generalSettings.error == true)
+        {
+          Alert.show(
+            "Required settings are missing in the settings file '/settings/General.xml'. The Semantic Component Application tool won't be displayed.");
+          isError = true;
+        }
+      }
+
+      if(!isError)
+      {
+        /** The third phase is to load the theme related to this application */
+        var baseUrl:String = "./";
+
+        if(Application.application.baseAppUrl && Application.application.baseAppUrl != "")
+        {
+          baseUrl = Application.application.baseAppUrl;
+        }
+
+        if(generalSettings.theme != "")
+        {
+          var styleManager:IEventDispatcher = StyleManager.loadStyleDeclarations(baseUrl + generalSettings.theme, true);
+          styleManager.addEventListener(StyleEvent.COMPLETE, themeLoadedHandler);
+          styleManager.addEventListener(StyleEvent.ERROR, themeLoadedHandler);
+        }
+        else
+        {
+          /** If no theme has to be loaded, we continue to finalize the run of the application */
+          run();
+        }
+      }
+    }
+
+    /**
+    * Continue to finalize the run of the application once the theme get loaded
+    */
+    private function themeLoadedHandler(event:StyleEvent):void
+    {
+      /**
+      * If we have a theme to try to load, we try to load it first, then to run the main application.
+      * We don't care if the SWF theme has been properly loaded or not, in worse we we will simply
+      * use the default one. But we have to wait until it loaded it so that we can skin all 
+      * part of the application if it has been successfully loaded
+      */
+      run();
+    }
+
+    /** Main process of the application. It creates the sControl that it will embed and display to the user */
+    private function run():void
+    {
+      /**
+      * Initialize the data structure used by this semantic component application
+      *
+      * We have two scenarios:
+      * 
+      * (1)   The complete data structure to process is smaller than 65k bytes
+      * (1.1) In this case, we simple get what comes from the flashVars
+      * (2)   The complete data structure to process is biggere than 65k bytes
+      * (2.1) In this case, we query a remote web service endpoint to get
+      *       the complete data to use.
+      */
+
+      if(inputData && inputData != "")
+      {
+      /** 
+      * Data usecase #1: all data needed for this control has been delivered by a
+      * flashVar 
+      */
+      }
+      else
+      {
+        /**
+        * Data usecase #2: all data needed for this control has to be queried to
+        * a structWSF web service endpoint.
+        */
+
+        Alert.show("Only the 'data' flashVar is currently supported by this application to input data",
+          "Data acquisition error");
+      }
+
+      /** Get target attribute(s) */
+      if(inputTargetAttributes)
+      {
+        for each(var attr:String in inputTargetAttributes.split(";"))
+        {
+          /** normalize attribute ID */
+          targetAttributes.push(namespaces.getVariable(attr));
+        }
+      }
+
+      /** Get target type(s) */
+      if(inputTargetTypes)
+      {
+        for each(var type:String in inputTargetTypes.split(";"))
+        {
+          /** normalize type ID */
+          targetTypes.push(namespaces.getVariable(type));
+        }
+      }
+
+      /** get target records */
+      targetRecords = inputTargetRecords.split(";");
+
+      var semanticControl:sControl = new sControl();
+      var resultset:Resultset = new Resultset(XML(inputData));
+
+      /** Initialize the semantic control */
+      semanticControl.percentWidth = 100;
+      semanticControl.percentHeight = 100;
+      semanticControl.targetAttributes = targetAttributes;
+      semanticControl.targetTypes = targetTypes;
+      semanticControl.semanticDataProvider = resultset;
+      semanticControl.schema = schema;
+
+      this.addEventListener(FeatureEvent.FEATURE_SELECTED, mapFeatureSelectedHandler);
+
+      this.addChild(semanticControl);
+    }
+
+    /**
+    * Handle possible sMap click events. If a map feature is clicked, we open the records URI into the browser.
+    */
+    private function mapFeatureSelectedHandler(event:FeatureEvent):void
+    {
+      if(event.feature.data.exturi && String(event.feature.data.exturi).replace(/(\t|\n|\s{2,})/g, '') != "" && event.feature.recordBaseUrl != "")
+      {
+        var request:URLRequest =
+          new URLRequest(event.feature.recordBaseUrl + String(event.feature.data.exturi).replace(/(\t|\n|\s{2,})/g, ''));
+        request.requestHeaders = new Array(new URLRequestHeader("Accept", "text/html;q=1"));
+
+        navigateToURL(request, '_self');
+      }
+    }
+
+    ]]>
+  </mx:Script>
+</mx:Application>
