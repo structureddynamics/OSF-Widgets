@@ -1,0 +1,524 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!---
+  The linear char is a component that displays record (numeric) attributes on a linear chart. 
+  It is used to display the values of different attributes of a record description so that users 
+  can easily compare the values of these comparable attributes.
+  
+  The main difference with the bar chart component is that the linear chart is used to compare 
+  comparable attributes (remember that the bar chart can be used to compare any kind of attributes: 
+  even if they are not really comparable together). The linear charts are normally used to compare 
+  data in sequence: the same indicator over years; or the same indicate over ages (5 years old, 
+  10 years old, etc.).
+  
+  Attributes are made comparable in the schema, and they are ordered according to their ordering 
+  value, also defined in the schema used by the component, and use to describe target input records. 
+  
+  @author Frederick Giasson, Structured Dynamics LLC.
+-->
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:charts="org.axiis.charts.*" xmlns:axiis="org.axiis.*"
+  xmlns:series="org.axiis.charts.series.*" xmlns:groupings="org.axiis.charts.groupings.*"
+  xmlns:degrafa="http://www.degrafa.com/2007" xmlns:states="org.axiis.states.*"
+  xmlns:scales="org.axiis.layouts.scale.*" xmlns:paint="org.axiis.paint.*" xmlns:Examples="Examples.*"
+  xmlns:axis="org.axiis.charts.axis.*" xmlns:labels="org.axiis.charts.labels.*" xmlns:utils="org.axiis.utils.*"
+  creationComplete="init()" width="100%" height="100%">
+  <mx:Script>
+  <![CDATA[
+    import com.sd.semantic.core.Schema;
+    import com.sd.semantic.core.SchemaAttribute;
+    import com.sd.semantic.core.Subject;
+    import com.sd.semantic.events.*;
+    import com.sd.semantic.settings.GeneralSettings;
+    import com.sd.semantic.core.Resultset;
+    
+    import mx.core.Application;
+    
+    import org.axiis.core.AxiisSprite;
+    import org.axiis.data.DataSet;
+    import org.axiis.events.LayoutItemEvent;
+    import org.axiis.states.State;
+    
+    /** Core varibles shared amongst all semantic controls */
+    
+    /** 
+     * Specifies that this component is a semantic component. If a component in a Flex application is a semantic
+     * semantic component, this means that other semantic component can't behave differently depending of the "kind"
+     * (semantic or not) of components that are present in the layout. This variable is just to specify is a component
+     * is a semantic one or not.
+     */
+    public var semanticComponent:Boolean = true;
+    
+    /**
+     * Specifies that this control is required within a display cluster.
+     * This means that if we have a SemanticHBox that has 2 required semantic
+     * components and that these components have removed themselves from the display
+     * this means that the parent layout cluster (the smeantic hbox), will remove
+     * itself as well. If a semantic component is marked as not required (required=false)
+     * it means that it won't be considered by the semantic hbox. So, even if such a semantic
+     * component has data in it, its parent cluster can remove itself.
+     */
+    public var required:Boolean = true;
+    
+    /** Target record attributes to display in the component */
+    public var targetAttributes:Array = [];
+    
+    /** Target record types to display in the component */
+    public var targetTypes:Array = [];
+    
+    /** Specifies if the sControl's targetAttribute has been bound to a know semantic control. */
+    public var bound:Boolean = false;
+    
+    private var _semanticDataProvider:Resultset;
+    
+    /** Input records. This is a Resultset structure (see the structXML XML data structure) */
+    public function get semanticDataProvider():Resultset
+    {
+      return (_semanticDataProvider);
+    }
+    
+    public function set semanticDataProvider(value:Resultset):void
+    {
+      _semanticDataProvider = value;
+      
+      if(_initialized)
+      {
+        init();
+      }
+    }
+    
+    /** Specifies what attribute(s) of a record have been bound to this semantic component */
+    public var boundAttributes:Array = [];
+    
+    /** Specifies if the component has already been initialized or not. */
+    private var _initialized:Boolean = false;
+    
+    /** Axiis DataSet used to populate the Axiis components */
+    private var ds:DataSet = new DataSet();
+    
+    /** Schema structure loaded for this semantic component */
+    private var _schema:Schema = null;
+    
+    /** General Settings */
+    private var generalSettings:GeneralSettings = null;
+    
+    /** Index of record selector column IDs and their bound record URIs */
+    private var columnIdToRecordUri:Array = [];
+    
+    /** General settings of the semantic application */
+    public function get schema():Schema
+    {
+      return (_schema);
+    }
+    
+    public function set schema(value:Schema):void
+    {
+      this._schema = value;
+    }
+    
+    /** Invalidate the bar chart to redraw it */
+    public function invalidate():void
+    {
+      init();
+    }
+    
+    /** Initialize the bar chart component */
+		public function init():void
+		{
+			if(_semanticDataProvider != null)
+			{
+        /**
+         * Load settings
+         * 
+         * Check if the application that embede this semantic component defined its 
+         * baseAppUrl. If it didn't, we simply use the default local location "./"
+         */
+        
+        /** Base URL of the flex component */
+        var baseUrl:String = "./";
+        if(Application.application.baseAppUrl && Application.application.baseAppUrl != "")
+        {
+          baseUrl = Application.application.baseAppUrl;
+        }
+        
+        var settingsLoader:URLLoader = new URLLoader();
+        settingsLoader.load(new URLRequest(baseUrl + "settings/General.xml"));
+        settingsLoader.addEventListener(Event.COMPLETE, processSettingsHandler);
+        
+        /** Keep track of the attributes, from the record, that have been bound to this control. */
+        if(targetAttributes.length > 0)
+        {
+          for each(var tAttr in targetAttributes)
+          {
+            boundAttributes.push(tAttr);
+          }
+        }        
+			}
+			
+			_initialized = true;
+		}
+
+    /**
+     * Get, parse and process the map settings 
+     * 
+     * @param event URLLoader success/failure event
+     */    
+    private function processSettingsHandler(event:Event):void
+    {
+      /** Check if there is any load/parsing error */
+      var isError:Boolean = false;
+      
+      try
+      { 
+        /** Create the GeneralSettings class from the XML file */
+        generalSettings = new GeneralSettings(new XML(event.target.data));
+      }
+      catch(error:Error)
+      { 
+        Alert.show("Can't load settings file '/settings/General.xml'. The linear chart tool won't be displayed.");
+        isError = true;
+      }
+      
+      if(!isError)
+      {
+        if(generalSettings.error == true)
+        {
+          Alert.show("Required settings are missing in the settings file '/settings/General.xml'. The linear chart tool won't be displayed.");
+          isError = true;
+        }
+      }
+      
+      /** If the setting file is properly loaded, we continue to process the bar chart component */      
+      if(!isError)
+      {
+        /** Intermediary data provider structure */
+        var dataProviderFoo:Array = [];
+        
+        vScale.minValue = 0;		
+        vScale.maxValue = 0;				
+        
+        /**
+        * CSV data structure used to populate the linear graph.
+        * 
+        * The first column are the values used to populate the xAxis.
+        * The other columns are the records composing the graph.
+        * The values intersection of the rows (xAxis) and columns (records) are the values used
+        * to create the lines in the linear graph
+        * 
+        * The structure looks like:
+        * <pre>
+        *   xAxis, record-1, record-2, record-3, ...
+        *   1991,  10      , 12      , 34      , ...
+        *   1996,  13      , 9       , 23      , ...
+        *   ... ,  ...     , ...     , ...     , ...
+        * </pre>
+        */
+        var csv:String = "xAxis,";
+        
+        /** 
+        * Get all the attributes used for the xAxis.
+        * 
+        * These come from the targetAttributes list, and from all their "compatibleWith" related attributes.
+        * 
+        * Then, we use their "orderingValue" to populate the first column (xAxis).
+        */
+        
+        /**
+        * List of all comparableWith attributes that will be used to populate the linear graph.
+        */
+        var comparableAttributes:Array = [];
+        
+        for each(var predKey:String in targetAttributes)
+        {
+          /** a target attribute for this linear graph */
+          var attribute:SchemaAttribute = this.schema.getAttribute(predKey);
+  
+          if(attribute)
+          {
+            /** Get all comparable attributes */
+            var dump:Array = [];
+            schema.getComparableAttributes(attribute.uri, dump);
+            
+            comparableAttributes = comparableAttributes.concat(dump);
+          }
+        }     
+        
+        /** Ordering values used to populate the xAxis of the linear graph */  
+        var comparableOrderingValues:Array = [];  
+          
+        /** 
+         * Get the ordering value of the attribute. 
+         * 
+         * Internally, if there is none defined, the system simply used the 
+         * prefLabel of the attribute, or event its URI as the ordering value
+         */ 
+        
+        var bAttributes:Array = [];
+        
+        for each(var ca:SchemaAttribute in comparableAttributes)
+        {
+          if(bAttributes.indexOf(ca.uri) == -1) /** Remove duplicates */
+          {
+            comparableOrderingValues.push({uri: ca.uri, orderingValue: ca.orderingValue, shortLabel: ca.shortLabel});
+            
+            bAttributes.push(ca.uri);
+          }
+        }
+        
+        comparableOrderingValues.sortOn("orderingValue");
+  
+        /** Populate the columns with the prefLabel of the records */
+        
+        /** Keep track of the ID of the columns as they are created */
+        var columnId = 1;
+        
+        for each(var subject:Subject in _semanticDataProvider.subjects)
+        {
+          var columnLabel:String = "";
+          
+          columnLabel = subject.getPrefLabel(this.document.generalSettings.prefLabelAttributes);
+          columnLabel = columnLabel.replace(/,/g, " - ");
+          
+          csv = csv + columnLabel + ",";
+          
+          columnIdToRecordUri[columnId] = subject.uri;
+          columnId++;
+        }          
+        
+        /** replace the last "," by a new line */
+        csv = csv.substr(0, csv.length - 1) + "\n";
+        
+        /** 
+        * Create each row from the comparable attributes, and populate each of them
+        * with the value of the attribute(s) for each of the records
+        */
+        for each(var attr:Object in comparableOrderingValues)
+        {
+          csv = csv + attr.shortLabel + ",";
+          
+          /** Get the value for the attribute for each record */
+          for each(var subject:Subject in _semanticDataProvider.subjects)
+          {
+            var values:Array = subject.getPredicateValues(attr.uri);
+            
+            if(values && values.length > 0)
+            {
+              csv = csv + values[0].value + ",";
+            }
+            else
+            {
+              csv = csv + ",";
+            }
+          }
+  
+          /** replace the last "," by a new line */
+          csv = csv.substr(0, csv.length - 1) + "\n";
+        }
+
+        ds.processCsvAsTable(csv, false);
+        
+        /**
+        * LineSeriesGroup expects each unique series as a row
+        * Since the first column is what is used as our X Axis (for example, temporal values) we want to 
+        * pivot the data. This then makes a column for each unique time entrie and a row for each unique column.
+        */
+        ds.pivotTable(0);
+        dataProvider = ds.data.pivot.rows;
+        hScale.dataProvider=ds.data.pivot.header.slice(1, ds.data.pivot.header.length);
+        hAxis.invalidateDataProvider();
+        dc.invalidateDisplayList();
+      }
+      
+      this.removeEventListener(Event.COMPLETE, processSettingsHandler);
+    }         
+
+    /** Format the attribute labels properly on the axis */
+    private function axisLabel(obj:Object):String
+    {
+      return(formatter.format(Number(obj) / 1000));
+    }
+    
+    /** Line mouse click event handler */    
+    private function itemClickHandler(event:LayoutItemEvent):void
+    {
+      if(event.item.data)
+      {
+        /** Object to return composed of the prefLabel of the target record, and its URI */
+        var record:Object = {prefLabel: event.item.data.pivotName, uri:columnIdToRecordUri[event.item.data.index]};
+        
+        /** Dispatch a bubbling item click event that will be catchable by the main application */
+        dispatchEvent(new SemanticComponentItemEvent(SemanticComponentItemEvent.ITEM_CLICK, record, true));
+      }
+    }
+    
+    /** Line mouse over event handler */
+    private function itemOverHandler(event:LayoutItemEvent):void
+    {
+      if(event.item.data)
+      {
+        /** Object to return composed of the prefLabel of the target record, and its URI */
+        var record:Object = {prefLabel: event.item.data.pivotName, uri:columnIdToRecordUri[event.item.data.index]};
+        
+        /** Dispatch a bubbling item over event that will be catchable by the main application */
+        dispatchEvent(new SemanticComponentItemEvent(SemanticComponentItemEvent.ITEM_OVER, record, true));
+      }
+    }  
+  
+    /** Line mouse out event handler */
+    private function itemOutHandler(event:LayoutItemEvent):void
+    {
+      if(event.item.data)
+      {
+        /** Object to return composed of the prefLabel of the target record, and its URI */
+        var record:Object = {prefLabel: event.item.data.prefLabel, uri: event.item.data.uri};
+        
+        /** Dispatch a bubbling item over event that will be catchable by the main application */
+        dispatchEvent(new SemanticComponentItemEvent(SemanticComponentItemEvent.ITEM_OUT, record, true));
+      }
+    }
+    
+    /**
+     * Select a target record in the component.
+     * 
+     * @param record Target subject record to be selected in the component. This object is expected to have
+     *               a "uri" property that is used to find the record to select in the component.
+     */
+    public function selectRecord(record:Object):void
+    {
+      /** Make sure that the target record has the uri property defined */
+      if(record.hasOwnProperty("uri"))
+      {
+        for(var columnId:String in columnIdToRecordUri)
+        {
+          /** find the column ID that match the target record URI */
+          if(record.uri == columnIdToRecordUri[columnId])
+          {
+            /** find the state of the AxiisSprite that select a line region */
+            if(myLineGroup.childSprites && myLineGroup.childSprites[columnId - 1] && myLineGroup.childSprites[columnId - 1].hasOwnProperty("states"))
+            {
+              for each(var state:State in myLineGroup.childSprites[columnId - 1].states)
+              {
+                if(state.enterStateEvent == "mouseOver" && state.exitStateEvent == "mouseOut")
+                {
+                  /** Lets remove all states of all AxiisSprite of this component */
+                  for each(var childSprite:AxiisSprite in myLineGroup.childSprites)
+                  {
+                    childSprite.clearStates();
+                  }
+                  
+                  /** We found the state we need to select the record. Now lets enable it */
+                  myLineGroup.childSprites[columnId - 1].setState(state);
+                  
+                  break;
+                }
+              }
+            }
+            
+            break;
+          }
+        }
+      }      
+    }    
+
+    /**
+     * Unselect all possible selected records in the chart
+     */
+    public function unselectRecords():void
+    {
+      /** Remove all states of all AxiisSprites of this component */
+      for each(var childSprite:AxiisSprite in myLineGroup.childSprites)
+      {
+        childSprite.clearStates();
+      }
+    }    
+		]]>
+  </mx:Script>
+
+  <!---  Data Provider used to feed the linear chart -->
+  <mx:Object id="dataProvider"/>
+
+  <mx:Number id="percentGap">.02
+  </mx:Number>
+
+  <mx:CurrencyFormatter currencySymbol="k" precision="0" id="formatter" alignSymbol="right"
+    useThousandsSeparator="true"/>
+
+  <!--- Linear Chart -->
+
+  <!--- 
+    Vertical scale of the chart. It is where the values of the properties describing the record(s)
+    are put on the chart.
+  -->
+  <scales:LinearScale id="vScale" dataProvider="{dataProvider}" minLayout="0" maxLayout="{myLineGroup.height}"/>
+  <!--- 
+    Horizontal scale of the graph. It is where the attributes describing the record(s) are put on the chart.
+  -->
+  <scales:CategoricalScale id="hScale" minLayout="0" maxLayout="{myLineGroup.width}"/>
+  <!--- Canvas holding the chart lines -->
+  <axiis:DataCanvas width="{this.width*.85}" id="dc" top="30" bottom="30" horizontalCenter="0" strokes="{strokes}"
+    fills="{fills}" palettes="{palettes}" showDataTips="true">
+
+    <!--- Background of the chart -->
+    <axiis:backgroundGeometries>
+      <axis:VAxis id="vAxis" verticalScale="{vScale}" tickStroke="{axisStroke}" width="{dc.width}"
+        height="{myLineGroup.height}" showDataTips="false" fontFamily="Myriad Pro" fontColor="0" fontSize="14"
+        tickGap="5" majorTickSpacing="50" labelFunction="{axisLabel}"/>
+
+      <axis:HCategoryAxis id="hAxis" x="{myLineGroup.x}" categoryScale="{this.hScale}" width="{myLineGroup.width}"
+        dataProvider="{hScale.dataProvider}" height="50" y="{myLineGroup.height}"/>
+
+      <degrafa:Line x="0" x1="{myLineGroup.x+myLineGroup.width}" y="{myLineGroup.height}" y1="{myLineGroup.height}"
+        stroke="{axisStroke}"/>
+    </axiis:backgroundGeometries>
+
+    <!--- Layouts -->
+    <axiis:layouts>
+      <groupings:LineSeriesGroup id="myLineGroup" x="12" y="0" height="{dc.height-70}" width="{dc.width}"
+        tension="0.2" markerColor="{areaPalette.currentColor}" showArea="false" markerSize="5" showMarker="false"
+        mode="0" dataProvider="{dataProvider}" plotCollection="columns" dataField="value" labelField="pivotName"
+        xDataField="name" plotLabelField="name" verticalScale="{vScale}" horizontalScale="{hScale}"
+        stroke="{myStroke}" fill="{areaFill}"
+        enableRollOver="true" itemClick="itemClickHandler(event)" itemMouseOver="itemOverHandler(event)"
+          itemMouseOut="itemOutHandler(event)"/>
+    </axiis:layouts>
+  </axiis:DataCanvas>
+
+  <!---  FILLS &amp; STROKES -->
+
+  <mx:Array id="palettes">
+    <paint:LayoutAutoPalette id="outerPalette" layout="{myLineGroup}" colorFrom="0xCC3333" colorTo="0x3333CC"/>
+
+    <paint:LayoutAutoPalette id="clusterPalette" layout="{myLineGroup}" colorFrom="{outerPalette.currentColor}"
+      colorTo="{outerPalette.currentColor | 0x337f00}"/>
+
+    <paint:LayoutAutoPalette id="areaPalette" layout="{myLineGroup}" colorFrom="0x3333CC" colorTo="0xCC3333"/>
+  </mx:Array>
+
+  <mx:Array id="fills">
+    <degrafa:LinearGradientFill id="areaFill" angle="90" enableEvents="false">
+      <degrafa:GradientStop color="{areaPalette.currentColor}" alpha=".95"/>
+
+      <degrafa:GradientStop color="{areaPalette.currentColor | 0x999933}" alpha=".65"/>
+    </degrafa:LinearGradientFill>
+
+    <degrafa:LinearGradientFill id="clusterFill" angle="45" enableEvents="false">
+      <degrafa:GradientStop color="{clusterPalette.currentColor}"/>
+
+      <degrafa:GradientStop color="{clusterPalette.currentColor | 0xFFFFFF}" alpha=".85"/>
+    </degrafa:LinearGradientFill>
+  </mx:Array>
+
+  <mx:Array id="strokes">
+    <degrafa:LinearGradientStroke id="colStroke" pixelHinting="true" angle="45" enableEvents="false">
+      <degrafa:GradientStop color="0xFFFFFF" alpha=".7"/>
+
+      <degrafa:GradientStop color="0xFFFFFF" alpha=".3"/>
+    </degrafa:LinearGradientStroke>
+
+    <degrafa:SolidStroke color="0xFFFFFF" alpha=".3"/>
+
+    <degrafa:SolidStroke color="0x222222" id="axisStroke" pixelHinting="true"/>
+
+    <degrafa:SolidStroke color="{areaPalette.currentColor}" id="myStroke" weight="1" alpha="1" caps="none"
+      pixelHinting="true"/>
+  </mx:Array>
+</mx:Canvas>

@@ -1,0 +1,226 @@
+<?xml version = "1.0" encoding = "utf-8"?>
+
+<!-- THIS COMPONENT IS HASN'T BEEN UPGRADED YET. IT IS ONLY USED FOR THE STRUCTSEARCH DEMO -->
+
+<mx:Canvas xmlns:mx = "http://www.adobe.com/2006/mxml" xmlns:axiis = "org.axiis.*"
+  xmlns:degrafa = "http://www.degrafa.com/2007" xmlns:charts = "org.axiis.charts.*" xmlns:paint="org.axiis.paint.*" xmlns:states="org.axiis.states.*"
+  xmlns:geometry = "com.degrafa.geometry.*" xmlns:utils="org.axiis.utils.*" xmlns:groupings="org.axiis.charts.groupings.*"  creationComplete = "init()">
+  <mx:Metadata>
+    [Event(name="itemClick", type="com.sd.semantic.events.SemanticComponentItemEvent")]
+  </mx:Metadata>
+
+  <mx:Script>
+  <![CDATA[
+			import org.axiis.core.AxiisSprite;
+			import org.axiis.data.DataSet;
+			import org.axiis.events.LayoutItemEvent;
+			
+			import com.sd.semantic.events.*;
+
+			
+			// Core varibles shared amongst all semantic controls
+			
+			// Specifies that this component is a semantic component
+			public var semanticComponent:Boolean = true;
+			
+			/*
+				Specifies that this control is required within a display cluster.
+				This means that if we have a SemanticHBox that has 2 required semantic
+				components and that these components have removed themselves from the display
+				this means that the parent layout cluster (the smeantic hbox), will remove
+				itself as well. If a semantic component is market as not required (required=false)
+				it means that it won't be considered by the semantic hbox. So, even if such a semantic
+				component has data in it, its parent cluster can remove itself.
+			*/
+			public var required:Boolean = true;
+			
+			public var targetAttribute:String = "";
+
+			private var _initialized:Boolean = false;
+
+			private var ds:DataSet = new DataSet();
+
+			public var _semanticDataProvider:Object;
+
+	        public function get semanticDataProvider():Object
+	        {
+	        	return(_semanticDataProvider);	
+	        }	
+	        
+	        public function set semanticDataProvider(value:Object):void
+	        {
+	        	_semanticDataProvider = value;
+				
+    				if(_initialized) // Make sure the control has been initialized a first time
+    				{
+    					init();
+    				}	        	
+	        }	
+	        
+	        public function invalidate():void
+	        {
+	        	init();
+	        }
+
+			public function init():void
+			{
+				if(_semanticDataProvider != null)
+				{
+					var xml:String = "";
+					var stats:Array = new Array();
+					
+
+					for each(var record:Array in _semanticDataProvider)
+					{
+						if(stats[record[targetAttribute]])
+						{
+							stats[record[targetAttribute]] += 1;
+						}
+						else
+						{
+							stats[record[targetAttribute]] = 1;
+						}
+					}
+
+					var dataProviderFoo:Array = new Array();
+
+					for (var key:Object in stats) 
+					{     
+						dataProviderFoo.push({prefLabel: key, count: stats[key]});
+					}		
+					
+					dataProvider = dataProviderFoo;			
+
+					
+					
+/*					
+					for (var key:Object in stats) 
+					{     
+						xml += "<attributeValue value=\""+key+"\">\n";
+						
+						xml += "  <stat count=\""+stats[key]+"\" />\n";
+						
+						xml += "</attributeValue>\n";						 
+					}					
+					
+					for each(var record:Array in _semanticDataProvider)
+					{
+						if(record[targetAttribute])
+						{
+							xml += "<record uri=\""+record["uri"]+"\">\n";
+							
+							xml += "  <"+targetAttribute+" value=\""+record[targetAttribute]+"\" />\n";
+							
+							xml += "</record>\n";
+						}
+					}
+*/
+					
+//					ds.processXmlString(countryData);
+//					ds.processXmlString(xml);
+	
+					//perform aggregations to create data values for our nested wedges
+//					ds.aggregateData(ds.data.object, "attributeValue.stat", ["count"]);
+
+//					ds.aggregateData(ds.data.object, "country.medal", ["count"]);
+//					ds.aggregateData(ds.data.object, "country", ["aggregates.medal_count_sum"]);
+	
+					//Set our max scale value.
+//					dataProvider = ds.data.object.country;
+	
+					dc.invalidateDisplayList();
+				}
+				
+				_initialized = true;
+			}
+
+			//Used to rotate wedge labels 180 degrees for readability
+			private function transposeLabel1(wedge:Object):Boolean
+			{
+				if ((wedge.startAngle + wedge.arc / 2) > 90 && (wedge.startAngle + wedge.arc / 2) < 270)
+				{
+					return true;
+				}
+				else
+				{
+					return false;
+				}
+			}
+		
+			public function colorFunction(val:Object):Number
+			{
+				return Number(val) & -0x333333;
+			}
+			
+			private function itemClick(event:LayoutItemEvent):void
+			{
+        dispatchEvent(new SemanticComponentItemEvent(SemanticComponentItemEvent.ITEM_CLICK, event, true));
+			}
+		]]>
+  </mx:Script>
+
+  <!-- Data Provider -->
+  <mx:Object id = "dataProvider"/>
+
+  <!-- Preference Settings -->
+  <mx:Number id = "angleGap">.5
+  </mx:Number>
+
+  <mx:Number id = "innerRadi1">.4
+  </mx:Number>
+
+  <mx:Number id = "innerRadi2">.78
+  </mx:Number>
+
+  <!-- Common calculations used by geometries -->
+  <utils:NumericExpression id = "center" value = "{boundsRadius.value/2}"/>
+
+  <utils:NumericExpression id = "boundsRadius" value = "{Math.min(this.height,this.width)*.85}"/>
+
+  <!-- Data Canvas that holds our geometries -->
+
+  <axiis:DataCanvas id = "dc" width = "{boundsRadius.value}" height = "{boundsRadius.value}" horizontalCenter = "0"
+    verticalCenter = "0" showDataTips = "false">
+    <axiis:layouts>
+      <!-- innerWedgeGroup:  This renders the inner ring of wedges -->
+
+      <groupings:WedgeStackGroup id = "innerWedgeGroup" dataProvider = "{dataProvider}" startAngle = "0"
+        outerRadiusRatio = "1" width = "{dc.width}" height = "{dc.height}" labelField = "prefLabel"
+        dataField = "count" fill = "{innerWedgeFill}" fontFamily = "Myriad Pro" fontSize = "12" fontColor = "0xFFFFFF"
+        itemClick = "itemClick(event)">
+        <groupings:states>
+          <states:State enterStateEvent = "mouseOver" exitStateEvent = "mouseOut"
+            propagateToAncestorsSiblings = "false" propagateToAncestors = "false" propagateToDescendents = "true"
+            targets = "{[innerWedgeFillStop1]}" properties = "{['color','color','outerRadiusRatio','fontWeight']}"
+            values = "{[colorFunction,colorFunction,1.1,'bold']}"/>
+        </groupings:states>
+      </groupings:WedgeStackGroup>
+    </axiis:layouts>
+
+    <!-- Palletes used to generate our colors -->
+    <axiis:palettes>
+      <paint:LayoutAutoPalette id = "wedgePalette" colorFrom = "0xD20000" colorTo = "0x0000BD"
+        layout = "{innerWedgeGroup}"/>
+    </axiis:palettes>
+
+    <!-- Fills that use the colors generated by our palettes -->
+    <axiis:fills>
+      <degrafa:RadialGradientFill id = "innerWedgeFill" cx = "{innerWedgeGroup.width}" cy = "{innerWedgeGroup.width}"
+        radius = "{(innerWedgeGroup.width)*innerRadi2}">
+        <degrafa:GradientStop color = "{wedgePalette.currentColor | 0x333333}" ratio = ".6"/>
+
+        <degrafa:GradientStop color = "{wedgePalette.currentColor}" id = "innerWedgeFillStop1" ratio = ".92"/>
+
+        <degrafa:GradientStop color = "{wedgePalette.currentColor &amp; -0x352234}" ratio = "1"/>
+      </degrafa:RadialGradientFill>
+
+      <degrafa:SolidFill color = "0xFFFF00" id = "rollOverFill0" alpha = ".9"/>
+
+      <degrafa:SolidFill color = "0xFF00FF" id = "rollOverFill1" alpha = ".9"/>
+    </axiis:fills>
+
+    <axiis:strokes>
+      <degrafa:SolidStroke color = "0" alpha = ".6" pixelHinting = "true" id = "outerWedgeStroke"/>
+    </axiis:strokes>
+  </axiis:DataCanvas>
+</mx:Canvas>

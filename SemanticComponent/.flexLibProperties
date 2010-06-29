@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<flexLibProperties includeAllClasses="false" version="1">
+  <includeClasses>
+    <classEntry path="com.sd.semantic.components.sRelationBrowser"/>
+    <classEntry path="com.sd.semantic.core.Schema"/>
+    <classEntry path="com.sd.semantic.utilities.SemanticUtils"/>
+    <classEntry path="com.sd.semantic.components.sImage"/>
+    <classEntry path="com.sd.semantic.components.sHBox"/>
+    <classEntry path="com.sd.semantic.utilities.SpriteUIComponent"/>
+    <classEntry path="com.sd.semantic.components.sMap"/>
+    <classEntry path="com.sd.semantic.components.sGenericBox"/>
+    <classEntry path="com.sd.semantic.components.sText"/>
+    <classEntry path="com.sd.semantic.core.SchemaAttribute"/>
+    <classEntry path="com.sd.semantic.components.sPieChart"/>
+    <classEntry path="com.sd.semantic.core.Subject"/>
+    <classEntry path="com.sd.semantic.core.Namespaces"/>
+    <classEntry path="com.sd.semantic.utilities.ColorGenerator"/>
+    <classEntry path="com.sd.semantic.core.SchemaType"/>
+    <classEntry path="com.sd.semantic.core.Resultset"/>
+    <classEntry path="com.sd.semantic.settings.Settings"/>
+    <classEntry path="com.sd.semantic.components.sBarChart"/>
+    <classEntry path="com.sd.semantic.settings.MapSettings"/>
+    <classEntry path="com.sd.semantic.settings.GeneralSettings"/>
+  </includeClasses>
+  <includeResources/>
+  <namespaceManifests/>
+</flexLibProperties>

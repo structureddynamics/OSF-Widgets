@@ -1,0 +1,487 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!---
+
+  The structSearch Flex demo application is used to desmonstrate the Semantic Component Library
+  characteristics. It uses the Semantic Components to adapt its own user interface depending
+  on the resultsets returned by the structWSF Search web service endpoint.
+
+  This search application demo uses the "Seamantic Sweet Tools List" conStruct/structWSF demo
+  to demonstrate the concept of ontology driven applications.
+
+  @see http://openstructs.org/structwsf/
+  @see http://constructscs.com
+
+  @author Frederick Giasson, Structured Dynamics LLC.
+
+-->
+
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:components="components.*"
+  xmlns:axiis="http://www.axiis.org/2009" xmlns:degrafa="http://www.degrafa.com/2007"
+  xmlns:charts="org.axiis.charts.*" xmlns:geometry="com.degrafa.geometry.*"
+  xmlns:semanticComponents="com.sd.semantic.components.*" layout="vertical" backgroundGradientAlphas="[1.0, 1.0]"
+  backgroundGradientColors="[#D1D2CE, #FFFEFD]" creationComplete="init()" currentState="searchState">
+   
+  <mx:states>
+    <mx:State name="searchState">
+      <mx:RemoveChild target="{resultsetPanel}"/>
+      <mx:RemoveChild target="{navigationTabId}"/>
+      <mx:SetStyle target="{hbox1}" name="backgroundColor" value="#393939"/>
+      <mx:SetStyle name="backgroundGradientColors" value="[#D1D2CE, #FFFEFD]"/>
+      <mx:SetProperty target="{image1}" name="width" value="260"/>
+      <mx:SetProperty target="{image1}" name="scaleContent" value="true"/>
+      <mx:SetProperty target="{image1}" name="height" value="74"/>
+      <mx:SetStyle target="{text1}" name="color" value="#FFFFFF"/>
+    </mx:State>
+  </mx:states>
+
+  <mx:Script>
+    <![CDATA[
+
+    import components.ItemResult;
+    import components.ItemResultDescription;
+    import events.*;
+    import flash.events.KeyboardEvent;
+    import mx.collections.ArrayCollection;
+    import mx.containers.Canvas;
+    import mx.controls.Alert;
+    import mx.controls.CheckBox;
+    import mx.controls.Image;
+    import mx.controls.LinkButton;
+    import mx.effects.Dissolve;
+    import mx.effects.Fade;
+    import mx.events.ListEvent;
+    import mx.rpc.events.FaultEvent;
+    import mx.rpc.events.ResultEvent;
+    import mx.rpc.http.HTTPService;
+    import mx.utils.ObjectProxy;
+    import org.axiis.events.LayoutItemEvent;
+    import com.sd.semantic.events.*;
+    import com.sd.semantic.core.*;
+      
+    /** Namespaces references used to resolve attributes and types URIs */
+    public var namespaces:Namespaces = new Namespaces();
+
+    /** Conceptual structure used to drive the application */
+    public var schema:Schema = new Schema();
+
+    /** StructWSF search resultset */
+    public var resultsetItems:Array = [];
+      
+    /** Available filters that can be applied to filter the search resultset */
+    public var displayFilters:ArrayCollection = new ArrayCollection();
+
+    /** Initialize the structSearch application */
+    private function init():void
+    {
+      /**
+      * Initialize the ontological structure used to describe records manipulated by
+      * this semantic application
+      *
+      * Two sources can be exploited:
+      * (1) local schema file(s)
+      * (2) remote schema file(s)
+      */
+
+      /** Load all local schema files needed by this semantic application */
+      schema.loadSchema("data/schemas/iron.xml");
+      schema.loadSchema("data/schemas/cosmo.xml");
+    }
+
+    /** Fault handler for the Search web service endpoint */
+    private function faultHandler(event:FaultEvent):void
+    {
+      Alert.show(event.fault.message.toString());
+    }
+
+    /** Result handler for the Search web service endpoint */
+    private function resultHandler(event:ResultEvent):void
+    {
+      var httpService:HTTPService = event.target as HTTPService;
+
+      displayResults(event.result);
+    }
+
+    /** Display resultsets from the Search web service endpoint in an horizontal list */
+    private function displayResults(rset:XML):void
+    {
+      /** Re-initialize the result box */
+      
+      /** list of unique attributes defining subjects of the resultset */
+      var uniqueAttributes:ArrayCollection = new ArrayCollection();
+
+      /** resultset structured returned by the Search web service endpoint */
+      var resultset:Resultset = new Resultset(rset);
+
+      /** Iterate over all instance records */
+      if(resultset.subjects.length > 0)
+      {
+        for(var recordNum:int = 0; recordNum < resultset.subjects.length; recordNum++)
+        {
+          var instanceRecordItem:Array = [];
+
+          var instanceRecord:Subject = resultset.subjects[recordNum];
+
+          /** 
+          * Each subject of the resulset become a sub-resultset that we will feed to the semantic data provier
+          * of each item renderer of the UI.
+          */
+          instanceRecordItem["semanticDataProvider"] = new Resultset([instanceRecord]);
+
+          predicates = instanceRecord.predicates;
+
+          if(instanceRecord.uri && instanceRecord.type)
+          {
+            instanceRecordItem["type"] = instanceRecord.type;
+            instanceRecordItem["uri"] = instanceRecord.uri;
+          }
+
+          /** Iterate over all properties of this record */
+          if(predicates.length > 0)
+          {
+            for(var predicateType:String in predicates)
+            {
+              var values:Array = predicates[predicateType];
+
+              var found:Boolean = false;
+
+              for each(var itemUnique:Object in uniqueAttributes)
+              {
+                if(itemUnique.data == predicateType)
+                {
+                  found = true;
+                  break;
+                }
+              }
+
+              if(!found)
+              {
+                /** Get the pref label from the schema */
+                var attributeName:String = predicateType;
+
+                if(schema)
+                {
+                  var attribute:SchemaAttribute = schema.getAttribute(predicateType);
+
+                  if(attribute && attribute.prefLabel)
+                  {
+                    attributeName = attribute.prefLabel;
+                  }
+                }
+
+                var add:Boolean = true;
+
+                for each(var ua:Object in uniqueAttributes)
+                {
+                  if(ua.label == attributeName)
+                  {
+                    add = false;
+                  }
+                }
+
+                if(add)
+                {
+                  uniqueAttributes.addItem({label: attributeName, data:predicateType});
+                }
+              }
+
+              if(values[0]["value"] != "")
+              {
+                instanceRecordItem[predicateType] = values[0]["value"];
+              }
+              else
+              {  
+                instanceRecordItem[predicateType] = values[0]["uri"];
+              }
+            }
+          }
+
+          resultsetItems.push(instanceRecordItem);
+        }
+      }
+
+      resultsList.itemRenderer = new ClassFactory(ItemResult);
+      resultsList.dataProvider = resultsetItems;
+      resultsList.selectedIndex = 0;
+
+      /** Feed the wedge chart with the results list */
+      for each(var item:Object in uniqueAttributes)
+      {
+        semanticWedgeStackChart.targetAttribute = item.data;
+        break;
+      }
+      
+      semanticWedgeStackChart.semanticDataProvider = resultsetItems;
+
+      /** Display information about the first item */
+      var resultItem:ItemResultDescription = new ItemResultDescription();
+      
+      resultItem.data = resultsetItems[0];
+
+
+      /**
+      *  Add Fade-In effects
+      * Note: here we use the Dissolve effect to create the Fade-In effect. Otherwise
+      * the text of this custom component won't be fadded-in
+      */
+      var fadeIn:Dissolve = new Dissolve(resultItem);
+      
+      fadeIn.alphaFrom = 0;
+      fadeIn.alphaTo = 1;
+      fadeIn.duration = 1500;
+
+      resultItem.setStyle("addedEffect", fadeIn);
+
+      resultDescriptionPanel.addChild(resultItem);
+
+      /** Display the number of results found */
+      resultsetPanel.title = resultsetItems.length + " result(s) found";
+
+      /**
+      * Populate the filtering combo box for the pie chart tool
+      * attributeChartSelector.dataProvider = uniqueAttributes;
+      */
+      applyFiltersList.dataProvider = uniqueAttributes;
+    }
+
+    /** Display the description of the items in the item description tab */
+    private function displayItemDescription(event:Event):void
+    {
+      /** Remove current item */
+      resultDescriptionPanel.removeAllChildren();
+
+      /** Add selected item */
+      var resultItem:ItemResultDescription = new ItemResultDescription();
+
+      resultItem.data = event.currentTarget.selectedItem;
+
+      /**
+      *  Add Fade-In effects
+      * Note: here we use the Dissolve effect to create the Fade-In effect. Otherwise
+      * the text of this custom component won't be fadded-in
+      */
+      var fadeIn:Dissolve = new Dissolve(resultItem);
+      
+      fadeIn.alphaFrom = 0;
+      fadeIn.alphaTo = 1;
+      fadeIn.duration = 1500;
+
+      resultItem.setStyle("addedEffect", fadeIn);
+
+      /** Add the child to the description panel */
+      resultDescriptionPanel.addChild(resultItem);
+    }
+
+    /** Perform the search query against the Search web service endpoint. */
+    private function search():void
+    {
+      if(searchQuery.text.length == 0)
+      {
+        Alert.show("Please add a keyword for the search query", "Warning");
+      }
+      else
+      {
+        /** Reset the item description panel accordingly */
+        resultDescriptionPanel.removeAllChildren();
+
+        var requestParameters
+          :Object = {query: searchQuery.text, datasets: "http://constructscs.com/wsf/datasets/740/", items: 100,
+          page: 0, inference: "on", include_aggregates:"false"};
+
+        var httpService:HTTPService = new HTTPService();
+
+        httpService.url = "http://constructscs.com/ws/search/";
+        httpService.method = "POST";
+        httpService.headers['Accept'] = 'text/xml';
+        httpService.showBusyCursor = true;
+        httpService.resultFormat = "e4x";
+        httpService.addEventListener(ResultEvent.RESULT, resultHandler);
+        httpService.addEventListener(FaultEvent.FAULT, faultHandler);
+
+        httpService.send(requestParameters);
+      }
+    }
+
+    /** Detect Enter key to fire the search query procedure */
+    private function detectEnterKey(event:KeyboardEvent):void
+    {
+      if(event.charCode == 13)
+      {
+        currentState = '';
+        search();
+      }
+    }
+
+    /** Update the filtering pie chart */
+    private function updateChart(event:ListEvent):void
+    {
+      if(event.type == "change")
+      {
+        semanticWedgeStackChart.targetAttribute = event.currentTarget.selectedItem.data;
+        semanticWedgeStackChart.invalidate();
+      }
+    }
+
+    /** Detect pie chart click, and perform filtering according to the item clicked */
+    private function pieChartItemClick(event:SemanticComponentItemEvent):void
+    {
+      if(event.type == "itemClick")
+      {
+        /** Add a linkbutton to remove this filter */
+        var canvas:Canvas = new Canvas();
+        canvas.setStyle("backgroundColor", "#b1d2e7");
+
+        var linkButton:LinkButton = new LinkButton();
+        linkButton.setStyle("cornerRadius", "0");
+
+        var attribute:SchemaAttribute = schema.getAttribute(event.currentTarget.targetAttribute);
+        var attributeName:String = event.currentTarget.targetAttribute;
+
+        if(attribute && attribute.prefLabel)
+        {
+          attributeName = attribute.prefLabel;
+        }
+
+        linkButton.label = attributeName + " = " + event.selectedObject.item.data.prefLabel;
+        linkButton.addEventListener(flash.events.MouseEvent.CLICK, removeFilter);
+        linkButton.data = {attribute: event.currentTarget.targetAttribute, value:event.selectedObject.item.data.prefLabel};
+
+        displayFilters.addItem({attribute: event.currentTarget.targetAttribute, value:event.selectedObject.item.data.prefLabel});
+
+        canvas.addChild(linkButton);
+
+        filersBox.addChild(canvas);
+
+        applyFilters();
+      }
+    }
+
+    /** Apply filters to the resultset */
+    private function applyFilters():void
+    {
+      resultDescriptionPanel.removeAllChildren();
+
+      var resultsetFiltered:Array = new Array();
+
+      /** Filter the resultset according to the selected criterias */
+      if(displayFilters.length == 0)
+      {
+        resultsetFiltered = resultsetItems;
+      }
+      else
+      {
+        for each(var result:Object in resultsetItems)
+        {
+          var add:Boolean = true;
+
+          for each(var filter:Object in displayFilters)
+          {
+            if(result[filter.attribute] && result[filter.attribute] != filter.value)
+            {
+              add = false;
+              break;
+            }
+          }
+
+          if(add)
+          {
+            resultsetFiltered.push(result);
+          }
+        }
+      }
+
+      resultsList.itemRenderer = new ClassFactory(ItemResult);
+      resultsList.dataProvider = resultsetFiltered;
+      resultsList.selectedIndex = 0;
+
+      /** Feed the wedge chart with the results list */
+      semanticWedgeStackChart.semanticDataProvider = resultsetFiltered;
+
+      /** Display information about the first item */
+      var resultItem:ItemResultDescription = new ItemResultDescription();
+      resultItem.data = resultsetFiltered[0];
+      
+      resultDescriptionPanel.addChild(resultItem);
+
+      /** Display the number of results found */
+      resultsetPanel.title = resultsetFiltered.length + " result(s) found";
+    }
+
+    /** Remove a filter on the resultset, and re-process the results to display to the user */
+    private function removeFilter(event:Event):void
+    {
+      /** Remove the link button filter */
+      event.currentTarget.parent.removeChild(event.currentTarget);
+
+      /** Remove the filter from the display filters list */
+      var iterator:int = 0;
+
+      for each(var filter:Object in displayFilters)
+      {
+        if(filter.attribute == event.currentTarget.data.attribute && filter.value == event.currentTarget.data.value)
+        {
+          displayFilters.removeItemAt(iterator);
+        }
+
+        iterator++;
+      }
+
+      /** Remove the filter we applied to the search resultset */
+      applyFilters();
+    }
+
+    ]]>
+  </mx:Script>
+
+  <mx:HBox width="800" cornerRadius="7" borderStyle="solid" borderColor="#C6CDD0" paddingTop="15" paddingLeft="15"
+    paddingRight="15" paddingBottom="15" backgroundColor="#393939" verticalGap="15" id="hbox1">
+    <mx:Image source="images/sd_logo_dark_260.png" id="image1" width="260" height="73"/>
+ 
+    <mx:VBox verticalAlign="middle" height="100%" width="100%">
+      <mx:Text text="Semantic Web Sweet Tools Search" color="#FFFFFF" fontSize="26" textAlign="center" width="100%"
+        height="47" id="text1"/>
+      <mx:Text text="An Ontology Driven Application Demo" width="100%" textAlign="center"  color="#FFFFFF" fontStyle="italic" fontSize="13"/>
+    </mx:VBox>
+  </mx:HBox>
+
+  <mx:Canvas height="30"/>
+
+  <mx:HBox>
+    <mx:TextInput id="searchQuery" width="696" keyDown="detectEnterKey(event)" enabled="true"/>
+
+    <mx:Button id="searchButton" label="Search" width="95" click="currentState = ''; search();"/>
+  </mx:HBox>
+
+  <mx:Panel id="resultsetPanel" width="800" height="230" layout="vertical" title="Search results"
+    horizontalAlign="center" horizontalScrollPolicy="off">
+    <mx:HorizontalList id="resultsList" width="100%" height="100%" change="displayItemDescription(event)">
+    </mx:HorizontalList>
+  </mx:Panel>
+
+  <mx:TabNavigator id="navigationTabId" width="800" height="500" creationPolicy="all">
+    <mx:Canvas id="resultDescriptionPanel" label="Result view" width="100%" height="100%">
+    </mx:Canvas>
+
+    <mx:Canvas label="Filter" width="100%" height="100%">
+      <mx:HBox>
+        <semanticComponents:sPieChart id="semanticWedgeStackChart" itemClick="pieChartItemClick(event)" width="570"
+          height="500"/>
+
+        <mx:VBox horizontalAlign="center">
+          <!--				
+          <mx:ComboBox width="200" id="attributeChartSelector" change="updateChart(event)"></mx:ComboBox>
+          -->
+          <mx:Text text="Apply Filter(s)" fontWeight="bold" fontFamily="Arial" fontSize="14" paddingTop="30"/>
+
+          <mx:List id="applyFiltersList" width="100%" change="updateChart(event)">
+          </mx:List>
+
+          <mx:Text text="Remove Filter(s)" fontWeight="bold" fontFamily="Arial" fontSize="14" paddingTop="30"/>
+
+          <mx:VBox id="filersBox">
+          </mx:VBox>
+        </mx:VBox>
+      </mx:HBox>
+    </mx:Canvas>
+  </mx:TabNavigator>
+</mx:Application>

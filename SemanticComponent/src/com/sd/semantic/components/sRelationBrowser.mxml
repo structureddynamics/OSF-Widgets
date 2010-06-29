@@ -1,0 +1,653 @@
+<?xml version = "1.0" encoding = "utf-8"?>
+
+<!---
+  The relation browser is a component that displays networks of nodes and arcs. 
+  It is usually used to display conceptual structures described in irXML. These 
+  irXML schemas are themselves generally created from OWL2 ontologies, or are 
+  directly created in irXML.
+  
+  Each node in the relation browser is a concept, and each arc is a relationship 
+  between two concept nodes. The relationship can be one of sub-concept or one of 
+  super-concept.
+  
+  Additionally this relation browser tool can related stories related to each 
+  focused node. 
+  
+  @author Frederick Giasson, Structured Dynamics LLC.
+-->
+<mx:Canvas xmlns:mx = "http://www.adobe.com/2006/mxml" creationComplete = "init()" width="100%" height="100%">
+  <mx:Script>
+    <![CDATA[
+      import eu.stefaner.relationbrowser.layout.RelationBrowserEdgeRenderer;
+      import eu.stefaner.relationbrowser.ui.Node;
+      import eu.stefaner.relationbrowser.RelationBrowser;
+      import eu.stefaner.relationbrowser.data.NodeData;
+      import eu.stefaner.relationbrowser.encoders.Encoders;
+      import flare.scale.ScaleType;
+      import flare.util.Shapes;
+      import flare.util.palette.ColorPalette;
+      import flare.vis.data.render.ArrowType;
+      import flare.vis.operator.Operator;
+      import flare.vis.data.Data;
+      import flare.vis.operator.encoder.ColorEncoder;
+      import flash.events.Event;
+      import flash.external.ExternalInterface;
+      import flash.filters.DropShadowFilter;
+      import flash.geom.Rectangle;
+      import mx.controls.Text;
+      import mx.controls.Label;
+      import mx.controls.TextArea;
+      import mx.controls.Alert;      
+      import mx.containers.HBox;
+      import mx.rpc.events.ResultEvent;
+      import mx.rpc.events.FaultEvent;
+      import mx.rpc.http.HTTPService;
+      import mx.events.ListEvent;
+      import mx.core.Application;    
+      import com.sd.semantic.settings.RelationBrowserSettings;
+      import com.sd.semantic.core.*;
+      
+      /** Core varibles shared amongst all semantic controls */
+      
+      /** 
+       * Specifies that this component is a semantic component. If a component in a Flex application is a semantic
+       * semantic component, this means that other semantic component can't behave differently depending of the "kind"
+       * (semantic or not) of components that are present in the layout. This variable is just to specify is a component
+       * is a semantic one or not.
+       */
+      public var semanticComponent:Boolean = true;
+      
+      /**
+       * Specifies that this control is required within a display cluster.
+       * This means that if we have a SemanticHBox that has 2 required semantic
+       * components and that these components have removed themselves from the display
+       * this means that the parent layout cluster (the smeantic hbox), will remove
+       * itself as well. If a semantic component is marked as not required (required=false)
+       * it means that it won't be considered by the semantic hbox. So, even if such a semantic
+       * component has data in it, its parent cluster can remove itself.
+       */
+      public var required:Boolean = true;
+      
+      /**
+       * The recordBox attribute specifies if the HBox contains all the controls
+       * to display information about a complete record. This mainly used
+       * to manage the "GenericBox" generic content attribute display control.
+       */
+      public var recordBox:Boolean = false;
+      
+      /** Target record attributes to display in the component */
+      public var targetAttributes:Array = [];
+      
+      /** Target record types to display in the component */
+      public var targetTypes:Array = [];
+      
+      /** Specifies if the sControl's targetAttribute has been bound to a know semantic control. */
+      public var bound:Boolean = false;
+      
+      /** Specifies if the control as already been initialized. */
+      private var isInitialized:Boolean = false;
+      
+      private var _semanticDataProvider:Resultset;
+      
+      /** Input records. This is a Resultset structure (see the structXML XML data structure) */
+      public function get semanticDataProvider():Resultset
+      {
+        return (_semanticDataProvider);
+      }      
+      
+      public function set semanticDataProvider(value:Resultset):void
+      {
+        _semanticDataProvider = value;
+        
+        if(_initialized)
+        {
+          init();
+        }
+      }      
+      
+      /** Other variables */      
+
+      private var _schema:Schema;
+      
+      /** 
+       * Schema used to create the nodes of the graph to be displayed in the relation browser. Each type
+       * will become a node, and each subClassOf relationship will become a sub-concept/super-concept 
+       * relationship between two nodes in the graph.
+       * 
+       * This is a irXML schema.
+       */ 
+      public function get schema():Schema
+      {
+        return (_schema);
+      }
+      
+      public function set schema(value:Schema):void
+      {
+        this._schema = value;
+      }
+
+      /** Specifies what attribute(s) of a record have been bound to this semantic component */
+      public var boundAttributes:Array = [];      
+      
+      /** Relation browser object that display the network of concepts */
+      protected var relationBrowser:RelationBrowser;
+
+      /** Relation browser settings */
+      private var settings:RelationBrowserSettings;
+
+      /** Specifies if the relation browser has been initialized */
+      private var _initialized:Boolean = false;
+
+      /** Target node ID that is currently selected in the user interface */
+      private var targetType:SchemaType;
+  
+      /** Invalidate the map to redraw it */
+      public function invalidate():void
+      {
+        init();
+      }
+  
+      /** Initialize the relation browser component */
+      private function init():void
+      {
+        /**
+         * Load settings
+         * 
+         * Check if the application that embede this semantic component defined its 
+         * baseAppUrl. If it didn't, we simply use the default local location "./"
+         */
+        
+        /** Base URL of the flex component */
+        var baseUrl:String = "./";
+        
+        if(Application.application.baseAppUrl && Application.application.baseAppUrl != "")
+        {
+          baseUrl = Application.application.baseAppUrl;
+        }
+        
+        /** URL Loader for the map settings file */
+        var settingsLoader:URLLoader = new URLLoader();
+        
+        settingsLoader.load(new URLRequest(baseUrl + "settings/sRelationBrowser.xml"));
+        settingsLoader.addEventListener(Event.COMPLETE, processSettingsHandler);        
+        
+        /** Keep track of the attributes, from the record, that have been bound to this control. */
+        if(targetAttributes.length > 0)
+        {
+          for each(var tAttr in targetAttributes)
+          {
+            boundAttributes.push(tAttr);
+          }
+        }        
+      }
+      
+      /**
+       * Get, parse and process the map settings 
+       * 
+       * @param event URLLoader success/failure event
+       */
+      private function processSettingsHandler(event:Event):void
+      {
+        var isError:Boolean = false;
+        
+        try
+        { 
+          /** Generate a settings class instance from the XML settings file */
+          settings = new RelationBrowserSettings(new XML(event.target.data));
+        }
+        catch(error:Error)
+        { 
+          Alert.show("Can't load settings file '/settings/sRelationBrowser.xml'. The map tool won't be displayed.");
+          isError = true;
+        }
+         
+        if(!isError)
+        { 
+          if(settings.error == true)
+          {
+            Alert.show("Required settings are missing in the settings file '/settings/sRelationBrowser.xml'. The map tool won't be displayed.");
+            isError = true;
+          }
+        }
+          
+        /** If we don't have any error, we continue the initialization of the relation browser */
+        if(!isError)
+        {
+          targetType = this.schema.getType(this.targetTypes[0]);      
+         
+          startUp();
+        }
+        
+        this.removeEventListener(Event.COMPLETE, processSettingsHandler);
+      }
+      
+      /**
+      * Select a node by its id.
+      * @param id ID of the node to select. The ID of the node is its type URI.
+      */
+      public function selectNodeByID(id:String = null):void
+      {
+        try
+        {
+          relationBrowser.selectNodeByID(id);
+        }
+        catch(e:Error)
+        {
+        }
+      }
+  
+      /** Start the relation browser once everything got initialized. */
+      protected function startUp():void
+      {
+        initDisplay();
+        loadData();
+      }
+  
+      /** 
+      * Create the nodes &amp; arcs for a given conceptual view (target concept &amp; related concepts to that one).
+      * The network is created by using the schema structure. */
+      protected function loadData():void
+      {
+        /** Generate a node for the target type. */
+        relationBrowser.addNode(new NodeData(targetType.uri, {id: targetType.uri, name: targetType.prefLabel}));
+        
+        /** Get all super-types of this node */
+        for each(var superType:SchemaType in this.schema.getSuperTypes(targetType.uri))
+        {
+          if(superType)
+          {
+              relationBrowser.addNode(new NodeData(superType.uri, {id: superType.uri, name: superType.prefLabel}));
+              
+              relationBrowser.addEdge(superType.uri, targetType.uri);            
+          }
+        }
+        
+        /** Get all sub-types of this node */
+        var subTypes:Array = this.schema.getSubTypes(targetType.uri);
+        for each(var subType:SchemaType in subTypes)
+        {
+          if(subType)
+          {
+            relationBrowser.addNode(new NodeData(subType.uri, {id: subType.uri, name: subType.prefLabel}));
+   
+            relationBrowser.addEdge(targetType.uri, subType.uri);
+          }
+        }
+  
+        relationBrowser.selectNodeById(targetType.uri);
+      }
+  
+      /** Initialize the display of the component */
+      protected function initDisplay():void
+      {
+        /** create the actual relation browser */
+        relationBrowser = new RelationBrowser();
+  
+        /** Check if we display information about the target concept */
+        if(settings.displayConceptsInformation)
+        {
+          infoboxPanel.visible = true;
+        }
+        else
+        {
+          infoboxPanel.parent.removeChild(infoboxPanel);
+        }
+
+        /** Check if we display potential related stories */
+        if(settings.displayRelatedStories)
+        {
+          relatedStoriesPanel.visible = true;
+        }
+        else
+        {
+          relatedStoriesPanel.parent.removeChild(relatedStoriesPanel);
+        }
+
+        if(!settings.displayConceptsInformation && !settings.displayRelatedStories)
+        { 
+          toolsBox.parent.removeChild(toolsBox);
+          RelationBrowseSpriteHolder.percentWidth = 100;          
+        }
+  
+        /** Resize the component so that it fits the available screen estate */
+        fitToCanvas();
+  
+        relationBrowser.addOperators(getOperators());
+        relationBrowser.nodeDefaults = getNodeDefaults();
+        relationBrowser.edgeDefaults = getEdgeDefaults();
+        relationBrowser.sortBy = ["props.cluster"];
+  
+        RelationBrowseSpriteHolder.addChild(relationBrowser);
+        relationBrowser.addEventListener(RelationBrowser.NODE_CLICKED, onNodeClickedHandler);
+        relationBrowser.addEventListener(RelationBrowser.NODE_SELECTED, onNodeSelectedHandler);
+        relationBrowser.addEventListener(RelationBrowser.NODE_SELECTION_FINISHED, onNodeSelectionFinishedHandler);
+
+        RelationBrowseSpriteHolder.addEventListener(Event.RESIZE, fitToScreenHandler);        
+      }
+
+      /** Event trigged when a resize event happen for the component. */
+      private function fitToScreenHandler(event:Event):void
+      {
+        /** Make sure the component fit the canvas after the resize of the application */
+        fitToCanvas();
+      }
+
+      /** Resize the componet to fit the available space in its parent canvas */
+      private function fitToCanvas():void
+      {
+        /** fit in the middle of the screen */
+        relationBrowser.bounds = new Rectangle(0, 0, RelationBrowseSpriteHolder.width, RelationBrowseSpriteHolder.height);
+        relationBrowser.x = RelationBrowseSpriteHolder.width * .5;
+        relationBrowser.y = RelationBrowseSpriteHolder.height * .5;
+        
+        /** Scale if needed */
+        var scaleRatio:Number = 1;
+        if(RelationBrowseSpriteHolder.width < RelationBrowseSpriteHolder.height)
+        {
+          if(RelationBrowseSpriteHolder.width < 825)
+          {
+            scaleRatio = RelationBrowseSpriteHolder.width / 825;
+          } 
+        }
+        else
+        {
+          if(RelationBrowseSpriteHolder.height < 775)
+          {
+            scaleRatio = RelationBrowseSpriteHolder.height / 775;
+          } 
+        }
+        
+        relationBrowser.scaleX = scaleRatio;
+        relationBrowser.scaleY = scaleRatio;
+      }
+  
+      /** Generate a default node object */
+      protected function getNodeDefaults():Object
+      {
+        var n:Object = {
+        };
+  
+        n.lineWidth = 2;
+        n.lineColor = 0xAA666666;
+        n.fillColor = 0xDD333333;
+        n.shape = Shapes.CIRCLE;
+        n.w = n.h = 80;
+        n.size = 8;
+        n.edgeRadius = 55;
+        n.visible = false;
+        // n.blendMode = BlendMode.MULTIPLY;
+        n.filters = [new DropShadowFilter(4, 45, 0, .33, 6, 6, 1, 2)];
+        //n["title_tf.filters"] = [new DropShadowFilter(4, 45, 0, .1, 6, 6, 1, 2)];
+        return n;
+      }
+  
+      /** Generate a default arc object */
+      protected function getEdgeDefaults():Object
+      {
+        var e:Object = {
+        };
+  
+        e.lineWidth = 1;
+        e.lineColor = 0xFF000000;
+        e.lineAlpha = .5;
+        e.arrowType = ArrowType.TRIANGLE;
+        e.visible = false;
+        e.renderer = RelationBrowserEdgeRenderer.instance;
+        return e;
+      }
+  
+      /** */
+      public function getOperators():Vector.<Operator>
+      {
+        var ops:Vector.<Operator> = new Vector.<Operator>();
+  
+        // sample:
+        // color by cluster
+        var c:ColorEncoder = new ColorEncoder("props.cluster", Data.NODES, "lineColor", ScaleType.CATEGORIES,
+          new ColorPalette(ColorPalette.CATEGORY_COLORS_10));
+        ops.push(c);
+  
+        ops.push(Encoders.getScaleNodesByGraphDistanceEncoder(1.25, 1, .1));
+        ops.push(Encoders.getScaleEdgesByGraphDistanceEncoder(4, 1, relationBrowser.showOuterEdges));
+  
+        return ops;
+      }
+  
+      /** Re-generate a new view where the clicked node is the target one */
+      protected function onNodeClickedHandler(event:Event):void
+      {
+        if(event.target.lastClickedNode)
+        {
+          targetType = this.schema.getType(event.target.lastClickedNode.data.id);
+          loadData();
+        }
+      }
+  
+      /** */
+      protected function onNodeSelectionFinishedHandler(event:Event):void
+      {
+      }
+  
+      /** Load related stories &amp; concept information once the node is selected */
+      private function onNodeSelectedHandler(e:Event):void
+      {
+        var n:Node = e.target.selectedNode;
+  
+        if(n)
+        {
+          if(settings.displayConceptsInformation)
+          {
+            loadDetailsForNode(n.data.id);
+          }
+          
+          if(settings.displayRelatedStories)
+          {
+            loadRelatedStoriesForNode(n.data.id);
+          }
+        }
+      }
+
+      /**
+      * Load related stories for a selected node in the graph. Related stories are the ones that have a (normally)
+      * umbel:isAbout attribute relation between the concept URI and the story URI for a given stories dataset.
+      * 
+      * @param nodeID URI of the target concept node.
+      */
+      private function loadRelatedStoriesForNode(nodeID:String):void
+      {
+        /** Type of the target node */
+        var type:SchemaType = this.schema.getType(nodeID);
+        
+        /** Namespaces kow by this application */
+        var namespaces:Namespaces = new Namespaces();
+        
+        /** Make sure we have the proper settings to get relations betwen concepts and stories */
+        if(settings.relatedStoryRelation != "" && settings.relatedStoryLabel != "" &&
+           settings.storiesDataset != "" && settings.sparqlWebServiceEndpoint != "")
+        {
+          var sparqlQuery:String =  "select distinct ?story ?prefLabel where" + 
+                                    "{" + 
+                                    "  ?story <" + settings.relatedStoryRelation + "> <"+namespaces.getNamespace(type.uri)+"> ;" + 
+                                    "         <" + settings.relatedStoryLabel + "> ?prefLabel ." + 
+                                    "}";
+          
+          /** Get related stories from a SPARQL endpoint */
+          var requestParameters:Object = {
+            query:sparqlQuery,
+            dataset:settings.storiesDataset
+          };
+          
+          var httpService:HTTPService = new HTTPService();     
+          
+          httpService.url = settings.sparqlWebServiceEndpoint;
+          httpService.method = "POST";
+          httpService.headers['Accept'] = "application/sparql-results+xml;q=1";
+          httpService.showBusyCursor = true;
+          httpService.addEventListener(ResultEvent.RESULT, storiesResultHandler);     
+          httpService.addEventListener(FaultEvent.FAULT, storiesFaultHandler);   
+          
+          httpService.send(requestParameters);
+        }  
+      }
+      
+      /** Alert the user if we got an error while getting related stories from the sparql endpoint */
+      private function storiesFaultHandler(event:FaultEvent):void
+      {
+        Alert.show(event.message.rootCause.target.data);
+        
+        this.removeEventListener(FaultEvent.FAULT, storiesFaultHandler);
+      }
+       
+      /** Load related stories into the related stories right side panel */
+      private function storiesResultHandler(event:ResultEvent):void 
+      {     
+        var httpService:HTTPService = event.target as HTTPService; //don't forget to stop listening. we don't want memory leaks!     
+        
+        var resultsetStr:String = event.message.body;
+        
+        resultsetStr = "<sparql>" + resultsetStr.substr((resultsetStr.indexOf(">") + 1), resultsetStr.length - (resultsetStr.indexOf(">") + 1));
+        
+        var resultset:XML = XML(resultsetStr);
+        
+        var targetVarStory:String = "story";
+        var targetVarPrefLabel:String = "prefLabel";
+        
+        var links:Array = new Array();
+        
+        for each(var result:XML in resultset.results.result)
+        {
+          var storyURI:String = result.binding.(@name == targetVarStory).uri.toString();
+          var storyPrefLabel:String = result.binding.(@name == targetVarPrefLabel).literal.toString();
+          
+          var storyPageLink:String = settings.structViewUrl + "?" +
+                                     "uri=" + escape(storyURI) +
+                                     "&dataset=" + escape(settings.storiesDataset);
+          
+          links.push({prefLabel: storyPrefLabel, link: storyPageLink});
+        }
+        
+        /** Populate the panel list */
+        relatedStoriesList.dataProvider = links;
+        relatedStoriesList.labelField = "prefLabel";
+        relatedStoriesList.setStyle("textAlign", "left");
+        
+        this.removeEventListener(ResultEvent.RESULT, storiesResultHandler);
+      }
+
+      /** When a related story item is clicked, we open a webpage that will display that related story */
+      private function gotoStoryHandler(event:ListEvent):void
+      {
+        var item:Object = (event.target as List).selectedItem;
+        
+        if(item.link)
+        {
+          navigateToURL(new URLRequest(item.link), settings.navigatorBehavior);
+        }        
+      }
+      
+      /** 
+      * Load details related to a selected node.
+      * 
+      * @nodeID ID of the node to display detailed information about.
+      */
+      private function loadDetailsForNode(nodeID:String):void
+      {
+        var type:SchemaType = this.schema.getType(nodeID);
+        
+        /** Remove everything from the infobox */
+        infoboxBox.removeAllChildren();
+        
+        /** Display preferred label */
+        if(type.prefLabel)
+        {
+          var hbox:HBox = new HBox();
+          var nameLabel:Text = new Text();
+          var name:Text = new Text();
+          
+          nameLabel.text = "Name:";
+          nameLabel.setStyle("fontWeight", "bold");
+          
+          name.text = type.prefLabel;
+          
+          hbox.addChild(nameLabel);
+          hbox.addChild(name);
+          
+          infoboxBox.addChild(hbox);
+        }
+
+        /** Display prefURL */
+        if(type.prefURL)
+        {
+          var hbox:HBox = new HBox();
+          var wikipediaLink:Label = new Label();
+          
+          wikipediaLink.selectable = true;
+          wikipediaLink.htmlText = "<u><a href=\""+type.prefURL+"\" target=\""+settings.navigatorBehavior+"\">Wikipedia page</a></u>";
+          wikipediaLink.setStyle("fontWeight", "bold");
+          
+          hbox.addChild(wikipediaLink);
+          
+          infoboxBox.addChild(hbox);
+        }        
+
+        
+        /** Display description */
+        if(type.description)
+        {
+          var vbox:VBox = new VBox();
+          vbox.percentHeight = 100;
+          vbox.percentWidth = 100;
+           
+          var descriptonLabel:Text = new Text();
+          var description:TextArea = new TextArea();
+          
+          descriptonLabel.text = "Description:";
+          
+          /** 
+          * Check if the loaded theme define this styleName, if it does, we load it, otherwise we use
+          * the default CSS for that component. 
+          */
+          if(StyleManager.getStyleDeclaration(".infoboxDescription"))
+          {
+            description.styleName = "infoboxDescription";
+          }
+          else
+          {
+            description.setStyle("textAlign", "left");
+            description.setStyle("borderStyle", "none");
+            description.setStyle("fontWeight", "bold");
+          }
+
+          description.percentHeight = 100;
+          description.percentWidth = 100;
+          description.text = type.description;
+          description.addEventListener(TextEvent.TEXT_INPUT, PreventTextAreaInput);
+
+          vbox.addChild(descriptonLabel);
+          vbox.addChild(description);
+          
+          infoboxBox.addChild(vbox);
+        }     
+      }
+      
+      private function PreventTextAreaInput(event:TextEvent):void
+      {
+        event.preventDefault();
+      }
+          
+    ]]>
+  </mx:Script>
+  
+  <mx:HBox width="100%" height="100%" styleName="sRelationBrowser">
+    <mx:UIComponent id = "RelationBrowseSpriteHolder" width = "80%" height = "100%"/>
+    <mx:VBox id="toolsBox" height="100%" width="20%">
+      <mx:Panel id="infoboxPanel" height="100%" width="100%" title="Concept information"  horizontalAlign="left" textAlign="center" visible="false">
+        <mx:VBox id="infoboxBox" width="100%" height="100%" >
+        </mx:VBox>
+      </mx:Panel>
+      <mx:Panel id="relatedStoriesPanel" height="100%" width="100%" title="Related stories"  horizontalAlign="left" textAlign="center" visible="false">
+        <mx:List id="relatedStoriesList" width="100%" height="100%" itemClick="gotoStoryHandler(event)" />
+      </mx:Panel>
+    </mx:VBox>
+  </mx:HBox>
+</mx:Canvas>
