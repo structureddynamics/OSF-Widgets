@@ -106,6 +106,7 @@
     private function displayResults(rset:XML):void
     {
       /** Re-initialize the result box */
+      resultsetItems = [];
       
       /** list of unique attributes defining subjects of the resultset */
       var uniqueAttributes:ArrayCollection = new ArrayCollection();
