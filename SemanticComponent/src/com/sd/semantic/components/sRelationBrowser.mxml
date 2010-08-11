@@ -13,7 +13,10 @@
   Additionally this relation browser tool can related stories related to each 
   focused node. 
   
-  @author Frederick Giasson, Structured Dynamics LLC.
+  @author Moritz Stefaner (initial creator), http://moritz.stefaner.eu
+  @author Frederick Giasson (updater), Structured Dynamics LLC.
+  
+  Initial copyrights: Copyright 2010, Moritz Stefaner (http://moritz.stefaner.eu) 
 -->
 <mx:Canvas xmlns:mx = "http://www.adobe.com/2006/mxml" creationComplete = "init()" width="100%" height="100%">
   <mx:Script>
