@@ -4,7 +4,7 @@
 /* Brownie Theme CSS */
 Application
 {
-  backgroundColor: #FBF6E1;
+ /* backgroundColor: #FBF6E1;*/
 /*  borderSkin: ClassReference("themes.Brownie.skins.ApplicationSkin");
   background-repeat:repeat-x;
   background-image: Embed(source='themes/Brownie/images/application_bg.png');*/
@@ -70,6 +70,7 @@ Alert
   background-alpha: 1.0;
   padding-bottom: 10;
 }
+
 ViewStack
 {
   border-skin: Embed(source='themes/Brownie/images/content_bg.png', scaleGridLeft=10, scaleGridRight=40, scaleGridTop=10,scaleGridBottom=30);
@@ -77,6 +78,7 @@ ViewStack
   padding-right: 1;
   padding-bottom:1;
 }
+
 HRule, VRule
 {
   strokeColor: #65605d;
@@ -191,6 +193,7 @@ ToggleButtonBar, ButtonBar
   color: #ffffff;
   font-size:12;
 }
+
 TabBar
 {
   tabStyleName: tabStyle;
@@ -206,6 +209,7 @@ TabBar
   color:#444444;
   font-size: 11;
 }
+
 Button
 {
   upSkin:Embed(source='themes/Brownie/images/button_up.png', scaleGridLeft=10, scaleGridRight=96, scaleGridTop=15, scaleGridBottom=16);
@@ -439,11 +443,10 @@ Accordion {
 */
 
 
-/* Extension for the Dashboard module */
+/* Extension for the Workbench module */
 
-Panel
+Panel.sRelationBrowserRelatedThingsPanel
 {
-  /*  background-color: #FBF6E1;*/
   border-color: #22201e;
   header-height:30;
   border-alpha: 1;
@@ -455,17 +458,114 @@ Panel
   headerSkin: ClassReference("themes.Brownie.skins.HeaderSkin");
 }
 
+Panel.sRelationBrowserInfoboxPanel
+{
+  border-color: #22201e;
+  header-height:30;
+  border-alpha: 1;
+  corner-radius: 10;
+  dropShadowStyleName: panelDropShadow;
+  border-skin: ClassReference("themes.Brownie.skins.SmartPanelSkin");
+  dropShadowEnabled: false;
+  title-style-name: headerStyle;
+  headerSkin: ClassReference("themes.Brownie.skins.HeaderSkin");
+}
+
+Panel.sStoryNamedEntitiesPanel
+{
+  border-color: #22201e;
+  header-height:30;
+  border-alpha: 1;
+  corner-radius: 10;
+  dropShadowStyleName: panelDropShadow;
+  border-skin: ClassReference("themes.Brownie.skins.SmartPanelSkin");
+  dropShadowEnabled: false;
+  title-style-name: headerStyle;
+  headerSkin: ClassReference("themes.Brownie.skins.HeaderSkin");
+}
+
+Panel.sStoryRelatedStoriesPanel
+{
+  border-color: #22201e;
+  header-height:30;
+  border-alpha: 1;
+  corner-radius: 10;
+  dropShadowStyleName: panelDropShadow;
+  border-skin: ClassReference("themes.Brownie.skins.SmartPanelSkin");
+  dropShadowEnabled: false;
+  title-style-name: headerStyle;
+  headerSkin: ClassReference("themes.Brownie.skins.HeaderSkin");
+}
+
+Panel.sStoryConceptsPanel
+{
+  border-color: #22201e;
+  header-height:30;
+  border-alpha: 1;
+  corner-radius: 10;
+  dropShadowStyleName: panelDropShadow;
+  border-skin: ClassReference("themes.Brownie.skins.SmartPanelSkin");
+  dropShadowEnabled: false;
+  title-style-name: headerStyle;
+  headerSkin: ClassReference("themes.Brownie.skins.HeaderSkin");
+}
+
+SuperPanelPlus
+{
+  border-color: #22201e;
+  header-height:30;
+  border-alpha: 1;
+  corner-radius: 10;
+  dropShadowStyleName: panelDropShadow;
+  border-skin: ClassReference("themes.Brownie.skins.SmartPanelSkin");
+  dropShadowEnabled: false;
+  title-style-name: headerStyle;
+  headerSkin: ClassReference("themes.Brownie.skins.HeaderSkin");
+}
+
+
+
 Panel.filteringPanelStyle
 {
   background-color: #3e3e3e;
 }
 
-VBox
+VBox.sGenericBox
 {
   background-color: #2b2a2a;
 }
 
-HBox
+VBox.sStoryToolsVBox
+{
+  background-color: #2b2a2a;
+}
+
+VBox.sRelationBrowserDescriptionVBox
+{
+  background-color: #2b2a2a;
+}
+
+VBox.sRelationBrowserToolsBoxVBox
+{
+  background-color: #2b2a2a;
+}
+
+VBox.sRelationBrowserInfoxBoxVBox
+{
+  background-color: #2b2a2a;
+}
+
+HBox.sGenericBoxAttributeValueHBox
+{
+  background-color: #2b2a2a;
+}
+
+HBox.sRelationBrowserPrefLabelHBox
+{
+  background-color: #2b2a2a;
+}
+
+HBox.sRelationBrowserNameHBox
 {
   background-color: #2b2a2a;
 }  
@@ -575,7 +675,7 @@ HBox
 
 .sRelationBrowser
 {
-  background-color: #FBF6E1;
+  background-color: #FFFFFF;
 }
 
 /* Extension for the SuperPanelPlus module */
@@ -606,3 +706,124 @@ HBox
   disabledSkin:  Embed('/themes/Brownie/images/resizeHandler.png');
 }
 
+/*
+*   sDashboard
+*/
+
+
+.sDashboard
+{
+  background-color: #FFFFFF;
+}  
+
+
+.maximizeRestoreButton
+{
+  up-skin:        	Embed("/assets/imgs/dashboard/maximize_up.png");
+  over-skin:      	Embed("/assets/imgs/dashboard/maximize_over.png");
+  down-skin:      	Embed("/assets/imgs/dashboard/maximize_up.png");
+  selected-up-skin:   Embed("/assets/imgs/dashboard/restore_up.png");
+  selected-over-skin: Embed("/assets/imgs/dashboard/restore_over.png");
+  selected-down-skin: Embed("/assets/imgs/dashboard/restore_up.png");
+}
+
+.minimizeButton
+{
+  up-skin:        Embed("/assets/imgs/dashboard/minimize_up.png");
+  over-skin:      Embed("/assets/imgs/dashboard/minimize_over.png");
+  down-skin:      Embed("/assets/imgs/dashboard/minimize_up.png");
+}
+
+.sDashboardTabBar
+{
+  selected-tab-text-style-name: 	tabBarButtonSelected;
+  tab-style-name: 				tabBarButton;
+}
+
+.tabBarButton
+{
+  up-skin:        		Embed("/assets/imgs/dashboard/tab_up.png", scaleGridTop="11", scaleGridBottom="30", scaleGridLeft="10", scaleGridRight="92");
+  over-skin:        		Embed("/assets/imgs/dashboard/tab_up.png", scaleGridTop="11", scaleGridBottom="30", scaleGridLeft="10", scaleGridRight="92");
+  down-skin:        		Embed("/assets/imgs/dashboard/tab_up.png", scaleGridTop="11", scaleGridBottom="30", scaleGridLeft="10", scaleGridRight="92");
+  selected-up-skin:		Embed("/assets/imgs/dashboard/tab_selected.png", scaleGridTop="13", scaleGridBottom="31", scaleGridLeft="9", scaleGridRight="91");
+  selected-over-skin:		Embed("/assets/imgs/dashboard/tab_selected.png", scaleGridTop="13", scaleGridBottom="31", scaleGridLeft="9", scaleGridRight="91");
+  selected-down-skin:		Embed("/assets/imgs/dashboard/tab_selected.png", scaleGridTop="13", scaleGridBottom="31", scaleGridLeft="9", scaleGridRight="91");
+  color: 					#333333;
+  text-roll-over-color:	#858585;
+  font-size:				12px;
+  font-family:			arial;
+  text-align:				left;
+  padding-left:			10px;
+  padding-right:			20px;
+  padding-top:			-4px;
+}
+
+.tabBarButtonSelected
+{
+  text-roll-over-color:	#003399;
+  color:					#003399;
+}
+
+.sDashboardViewStack
+{
+}
+
+Pod
+{
+  padding-top: 31px;
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-bottom: 10px;
+  rounded-bottom-corners: false;
+  border-thickness: 1px;
+  border-style: solid;
+  border-color: #999999;
+  header-colors: #cccccc, #999999;
+  highlight-alphas: .9, 0;
+  background-color: #ffffff;
+  corner-radius: 6px;
+  header-height: 22px;
+  shadow-direction: right;
+  drop-shadow-color: #999999;
+}
+
+.podTitle
+{
+  font-size: 11px;
+  font-family: arial;
+  font-weight: bold;
+}
+
+DragHighlight
+{
+  border-color: #CCCCCC;
+  border-thickness: 3px;
+  border-style: solid;
+  background-color: #F3F3F3;
+}
+
+.leftArrowButton
+{
+  up-skin:		Embed("/assets/imgs/dashboard/left_arrow_up.gif");
+  over-skin:		Embed("/assets/imgs/dashboard/left_arrow_over.gif");
+  down-skin:		Embed("/assets/imgs/dashboard/left_arrow_up.gif");
+  disabled-skin:	Embed("/assets/imgs/dashboard/left_arrow_disabled.gif");
+}
+
+.rightArrowButton
+{
+  up-skin:		Embed("/assets/imgs/dashboard/right_arrow_up.gif");
+  over-skin:		Embed("/assets/imgs/dashboard/right_arrow_over.gif");
+  down-skin:		Embed("/assets/imgs/dashboard/right_arrow_up.gif");
+  disabled-skin:	Embed("/assets/imgs/dashboard/right_arrow_disabled.gif");
+}
+
+/** Breadcrumb styles */
+
+Breadcrumb
+{
+  borderColor: #CCCCCC;
+  themeColor: #FFFFFF;
+  backgroundFillColors: #FFFFFF, #FBF6E1;
+  color: #000000;
+}
