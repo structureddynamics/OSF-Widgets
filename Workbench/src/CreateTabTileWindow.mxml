@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Tile window that ask the user to provide the name of the new tab to create in the Dashboard. -->
+
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml" title="Create Tab" x="200" y="200">
+  <mx:Script>
+    <![CDATA[
+
+    import mx.managers.PopUpManager;
+
+    /** Event handler for the OK button. */
+    private function createTab():void
+    {
+      /** Create the new tab */
+      this.parent.document.dashboard.addTab(tabName.text);
+      this.parent.document.refreshRenameTabMenu();
+      this.parent.document.refreshDeleteTabMenu();
+
+      /** Remove this tile window */
+      PopUpManager.removePopUp(this);
+    }
+
+    ]]>
+  </mx:Script>
+
+  <mx:HBox>
+    <mx:Label text="Name of the new tab: "/>
+
+    <mx:TextInput id="tabName" width="100%"/>
+  </mx:HBox>
+
+  <mx:HBox>
+    <mx:Button label="Create" click="createTab();"/>
+
+    <mx:Button label="Cancel" click="PopUpManager.removePopUp(this);"/>
+  </mx:HBox>
+</mx:TitleWindow>

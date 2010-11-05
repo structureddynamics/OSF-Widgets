@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Tile window that ask the user to provide the title of the session to save on the sessions server -->
+
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml" title="Save Session" x="200" y="200" width="600"
+                creationComplete="init()">
+  
+  <mx:Script>
+    <![CDATA[       
+      import mx.managers.PopUpManager;
+      import mx.rpc.events.FaultEvent;
+      import mx.rpc.events.ResultEvent;
+      import mx.rpc.http.HTTPService;
+
+      /**
+       * Initialize the tile window
+       */      
+      private function init():void
+      {
+        var httpService:HTTPService = new HTTPService();
+        
+        var requestParameters:Object = {};
+        
+        httpService.url = this.parent.document.workbenchSettings.dashboardSessionsServerBaseUrl + "sessionsList.php";
+        httpService.method = "GET";
+        httpService.headers['Accept'] = 'text/xml';
+        httpService.showBusyCursor = true;
+        httpService.resultFormat = "e4x";
+        httpService.addEventListener(ResultEvent.RESULT, sessionsLoadResultsetHandler);
+        httpService.addEventListener(FaultEvent.FAULT, sessionsLoadResultsetFaultHandler);
+        
+        httpService.send(requestParameters);        
+      }      
+      
+      /** Faulty Sessions List event handler */
+      private function sessionsLoadResultsetFaultHandler(event:FaultEvent):void
+      {
+        Alert.show("Sessions cannot be listed from the server. Connection error.", "Connection Error");
+      }       
+      
+      /** Sessions list event handler */
+      private function sessionsLoadResultsetHandler(event:ResultEvent):void
+      {
+        sessionsList.dataProvider = event.result.session;
+      }       
+      
+      /** Event handler for the OK button. */
+      private function saveSession():void 
+      {
+        if(sessionName.text.length > 0)
+        {
+          /** Save session */
+          this.parent.document.saveDashboardSession(sessionName.text, sessionPassword.text);
+          
+          /** Remove this tile window */
+          PopUpManager.removePopUp(this);
+        }
+        else if(sessionsList.selectedIndex != -1)
+        {
+          /** Save session */
+          this.parent.document.saveDashboardSession(
+            sessionsList.dataProvider[sessionsList.selectedIndex].@label.toString(), sessionPassword.text);
+          
+          /** Remove this tile window */
+          PopUpManager.removePopUp(this);
+        }
+      } 
+                 
+    ]]>
+  </mx:Script>
+  
+  <mx:HBox width="100%">
+    <mx:Label text="Name of the new session to save: "/>
+    <mx:TextInput id="sessionName" width="100%"/>
+  </mx:HBox>
+  <mx:Text text="Or, save on an existing session:"/>
+  <mx:List id="sessionsList" width="100%" height="100%"  labelField="@label"></mx:List>
+
+  <mx:HBox width="100%">
+    <mx:Label text="Password: "/>
+    <mx:TextInput displayAsPassword="true" id="sessionPassword" width="100%"/>
+  </mx:HBox>
+
+  
+  <mx:HBox horizontalAlign="center" width="100%">
+    <mx:Button label="Save" click="saveSession();"/>
+    <mx:Button label="Cancel" click="PopUpManager.removePopUp(this);"/>
+  </mx:HBox>
+  
+</mx:TitleWindow> 
