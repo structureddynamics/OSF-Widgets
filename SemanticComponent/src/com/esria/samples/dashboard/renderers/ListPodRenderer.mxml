@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+ Renderer for the List in the ListContent pod.
+-->
+<mx:HBox
+	xmlns:mx="http://www.adobe.com/2006/mxml"
+	backgroundColor="#ffffff"
+	mouseChildren="true"
+	horizontalScrollPolicy="off"
+	initialize="onInitialize()">
+	<mx:Script>
+		<![CDATA[
+			import mx.formatters.DateFormatter;
+			
+			private var _dateFormatter:DateFormatter;
+			
+			private function onInitialize():void
+			{
+				_dateFormatter = new DateFormatter();
+				_dateFormatter.formatString = "MM/DD/YY";
+			}
+			
+			override public function set data(value:Object):void
+			{
+				super.data = value;
+				
+				if (value != null)
+				{
+					dateLabel.text = _dateFormatter.format(value.date);
+					nameLabel.text = value.label;
+				}
+				else
+				{
+					dateLabel.text = nameLabel.text = "";
+				}
+			}
+		]]>
+	</mx:Script>
+	<!--
+		We only want mouse events for nameLabel since it will be the link for this renderer.
+	-->
+	<mx:Label
+		id="dateLabel"
+		color="#000000"
+		mouseEnabled="false"/>
+	<mx:Label
+		id="nameLabel"
+		mouseEnabled="true"
+		useHandCursor="true"
+		mouseChildren="false"
+		buttonMode="true"
+		color="#0D3D8B"
+		textDecoration="underline"
+		rollOver="Label(event.currentTarget).setStyle('textDecoration', 'none');"
+		rollOut="Label(event.currentTarget).setStyle('textDecoration', 'underline');"
+		truncateToFit="true"/>
+</mx:HBox>
