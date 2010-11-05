@@ -1,10 +1,10 @@
 package com.sd.semantic.components.map
 {
   import com.sd.semantic.core.Namespaces;
+  import com.sd.semantic.core.Resultset;
   import com.sd.semantic.core.Subject;
   import com.sd.semantic.settings.MapSettings;
   import com.sd.semantic.utilities.ColorGenerator;
-  import com.sd.semantic.core.Resultset;
   
   import flash.display.Sprite;
   import flash.text.TextField;
@@ -43,15 +43,7 @@ package com.sd.semantic.components.map
     private var initialWidth:Number = 0;
 
     /** Colors used to fill each layer */
-    public var layerColors:Array /* of hex colors */ = [0xFFD2B48C,0xFFBC8F8F,0xFFF4A460,0xFFDAA520,0xFFB8860B,
-      0xFFCD853F,0xFFD2691E,0xFF8B4513,0xFFA0522D,0xFFA52A2A,0xFF800000,0xFFCD5C5C,0xFFF08080,0xFFFA8072,0xFFE9967A,
-      0xFFFFA07A,0xFFDC143C,0xFFFF0000,0xFFB22222,0xFF8B0000,0xFFFFB6C1,0xFFFF69B4,0xFFFF1493,0xFFC71585,0xFFDB7093,
-      0xFFFFA07A,0xFFFF7F50,0xFFFF6347,0xFFFF4500,0xFFFF8C00,0xFFFFD700,0xFFFFFF00,0xFFD8BFD8,0xFFDDA0DD,0xFFEE82EE,
-      0xFFDA70D6,0xFFFF00FF,0xFFBA55D3,0xFF9370DB,0xFF9966CC,0xFF8A2BE2,0xFF800080,0xFF4B0082,0xFF6A5ACD,0xFF483D8B,
-      0xFFADFF2F,0xFF7FFF00,0xFF00FF00,0xFF32CD32,0xFF98FB98,0xFF00FA9A,0xFF00FF7F,0xFF3CB371,0xFF2E8B57,0xFF228B22,
-      0xFF006400,0xFF9ACD32,0xFF6B8E23,0xFF808000,0xFF556B2F,0xFF66CDAA,0xFF8FBC8F,0xFF20B2AA,0xFF008B8B,0xFF00FFFF,
-      0xFFAFEEEE,0xFF7FFFD4,0xFF40E0D0,0xFF5F9EA0,0xFF4682B4,0xFFB0C4DE,0xFFB0E0E6,0xFF87CEFA,0xFF00BFFF,0xFF1E90FF,
-      0xFF6495ED,0xFF7B68EE,0xFF4169E1,0xFF0000FF];
+    public var layerColors:Array /* of hex colors */ = [];
     
     private var _semanticDataProvider:Resultset;
     
@@ -100,8 +92,8 @@ package com.sd.semantic.components.map
       this.map = new Map();
 
       /** center map */
-      this.map.x += this.settings.initialLeft;
-      this.map.y += this.settings.initialTop;      
+//      this.map.x += this.settings.initialLeft;
+//      this.map.y += this.settings.initialTop;      
       
       /** listen for map ready event to process/visualize data */
       this.map.addEventListener(MapEvent.READY, mapReadyHandler);
@@ -114,6 +106,12 @@ package com.sd.semantic.components.map
       
       /** Map GIS map to be displayed for that record */
       var gisMap:Layer;
+      
+      /** 
+      * Keep track of the URL of the maps that we have to layer. This is to make sure that we
+      * don't layer two times the same map
+      */
+      var layeredMaps:Array = [];
       
       /** Get the map file to use from the target records */
       for each(var targetAttribute:String in targetAttributes)
@@ -128,11 +126,32 @@ package com.sd.semantic.components.map
             {
               mapUrl = mapValue["value"];
               
-              /** create a name from the map file URL */
-              end = mapUrl.lastIndexOf("/");
-              var name:String = mapUrl.substr(end, (mapUrl.length - end) + 1);
-              name = name.replace(/[^a-zA-Z0-9]/g, " ");
-              name = name.replace(" map", "");
+              /** Make sure we don't layer the same map two times. */
+              if(layeredMaps.indexOf(mapUrl) == -1)
+              {
+                layeredMaps.push(mapUrl);
+              }
+              else
+              {
+                break;
+              }
+              
+              var name:String = "";
+              
+              /** Check if we have a name defined for the layer's file URL */
+              if(this.settings.layersUrl.indexOf(mapUrl) != -1 && 
+                 this.settings.layersName.length > this.settings.layersUrl.indexOf(mapUrl))
+              {
+                name = this.settings.layersName[this.settings.layersUrl.indexOf(mapUrl)];
+              }
+              else
+              {
+                /** create a name from the map file URL */
+                end = mapUrl.lastIndexOf("/");
+                name = mapUrl.substr(end, (mapUrl.length - end) + 1);
+                name = name.replace(/[^a-zA-Z0-9]/g, " ");
+                name = name.replace(" map", "");
+              }
               
               /** Create the layer of features to display on the map */
               var layer:Layer = new Layer(name, mapUrl);
@@ -165,6 +184,16 @@ package com.sd.semantic.components.map
       if(gisMap)
       {
         this.map.addLayer(gisMap);
+      }
+      
+      /** Setup the color pallet */
+      if(this.map.layers.length > 1)
+      {
+        this.layerColors = settings.layerColors.reverse();
+      }
+      else
+      {
+        this.layerColors = settings.layerColors;
       }
       
       /** finally add the map to the application, attaching to stage triggers data loading */
@@ -247,11 +276,12 @@ package com.sd.semantic.components.map
 
     /** Fit the screen to the canvas it belongs to */
     public function fitToCanvas():void
-    {     
+    {        
       /** Scale */
+      var ratio:Number = 1;
       if(initialWidth > initialHeight)
       {
-        var ratio:Number = initialHeight / initialWidth;
+        ratio = initialHeight / initialWidth;
 
         if(this.parent.parent.height > this.parent.parent.width)
         {
@@ -266,12 +296,12 @@ package com.sd.semantic.components.map
       }
       else
       {
-        var ratio:Number = initialWidth / initialHeight;
+        ratio = initialWidth / initialHeight;
 
         if(this.parent.parent.height > this.parent.parent.width)
         {
-          this.width = this.parent.parent.width;
-          this.height = this.parent.parent.width * ratio;
+          this.width = this.parent.parent.width * ratio;
+          this.height = this.parent.parent.width;
         }
         else
         {
@@ -279,33 +309,44 @@ package com.sd.semantic.components.map
           this.height = this.parent.parent.height;
         }
       }
+      
+      if(this.settings.displayMapLayersSelector == true)
+      {
+        this.height -= 20;
+      }
 
       /** Center */
-
-      /** Center on the X axis */
-      if(this.settings.initialLeft <= 0)
+      
+      /** 
+       * Check the size of the initial control for which the map got centered.
+       * Then check the offset between this initial control size, and the
+       * size of the current parent control.
+       */
+      
+      /** Get the size of the square */
+      
+      var squareSize:Number = 0;
+      var widthOffset:Number = 0;
+      var heightOffset:Number = 0;
+      
+      if(this.parent.parent.width >= this.parent.parent.height)
       {
-        this.x = (this.parent.parent.width / 2) - (this.width / 2);
+        squareSize = this.parent.parent.height;
+        
+        widthOffset = (this.parent.parent.width - this.parent.parent.height) / 2;
       }
       else
       {
-        this.x = this.settings.initialLeft;        
+        squareSize = this.parent.parent.width;
+        
+        heightOffset = (this.parent.parent.height - this.parent.parent.width) / 2;
       }
+      
+      
+      this.x = (this.settings.initialLeft * (squareSize / this.settings.initialWidth)) + widthOffset;
+      this.y = (this.settings.initialTop * (squareSize / this.settings.initialHeight)) + heightOffset;
 
-      
-      /** Center on the Y axis */
-      if(this.settings.initialTop <= 0)
-      {
-        this.y = (this.parent.parent.height / 2) - (this.height / 2);
-      }
-      else
-      {
-        this.y = this.settings.initialTop; 
-      }
-      
       /** Reset the scale of the map in case that the width/height change modified the scale of the map */
-//    this.scaleX = 1;
-//    this.scaleY = 1;
     }
   }
 }

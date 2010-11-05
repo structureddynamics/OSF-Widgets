@@ -23,20 +23,20 @@
 
     import com.flextoolbox.controls.*;
     import com.sd.semantic.components.map.*;
+    import com.sd.semantic.core.Resultset;
     import com.sd.semantic.events.*;
     import com.sd.semantic.settings.MapSettings;
     import com.sd.semantic.utilities.SpriteUIComponent;
-    import com.sd.semantic.core.Resultset;
     
     import flash.events.MouseEvent;
+    import flash.external.*;
     
     import mx.controls.Alert;
     import mx.core.Application;
+    import mx.effects.easing.*;
     
     import org.sunlightlabs.ClearMaps.Feature;
     import org.sunlightlabs.ClearMaps.Layer;
-
-    import mx.effects.easing.*;
       
     /** Core varibles shared amongst all semantic controls */
 
@@ -232,6 +232,16 @@
       /** If the setting file is properly loaded, we continue to process the map componet */
       if(!isError)
       {
+        /** Initialize the functions that can be called from JavaScript */
+        if(ExternalInterface.available)
+        {
+          if(settings.displayMapLayersSelectorHTML)
+          {
+            ExternalInterface.addCallback("showMapLayer", showNodeByType);
+            ExternalInterface.addCallback("hideMapLayer", hideNodeByType);
+          }
+        }           
+        
         /** Check if we enable or disable the zoom buttons */
         if(!settings.enableZoom)
         {
@@ -263,6 +273,8 @@
           
           var iColor:uint = 0;
           
+          var htmlSelectorLayers:Array = [];
+          
           for each(var layer:Layer in mapTool.map.layers)
           {
             var item:Array = [];
@@ -273,6 +285,8 @@
             item["selected"] = true;
             
             panelItems.push(item);
+            
+            htmlSelectorLayers.push({id: layer.url, title: layer.title});
             
             backgroundColors.push(mapTool.layerColors[iColor]);
             iColor++;
@@ -286,6 +300,11 @@
           
           mapsCheckboxesListControl.dataProvider = panelItems;
           mapsCheckboxesListControl.itemBackgroundColors = backgroundColors;
+          
+          if(ExternalInterface.available && settings.displayMapLayersSelectorHTML)
+          {
+            ExternalInterface.call("addLayerSelectors", htmlSelectorLayers);
+          }           
         }
         
         loadMapData();
@@ -303,6 +322,47 @@
       this.removeEventListener(Event.COMPLETE, processSettingsHandler);
     }
 
+    /**
+     * Hide a map layer
+     * 
+     * @param id ID of the map layer to hide
+     * @param title Title of the map to hide. This parameter is required.
+     */      
+    private function hideMapLayer(id:String, title:String):void
+    {
+      for each(var layer:Layer in mapTool.map.layers)
+      {    
+        if(id == layer.url)
+        {
+          if(this.selectedMaps.indexOf(title) == -1)
+          {
+            this.selectedMaps.push(title);
+          }
+          
+          layer.visible = false;
+        }
+      }  
+    }
+      
+    /**
+     * Show a map layer
+     * 
+     * @param id ID of the map layer to show
+     * @param title Title of the map to show. This parameter is required.
+     */        
+    private function showMapLayer(id:String, title:String):void
+    {
+      for each(var layer:Layer in mapTool.map.layers)
+      {    
+        if(id == layer.url)
+        {
+          this.selectedMaps.splice(this.selectedMaps.indexOf(title), 1);
+          
+          layer.visible = true;
+        }
+      }  
+    }     
+      
     /** Load the data used by the map */
     private function loadMapData():void
     {
