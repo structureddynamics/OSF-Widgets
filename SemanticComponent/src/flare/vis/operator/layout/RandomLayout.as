@@ -1,7 +1,7 @@
 package flare.vis.operator.layout {
 	import flare.vis.data.Data;
 	import flare.vis.data.DataSprite;
-
+	
 	import flash.geom.Rectangle;
 
 	/**
@@ -23,7 +23,7 @@ package flare.vis.operator.layout {
 		/** @inheritDoc */
 		protected override function layout():void
 		{
-			var r:Rectangle = layoutBounds;
+      var r:Rectangle = layoutBounds;
 			visualization.data.visit(function(d:DataSprite):void
 			{
 				var o:Object = _t.$(d);
