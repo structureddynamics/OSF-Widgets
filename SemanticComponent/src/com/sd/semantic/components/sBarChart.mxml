@@ -398,7 +398,29 @@
       {
         childSprite.clearStates();
       }
-    }       
+    }      
+    
+    /** Format the attribute labels properly on the axis */
+    private function axisLabel(obj:Object):String
+    {
+      if(Number(obj) < 10)
+      {
+        return(formatter0to10.format(Number(obj)));
+      }
+      else if(Number(obj) >= 10 && Number(obj) < 100)
+      {
+        return(formatter10to100.format(Number(obj)));
+      }
+      else if(Number(obj) >= 100 && Number(obj) < 10000)
+      {
+        return(formatter100to10000.format(Number(obj)));
+      }
+      else
+      {
+        return(formatter10000andOver.format(Number(obj) / 1000));
+      }
+    }
+    
 		]]>
   </mx:Script>
 
@@ -416,17 +438,25 @@
   <mx:String id="childLabelField">prefLabel</mx:String>
 
   <mx:Number id="percentGap">.02</mx:Number>
-
+  
+  <mx:CurrencyFormatter precision="2" id="formatter0to10" alignSymbol="right" currencySymbol=""/>
+  <mx:CurrencyFormatter precision="1" id="formatter10to100" alignSymbol="right" currencySymbol=""/>
+  <mx:CurrencyFormatter precision="0" id="formatter100to10000" alignSymbol="right" currencySymbol=""
+                        useThousandsSeparator="true"/>
+  <mx:CurrencyFormatter currencySymbol="k" precision="0" id="formatter10000andOver" alignSymbol="right"
+                        useThousandsSeparator="true"/>
+  
   <scales:LinearScale dataProvider="{dataProvider}" minLayout="0" minValue="0" maxLayout="{hLayout.height}"
     id="vScale"/>
 
-  <axiis:DataCanvas top="30" bottom="30" width="{this.width*.85}" id="dc" verticalCenter="0"
+  <axiis:DataCanvas top="30" bottom="30" width="{this.width*.75}" id="dc" verticalCenter="0"
     horizontalCenter="0" showDataTips="true" strokes="{strokes}" fills="{fills}" palettes="{palettes}">
 
     <!-- Background -->
     <axiis:backgroundGeometries>
       <axis:VAxis verticalScale="{vScale}" tickStroke="{axisStroke}" width="{dc.width}"
-        height="{hLayout.height}" showDataTips="false" fontFamily="Myriad Pro" fontColor="0" fontSize="14" tickGap="5"/>
+        height="{hLayout.height}" showDataTips="false" fontFamily="Myriad Pro" fontColor="0" fontSize="14" tickGap="5"
+        labelFunction="{axisLabel}" id="vAxis"/>
     </axiis:backgroundGeometries>
 
     <!-- Layouts -->
@@ -442,19 +472,43 @@
             percentGap=".05" fill="{clusterFill}" stroke="{colStroke}" verticalScale="{vScale}"
             fontFamily="Myriad Pro" dataFontColor="{outerPalette.currentColor}"
             fontColor="{outerPalette.currentColor &amp; -0x333333}" itemClick="itemClickHandler(event)"
-            itemMouseOver="itemOverHandler(event)" itemMouseOut="itemOutHandler(event)"/>
+            itemMouseOver="itemOverHandler(event)" itemMouseOut="itemOutHandler(event)" showDataLabel="false"/>
         </layouts:layouts>
       </layouts:HBoxLayout>
     </axiis:layouts>
   </axiis:DataCanvas>
 
+  <mx:Array id="palletsColors">
+    <mx:uint>0xFFeb0810</mx:uint>
+    <mx:uint>0xFFf5800b</mx:uint>
+    <mx:uint>0xFFf4e601</mx:uint>
+    <mx:uint>0xFFc6d816</mx:uint>
+    <mx:uint>0xFF0c5e2c</mx:uint>
+    <mx:uint>0xFF00a5d9</mx:uint>
+    <mx:uint>0xFF581886</mx:uint>
+    <mx:uint>0xFFab1057</mx:uint>
+  </mx:Array>
+  
+  <mx:Array id="textPalletsColors">
+    <mx:uint>0xFF000000</mx:uint>
+  </mx:Array>
+  
+  
   <mx:Array id="palettes">
-    <paint:LayoutAutoPalette id="outerPalette" layout="{myCluster}" colorFrom="0x3333CC" colorTo="0xCC3333"/>
+    <!--paint:LayoutAutoPalette id="outerPalette" layout="{myCluster}" colorFrom="0x3333CC" colorTo="0xCC3333"/>
 
     <paint:LayoutAutoPalette id="clusterPalette" layout="{myCluster}" colorFrom="{outerPalette.currentColor}"
       colorTo="{outerPalette.currentColor | 0x337f00}"/>
 
-    <paint:LayoutAutoPalette id="areaPalette" layout="{myCluster}" colorFrom="0xCC3333" colorTo="0x3333CC"/>
+    <paint:LayoutAutoPalette id="areaPalette" layout="{myCluster}" colorFrom="0xCC3333" colorTo="0x3333CC"/-->
+
+    <paint:LayoutPalette id="outerPalette" layout="{myCluster}"  colors="{textPalletsColors}"/>
+    
+    <paint:LayoutPalette id="clusterPalette" layout="{myCluster}" colors="{palletsColors}"/>
+    
+    <paint:LayoutPalette id="areaPalette" layout="{myCluster}" colors="{palletsColors}"/>
+    
+    
   </mx:Array>
 
   <mx:Array id="fills">
