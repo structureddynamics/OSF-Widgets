@@ -121,12 +121,16 @@ package flare.vis.data {
 		/** Auxiliary property often used as a height parameter. */
 		public function get h():Number { return _h; }
 		public function set h(v:Number):void { _h = v; dirty(); }
-		
+		  
 		/** The fill color for this data sprite. This value is specified as an
 		 *  unsigned integer representing an ARGB color. Notice that this
 		 *  includes the alpha channel in the color value. */
 		public function get fillColor():uint { return _fillColor; }
-		public function set fillColor(c:uint):void { _fillColor = c; dirty();	}
+    
+		public function set fillColor(c:uint):void 
+    { 
+      _fillColor = c; dirty();	
+    }
 		/** The alpha channel (a value between 0 and 1) for the fill color. */
 		public function get fillAlpha():Number { return Colors.a(_fillColor) / 255; }
 		public function set fillAlpha(a:Number):void {
@@ -149,7 +153,8 @@ package flare.vis.data {
 		}
 		/** The value (brightness) component of the fill color in HSV color space. */
 		public function get fillValue():Number { return Colors.value(_fillColor); }
-		public function set fillValue(v:Number):void {
+		public function set fillValue(v:Number):void 
+    {
 			_fillColor = Colors.hsv(Colors.hue(_fillColor),
 				Colors.saturation(_fillColor), v, Colors.a(_fillColor));
 			dirty();
@@ -159,7 +164,9 @@ package flare.vis.data {
 		 *  unsigned integer representing an ARGB color. Notice that this
 		 *  includes the alpha channel in the color value. */
 		public function get lineColor():uint { return _lineColor; }
-		public function set lineColor(c:uint):void { _lineColor = c; dirty(); }
+		public function set lineColor(c:uint):void { 
+      _lineColor = c; dirty(); 
+   } 
 		/** The alpha channel (a value between 0 and 1) for the line color. */
 		public function get lineAlpha():Number { return Colors.a(_lineColor) / 255; }
 		public function set lineAlpha(a:Number):void {
@@ -190,7 +197,10 @@ package flare.vis.data {
 		
 		/** The line width for this data sprite. */
 		public function get lineWidth():Number { return _lineWidth; }
-		public function set lineWidth(w:Number):void { _lineWidth = w; dirty(); }
+		public function set lineWidth(w:Number):void { 
+      _lineWidth = w; 
+      dirty(); 
+    }
 
 		/** The size value of this data sprite (1 by default). */
 		public function get size():Number { return _size; }

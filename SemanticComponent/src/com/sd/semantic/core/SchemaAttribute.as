@@ -149,7 +149,7 @@ package com.sd.semantic.core
     * 
     * @default Default value is null 
     */
-    public var orderingValue:String = null;
+    public var orderingValue:String = "";
 
     /**
      * List of comparable attributes. These comparable attributes have the same allowedValue,

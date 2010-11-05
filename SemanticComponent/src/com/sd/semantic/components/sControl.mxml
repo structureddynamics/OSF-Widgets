@@ -12,16 +12,16 @@
 -->
 
 <mx:Box xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%"
-  styleName="sControl">
+  styleName="sControl" clipContent="true">
   <mx:Script>
     <![CDATA[
 
     import com.sd.semantic.components.*;
+    import com.sd.semantic.core.Resultset;
     import com.sd.semantic.core.Schema;
     import com.sd.semantic.core.SchemaAttribute;
     import com.sd.semantic.core.SchemaType;
-    import com.sd.semantic.core.Resultset;
-
+    
     import mx.controls.Alert;
     import mx.controls.ComboBox;
     import mx.controls.Text;
@@ -60,7 +60,10 @@
 
     /** Target record types to display in the component */
     public var targetTypes:Array = [];
-
+    
+    /** Target records to display in the component */
+    public var targetRecords:Array = [];
+    
     /** Specifies if the sControl's targetAttribute has been bound to a know semantic control. */
     public var bound:Boolean = false;
 
@@ -80,6 +83,8 @@
     /** Schema structure used to select the proper component for the input records, target attributes and types. */
     public var schema:Schema;
 
+    private var viewSwitcher:ComboBox = new ComboBox();      
+      
     public function set semanticDataProvider(value:Resultset):void
     {
       _semanticDataProvider = value;
@@ -105,14 +110,23 @@
             child.schema = schema;
           }
  
-//          if(child is sStory)
-//          {
-//            child.semanticDataProvider = _semanticDataProvider;
-//            child.targetAttributes = targetAttributes;
-//            child.targetTypes = targetTypes;
-//            child.schema = schema;
-//          }
-
+          if(child is sStory)
+          {
+            child.semanticDataProvider = _semanticDataProvider;
+            child.targetAttributes = targetAttributes;
+            child.targetTypes = targetTypes;
+            child.schema = schema;
+          }
+          
+          if(child is sDashboard)
+          {
+            child.semanticDataProvider = _semanticDataProvider;
+            child.targetAttributes = targetAttributes;
+            child.targetTypes = targetTypes;
+            child.targetRecords = targetRecords;
+            child.schema = schema;
+          }
+          
           if(child is sMap)
           {
             child.semanticDataProvider = _semanticDataProvider;
@@ -240,24 +254,40 @@
             }
             break;
             
+            case "sStory":
+            {
+              if(bound == false)
+              {
+                this.createControl(displayControl);
+                switchableControls.push({prefLabel: "Story view", control: this.getChildAt(0),
+                  controlName:displayControl});
+              } 
+              else
+              {
+                switchableControls.push({prefLabel: "Story view", control: null, controlName:displayControl});
+              }
+              
+              bound = true;
+            }
+              break;
             
-//            case "sStory":
-//            {
-//              if(bound == false)
-//              {
-//                this.createControl(displayControl);
-//                switchableControls.push({prefLabel: "Story view", control: this.getChildAt(0),
-//                  controlName:displayControl});
-//              } 
-//              else
-//              {
-//                switchableControls.push({prefLabel: "Story view", control: null, controlName:displayControl});
-//              }
-//  
-//              bound = true;
-//            }
-//            break;
-
+            case "sDashboard":
+            {
+              if(bound == false)
+              {
+                this.createControl(displayControl);
+                switchableControls.push({prefLabel: "Dashboard", control: this.getChildAt(0),
+                  controlName:displayControl});
+              } 
+              else
+              {
+                switchableControls.push({prefLabel: "Dashboard", control: null, controlName:displayControl});
+              }
+              
+              bound = true;
+            }
+              break;
+            
             case "sMap":
             {
               if(bound == false)
@@ -336,7 +366,6 @@
           * Switch from a control to another if a target sControl has more than one displayControl associated
           * to it.
           */
-          var viewSwitcher:ComboBox = new ComboBox();
           viewSwitcher.height = 15;
           viewSwitcher.width = 150;
           viewSwitcher.x = 5;
@@ -349,7 +378,37 @@
           viewSwitcher.addEventListener(Event.CHANGE, switchView);
   
           /** make the first control visible in the sControl */
-          switchableControls[0].control.visible = true;
+          if(selectControl == "")
+          {
+            switchableControls[0].control.visible = true;
+          }
+          else
+          {
+            var selectItem:int = 0;
+            
+            for each(var ctrl:Object in switchableControls)
+            {
+              if(ctrl.controlName == selectControl && selectItem > 0)
+              {
+                /** Delete the visible control */
+                if(switchableControls[0].control != null)
+                {
+                  switchableControls[0].control.parent.removeChild(switchableControls[0].control);
+                  switchableControls[0].control = null;
+                }
+                
+                /** Create the new control */
+                this.createControl(selectControl);
+                switchableControls[selectItem].control = this.getChildAt(0);
+                
+                viewSwitcher.selectedIndex = selectItem;
+                
+                break;
+              }
+              
+              selectItem++;
+            }
+          }
   
           this.addChild(viewSwitcher);
         }
@@ -394,23 +453,41 @@
           }
         }
         break;
-//        case "sStory":
-//        {
-//          var controlStory:sStory = new sStory();
-//          controlStory.semanticDataProvider = _semanticDataProvider;
-//          controlStory.targetAttributes = targetAttributes;
-//          controlStory.targetTypes = targetTypes;
-//          controlStory.schema = schema;
-//  
-//          this.addChildAt(controlStory, 0);
-//  
-//          /** Set the main styleName of the semantic component to this parent sControl */
-//          if(StyleManager.getStyleDeclaration(".sStory"))
-//          {
-//            this.styleName = "sStory";
-//          }
-//        }
-//        break;
+        case "sStory":
+        {
+          var controlStory:sStory = new sStory();
+          controlStory.semanticDataProvider = _semanticDataProvider;
+          controlStory.targetAttributes = targetAttributes;
+          controlStory.targetTypes = targetTypes;
+          controlStory.schema = schema;
+          
+          this.addChildAt(controlStory, 0);
+          
+          /** Set the main styleName of the semantic component to this parent sControl */
+          if(StyleManager.getStyleDeclaration(".sStory"))
+          {
+            this.styleName = "sStory";
+          }
+        }
+        break;
+        case "sDashboard":
+        {
+          var controlDashboard:sDashboard = new sDashboard();
+          controlDashboard.targetAttributes = targetAttributes;
+          controlDashboard.targetTypes = targetTypes;
+          controlDashboard.targetRecords = targetRecords;
+          controlDashboard.schema = schema;
+          controlDashboard.semanticDataProvider = _semanticDataProvider;
+          
+          this.addChildAt(controlDashboard, 0);
+          
+          /** Set the main styleName of the semantic component to this parent sControl */
+          if(StyleManager.getStyleDeclaration(".sDashboard"))
+          {
+            this.styleName = "sDashboard";
+          }
+        }
+        break;
         case "sMap":
         {
           var controlMap:sMap = new sMap();
@@ -436,7 +513,7 @@
           controlBarChart.targetAttributes = targetAttributes;
           controlBarChart.targetTypes = targetTypes;
           controlBarChart.schema = schema;
-
+          
           this.addChildAt(controlBarChart, 0);
 
           /** Set the main styleName of the semantic component to this parent sControl */
@@ -527,6 +604,12 @@
       this.createControl(event.target.dataProvider[event.target.selectedIndex].controlName);
       event.target.dataProvider[event.target.selectedIndex].control = this.getChildAt(0);
     }
+      
+    /**
+    * Select a specific control within the list of available controls that can be used to
+    * display information about the input records.
+    */
+    public var selectControl:String = "";
 
     ]]>
   </mx:Script>

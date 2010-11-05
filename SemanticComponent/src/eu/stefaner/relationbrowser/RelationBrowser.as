@@ -1,5 +1,8 @@
 package eu.stefaner.relationbrowser
 {
+  import com.sd.semantic.settings.RelationBrowserSettings;
+  
+  import eu.stefaner.relationbrowser.data.AtomicNode;
   import eu.stefaner.relationbrowser.data.NodeData;
   import eu.stefaner.relationbrowser.layout.RadialLayout;
   import eu.stefaner.relationbrowser.layout.VisibilityFilter;
@@ -10,6 +13,8 @@ package eu.stefaner.relationbrowser
   import flare.analytics.cluster.HierarchicalCluster;
   import flare.animate.TransitionEvent;
   import flare.animate.Transitioner;
+  import flare.physics.Simulation;
+  import flare.util.Property;
   import flare.util.Vectors;
   import flare.vis.Visualization;
   import flare.vis.controls.ClickControl;
@@ -19,9 +24,11 @@ package eu.stefaner.relationbrowser
   import flare.vis.data.EdgeSprite;
   import flare.vis.events.SelectionEvent;
   import flare.vis.operator.Operator;
-
+  
   import flash.events.Event;
-  import flash.utils.Dictionary;
+  import flash.net.URLRequest;
+  import flash.net.navigateToURL;
+  import flash.utils.Dictionary; 
 
   public class RelationBrowser extends Visualization
   {
@@ -36,20 +43,22 @@ package eu.stefaner.relationbrowser
     protected var clusterer:HierarchicalCluster;
     protected var transitioner:Transitioner = new Transitioner(1);
     protected var nodesByID:Dictionary = new Dictionary();
-    protected var visibleNodes:DataList;
-    protected var visibleEdges:DataList;
+    public var visibleNodes:DataList;
+    public var visibleEdges:DataList;
     public static const NODE_SELECTED:String = "NODE_SELECTED";
     public static const NODE_SELECTION_FINISHED:String = "NODE_SELECTION_FINISHED";
     public static const NODE_CLICKED:String = "NODE_CLICKED";
     public var showOuterEdges:Boolean = true;
     public var showInterConnections:Boolean = false;
     public var lastClickedNode:Node;
+    private var settings:RelationBrowserSettings = null;
 
     /**
      *@Constructor
      */
-    public function RelationBrowser()
+    public function RelationBrowser(settings:RelationBrowserSettings)
     {
+      this.settings = settings;
       super();
     }
 
@@ -59,15 +68,17 @@ package eu.stefaner.relationbrowser
 
       if(!n)
       {
-        throw new Error("could not select node by id: " + id);
+        this.parent.parent.parent.parent.loadData(id);
+        //throw new Error("could not select node by id: " + id);
       }
-
       else
-      {
+      {       
         selectNode(n);
       }
     }
 
+    import flare.vis.operator.layout.*;
+    
     protected function initLayout():void
     {
       visibilityOperator = new VisibilityFilter("visibleNodes", [], depth);
@@ -77,7 +88,7 @@ package eu.stefaner.relationbrowser
       clusterer.group = "visibleNodes";
       operators.add(clusterer);
 
-      layout = new RadialLayout(sortBy);
+      layout = new RadialLayout(sortBy, settings.innerRadius);
       operators.add(layout);
     }
 
@@ -135,10 +146,19 @@ package eu.stefaner.relationbrowser
 
       if(n != null)
       {
-        n.onClick();
-        lastClickedNode = n;
-        dispatchEvent(new Event(NODE_CLICKED));
-        selectNode(n);
+        var anode:AtomicNode = this.parent.parent.parent.parent.skinsManager.getAtomicNodeByType(n.data.id);
+        
+        if(anode.actionClickGoto != "")
+        {
+          navigateToURL(new URLRequest(anode.actionClickGoto), settings.navigatorBehavior);
+        }
+        else
+        {
+          n.onClick();
+          lastClickedNode = n;
+          dispatchEvent(new Event(NODE_CLICKED));
+          selectNode(n);
+        }
       }
     }
 
@@ -183,15 +203,17 @@ package eu.stefaner.relationbrowser
       else
       {
       }
-
+      
       selectedNode = n;
+      
       updateDisplay();
+      
       dispatchEvent(new Event(NODE_SELECTED));
     }
 
     public function updateDisplay():void
     {
-      updateSelection(new Transitioner(1));
+      updateSelection(new Transitioner(1));   
     }
 
     public function updateSelection(t: *= null):Transitioner
@@ -213,7 +235,6 @@ package eu.stefaner.relationbrowser
         clusterer.enabled = false;
         visibilityOperator.enabled = false;
       }
-
       else
       {
         layout.enabled = true;
@@ -247,18 +268,39 @@ package eu.stefaner.relationbrowser
       t = Transitioner.instance(t);
     }
 
-    public function addNode(o:NodeData, icon:Class = null):Node
+    public function removeNode(node:Node):void
+    {
+      delete nodesByID[node.data.id];
+      
+      data.removeNode(node);
+    }
+    
+    public function addNode(o:NodeData):Node
     {
       var n:Node = getNodeByID(o.id);
 
       if(n == null)
       {
         // no node yet for ID: create node
-        n = nodesByID[o.id] = createNode(o, icon);
+        n = nodesByID[o.id] = createNode(o);
         data.nodes.applyDefaults(n);
+
+        /** Set default properties for the type of the node */
+
+        Property.$("edgeRadius").setValue(n, n.data.skin.radius + 15);
+        Property.$("h").setValue(n, n.data.skin.radius * 2);
+        Property.$("w").setValue(n, n.data.skin.radius * 2);
+        
+        if(n.data.skin.image == "")
+        {
+          Property.$("fillColor").setValue(n, n.data.skin.fillColor);  /** Add the alpha channel */
+          Property.$("lineWidth").setValue(n, n.data.skin.lineWeight);
+          Property.$("lineColor").setValue(n, n.data.skin.lineColor);
+          Property.$("shape").setValue(n, n.data.skin.shape);     
+        }
+        
         data.addNode(n);
       }
-
       else
       {
         // existing node: set new data
@@ -268,9 +310,9 @@ package eu.stefaner.relationbrowser
       return n;
     }
 
-    protected function createNode(data:NodeData, icon:Class = null):Node
+    protected function createNode(data:NodeData):Node
     {
-      return new Node(data, icon);
+      return new Node(data);
     }
 
     public function getNodeByID(id:String):Node
@@ -278,17 +320,23 @@ package eu.stefaner.relationbrowser
       return nodesByID[id];
     }
 
-    public function addEdge(fromID:String, toID:String, directed:Boolean = false, d:Object = null):EdgeSprite
+    public function addEdge(fromID:String, toID:String, d:Object = null):EdgeSprite
     {
+      /** make sure the edge doesn't already exists */
+      for each(var edge:Edge in data.edges)
+      {
+        if(fromID == edge.source.data.id &&
+          toID == edge.target.data.id &&
+          d.type == edge.data.type)
+        {  
+          return(edge);
+        }    
+      }      
+      
       var node1:Node = getNodeByID(fromID);
       var node2:Node = getNodeByID(toID);
-
-      var e:Edge = createEdge(node1, node2, directed);
-
-      if(d != null)
-      {
-        e.data = d;
-      }
+      
+      var e:Edge = createEdge(node1, node2, d);
 
       try
       {
@@ -296,6 +344,11 @@ package eu.stefaner.relationbrowser
         node2.addInEdge(e);
         data.addEdge(e);
         data.edges.applyDefaults(e);
+        
+        /** Set default properties for the type of the edge */
+        Property.$("arrowType").setValue(e, e.data.skin.directedArrowHead);        
+        Property.$("lineWidth").setValue(e, e.data.skin.lineWeight);        
+        Property.$("lineColor").setValue(e, e.data.skin.lineColor);        
       }
       catch(err:Error)
       {
@@ -303,9 +356,9 @@ package eu.stefaner.relationbrowser
       return e;
     }
 
-    protected function createEdge(node1:Node, node2:Node, directed:Boolean):Edge
+    protected function createEdge(node1:Node, node2:Node, data:Object):Edge
     {
-      return new Edge(node1, node2, directed);
+      return new Edge(node1, node2, data);
     }
 
     public function removeUnconnectedNodes():void
@@ -359,9 +412,13 @@ package eu.stefaner.relationbrowser
     {
       _sortBy = sortBy;
 
-      if(layout)
+      if(layout && layout is RadialLayout)
       {
         layout.sortBy = sortBy;
+        updateDisplay();
+      }
+      else if(layout)
+      {
         updateDisplay();
       }
     }

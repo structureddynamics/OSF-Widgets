@@ -80,8 +80,16 @@ package flare.vis.operator.filter {
 			} else {
 				visualization.data.visit(function(d:DataSprite):void {
 					var visible:Boolean = predicate(d);
-					t.$(d).alpha = visible ? 1 : 0;
-					t.$(d).visible = visible;
+          
+          if(t.$(d).alpha)
+          {
+					  t.$(d).alpha = visible ? 1 : 0;
+          }
+          
+          if(t.$(d).visible)
+          {
+					  t.$(d).visible = visible;
+          }
 				}, group, filter);
 			}
 		}

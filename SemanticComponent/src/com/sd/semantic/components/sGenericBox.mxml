@@ -89,6 +89,7 @@
         /** HBox of the attribute/value pair */
         var hbox:sHBox = new sHBox();
         hbox.semanticDataProvider = _semanticDataProvider;
+        hbox.styleName = "sGenericBoxAttributeValueHBox";
         
         /** prefLabel of the unbound attribute */
         var textAttribute:Text = new Text();

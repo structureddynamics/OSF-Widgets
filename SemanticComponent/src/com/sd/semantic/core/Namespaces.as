@@ -22,6 +22,7 @@ package com.sd.semantic.core
       namespaces["http://purl.org/ontology/swt/"] = "swt_";
       namespaces["http://purl.org/ontology/cosmo#"] = "cosmo_";
       namespaces["http://purl.org/dc/terms/"] = "dcterms_";
+      namespaces["http://purl.org/dc/elements/1.1/"] = "dc_";
       namespaces["http://purl.org/ontology/iron#"] = "iron_";
       namespaces["http://xmlns.com/foaf/0.1/"] = "foaf_";
       namespaces["http://purl.org/ontology/peg/framework#"] = "pegf_";
@@ -33,6 +34,7 @@ package com.sd.semantic.core
       namespaces["http://www.geonames.org/ontology#"] = "geoname_";
       namespaces["http://umbel.org/umbel#"] = "umbel_";
       namespaces["http://purl.org/ontology/aggregate#"] = "aggr_";
+      namespaces["http://www.w3.org/2004/02/skos/core#"] = "skos_";
       namespaces["http://rdfs.org/ns/void#"] = "void_";
       namespaces["http://purl.org/ontology/muni#"] = "muni_";
       namespaces["http://purl.org/ontology/sco#"] = "sco_";

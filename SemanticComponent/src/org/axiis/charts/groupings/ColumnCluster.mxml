@@ -119,7 +119,7 @@
 
 	<!--- @private -->
 	<utils:NumericExpression id="labelLayout"
-							 value="{column.y+column.height+label.width+5+(currentValue >=0 ? 0:-column.height-label.width-10)}"/>
+							 value="{column.y+column.height}"/>
 
 	<!--- @private -->
 	<utils:NumericExpression id="valueLabelLayout"
@@ -176,7 +176,7 @@
 							fontFamily="{fontFamily}"
 							fontWeight="{fontWeight}">
 			<degrafa:transform>
-				<degrafa:RotateTransform angle="-90"
+				<degrafa:RotateTransform angle="45"
 										 registrationPoint="topLeft"/>
 			</degrafa:transform>
 		</degrafa:RasterText>

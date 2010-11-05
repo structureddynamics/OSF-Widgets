@@ -84,7 +84,14 @@ package com.sd.semantic.settings
               break;
               case "Array":
                 value = value.replace(/^\[/, "").replace(/\]$/, "");
-                this[key] = value.split(/\s*,\s*/);
+                if(value == "")
+                {
+                  this[key] = [];  
+                }
+                else
+                {
+                  this[key] = value.split(/\s*,\s*/);
+                }
               break;
 
               case "Object":

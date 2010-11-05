@@ -96,7 +96,7 @@
     var checkForTargetAttributes:Boolean = false;    
     
     /** If the "source" property is defined and not empty, we use it for the sImage component. */
-    if(source && source != "")
+    if(source && source != "" && targetAttributes.length < 0)
     {
       /** in this case, it becomes un-required */
       required = false;

@@ -14,7 +14,7 @@
   
   @author Frederick Giasson, Structured Dynamics LLC.
 -->
-<mx:Text xmlns:mx = "http://www.adobe.com/2006/mxml" creationComplete = "init()" width="100%" height="100%" styleName="sText">
+<mx:Text xmlns:mx = "http://www.adobe.com/2006/mxml" width="100%" height="100%" creationComplete = "init()" styleName="sText">
   <mx:Script>
     <![CDATA[
     import com.sd.semantic.core.Namespaces;
@@ -61,12 +61,21 @@
     public function set semanticDataProvider(value:Resultset):void
     {
       _semanticDataProvider = value;
+      
+      /** If the value of the data provider changes, we re-initialize the sImage control. */
+      if(_initialized) /** Make sure the control has been initialized a first time */
+      {
+        init();
+      }
     }
     
     /** Specifies what attribute(s) of a record have been bound to this semantic component */  
     public var boundAttributes:Array = new Array();
 
-    /** Initialize the sText component */
+    /** Specifies if the component has already been initialized or not. */
+    private var _initialized:Boolean = false;
+      
+    /** Initialize the sText component with a new text string to display */
     private function init():void
     {
       var checkForTargetAttributes:Boolean = false;
@@ -90,6 +99,12 @@
   
             /** Remove the "[[" and "]]" markup from the string */
             boundVar = boundVar.substr(2, boundVar.length - 4);
+            
+            /** 
+            * We add the bound variables in the targetAttributes array. We consider that these bound
+            * variables are in fact targetAttributes defined by the user.
+            */
+            targetAttributes.push(boundVar);
   
             /** Keep track of the attributes, from the record, that have been bound to this control. */
             boundAttributes.push(boundVar);
@@ -174,6 +189,8 @@
           return;
         }
       }
+      
+      _initialized = true;
     }
 
     ]]>

@@ -1,10 +1,12 @@
 package com.sd.semantic.core
 {
   import com.sd.semantic.events.SchemaLoadedEvent;
+  
   import flash.events.Event;
   import flash.events.EventDispatcher;
   import flash.net.URLLoader;
   import flash.net.URLRequest;
+  
   import mx.controls.Alert;
 
   /**
@@ -41,14 +43,26 @@ package com.sd.semantic.core
     public var typesStructure:Array = new Array();
 
     /** Raw irXML schema XML file */
-    private var schema:XML;
+    public var schema:Array = [];
 
     /** Namespaces structure used to resolve attributes and types identifiers */
     private var namespaces:Namespaces = new Namespaces();
 
-    /** Constructor. Nothing is doe with this constructor */
-    public function Schema()
+    /** Constructor. */
+    public function Schema(schema:Object = null)
     {
+      if(schema != null)
+      {
+        if(schema is XML)
+        {
+          processSchema(schema);
+        }
+        
+        if(schema is String)
+        {
+          processSchema(XML(schema));
+        }
+      }
     }
 
     /**
@@ -410,47 +424,22 @@ package com.sd.semantic.core
     {
       /** Specifies if a parsing or validation occured */
       var isError:Boolean = false;
-
+      
+      var schemaXML:XML;
+      
       try
       {
-        schema = new XML(event.target.data);
+        schemaXML = new XML(event.target.data);
       }
       catch(error:Error)
       {
         Alert.show("Error loading an irON Schema");
         isError = true;
       }
-
+      
       if(!isError)
-      {
-        /** Parse the irXML schema file */
-        var attrs:XMLList = schema.attributeList.children();
-
-        /** Parse attributes */
-        for each(var attribute:XML in attrs)
-        {
-          attributes[attribute.localName()] = new SchemaAttribute(attribute);
-        }
-
-        var tps:XMLList = schema.typeList.children();
-
-        /** Parse types */
-        for each(var type:XML in tps)
-        {
-          types[type.localName()] = new SchemaType(type);
-        }
-
-        /** Create the hierarchical types structure */
-
-        /** Step 1: get all types that doesn't have any super types. */
-        for each(var t:SchemaType in types)
-        {
-          if(t.superTypes.length == 0)
-          {
-            /** Step 2: create each branch of the structure, from top types, recursively */
-            typesStructure.push(getSubTypesStructure(t));
-          }
-        }
+      {     
+        processSchema(schemaXML);
       }
 
       /**
@@ -460,6 +449,67 @@ package com.sd.semantic.core
       dispatchEvent(new SchemaLoadedEvent("schemaLoaded"));
       
       this.removeEventListener(Event.COMPLETE, processXmlSchemaHandler);
+    }
+    
+    /**
+     * Append one or multiple schemas to the current schema
+     *  
+     * @param schemaXML The schema to append to the current schema. The schema has to be in its irXML form. 
+     *                  Also, you can put as input an array of schemas definition to happen.
+     */    
+    public function appendSchema(schemaXML:Object):void
+    {
+      if(schema is Array)
+      {
+        for each(var s:XML in schemaXML)
+        {
+          processSchema(s);
+        }
+      }
+      
+      if(schema is XML)
+      {
+        processSchema(schemaXML);
+      }
+    }
+    
+    /**
+     * Process a irXML schema description to generate the Schema object.
+     *  
+     * @param schemaXML The schema to append to the current schema. The schema has to be in its irXML form. 
+     */        
+    private function processSchema(schemaXML:XML):void
+    {
+      schema.push(schemaXML);
+      
+      /** Parse the irXML schema file */
+      var attrs:XMLList = schemaXML.attributeList.children();
+      
+      /** Parse attributes */
+      for each(var attribute:XML in attrs)
+      {
+        attributes[attribute.localName()] = new SchemaAttribute(attribute);
+      }
+      
+      var tps:XMLList = schemaXML.typeList.children();
+      
+      /** Parse types */
+      for each(var type:XML in tps)
+      {
+        types[type.localName()] = new SchemaType(type);
+      }
+      
+      /** Create the hierarchical types structure */
+      
+      /** Step 1: get all types that doesn't have any super types. */
+      for each(var t:SchemaType in types)
+      {
+        if(t.superTypes.length == 0)
+        {
+          /** Step 2: create each branch of the structure, from top types, recursively */
+          typesStructure.push(getSubTypesStructure(t));
+        }
+      }     
     }
 
     /**

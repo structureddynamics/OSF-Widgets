@@ -4,6 +4,9 @@ package flare.animate
   import flare.util.Property;
 
   import flash.display.DisplayObject;
+  
+  import flare.vis.data.EdgeSprite;
+  import flare.vis.data.NodeSprite;
 
   /**
    * Transition that interpolates (in-be<em>tweens</em>) properties
@@ -183,8 +186,13 @@ package flare.animate
       // set visibility
       var item:DisplayObject = _target as DisplayObject;
 
+      /** @Patch Frederick Giasson - 17 September April 2010 */
+      /** Path to enable he show/hide hability for the relation browser */
+      
       if(item != null && Boolean(_visible))
       item.visible = true;
+      
+      /** endpatch */
     }
 
     /**
@@ -214,7 +222,55 @@ package flare.animate
         item.parent.removeChild(item);
 
         if(_visible != null)
-        item.visible = Boolean(_visible);
+        {
+          item.visible = Boolean(_visible);
+        }
+        
+        
+        /** @Patch Frederick Giasson - 17 September April 2010 */
+        /** Path to enable he show/hide hability for the relation browser */
+        /*if(item is EdgeSprite)
+        {
+          for each(var hiddenNode:String in item.parent.parent.parent.parent.parent.parent.parent.hiddenNodes)
+          {
+            if(item.source.data.type == hiddenNode)
+            {
+              item.visible = false;
+              break;
+            }
+            
+            if(item.target.data.type == hiddenNode)
+            {
+              item.visible = false;
+              break;
+            }       
+          }
+          
+          for each(var hiddenEdge:String in item.parent.parent.parent.parent.parent.parent.parent.hiddenEdges)
+          {
+            if(item.data.type == hiddenEdge)
+            {
+              item.visible = false;
+              break;
+            }
+            
+            if(item.data.type == hiddenEdge)
+            {
+              item.visible = false;
+              break;
+            }       
+          }          
+        }  
+        
+        if(item is NodeSprite)
+        {      
+          if(item.parent.parent.parent.parent.parent.parent.parent.hiddenNodes.indexOf(item.data.type) != -1)
+          {
+            item.visible = false;
+          }
+        }*/
+        
+        /** @endpatch */
       }
     }
   } // end of class Tween

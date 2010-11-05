@@ -1,7 +1,8 @@
 package eu.stefaner.relationbrowser.layout
 {
   import eu.stefaner.relationbrowser.RelationBrowser;
-
+  import eu.stefaner.relationbrowser.ui.Node;
+  
   import flare.animate.Transitioner;
   import flare.util.Vectors;
   import flare.vis.data.DataList;
@@ -9,7 +10,7 @@ package eu.stefaner.relationbrowser.layout
   import flare.vis.data.EdgeSprite;
   import flare.vis.data.NodeSprite;
   import flare.vis.operator.filter.GraphDistanceFilter;
-
+  
   import flash.utils.Dictionary;
 
   /**
@@ -99,14 +100,15 @@ package eu.stefaner.relationbrowser.layout
       // now set visibility based on traversal results
       visualization.data.visit(function(ds:DataSprite):void
       {
-        var visible:Boolean = (depths[ds] != undefined);
+        var visible:Boolean = (depths[ds] != undefined);  
+      
         var alpha:Number = visible ? 1 : 0;
         var obj:Object = t.$(ds);
 
         obj.alpha = alpha;
-
+ 
         if(ds is NodeSprite)
-        {
+        {      
           var ns:NodeSprite = ds as NodeSprite;
           ns.expanded = (visible && depths[ds] < distance);
 
@@ -124,8 +126,8 @@ package eu.stefaner.relationbrowser.layout
             ns.props.distance = distance + 1;
           }
         // end added
-        }
-
+        }    
+        
         if(t.immediate)
         {
           ds.visible = visible;

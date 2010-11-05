@@ -1,12 +1,12 @@
 ﻿package eu.stefaner.relationbrowser.layout
 {
   import eu.stefaner.relationbrowser.ui.Node;
-
+  
   import flare.query.methods.eq;
   import flare.vis.data.DataList;
   import flare.vis.data.NodeSprite;
   import flare.vis.operator.layout.Layout;
-
+  
   import flash.display.DisplayObjectContainer;
 
   /**
@@ -16,9 +16,11 @@
   {
 
     public var sortBy:Array;
+    private var innerRadius:int = 0;
 
-    public function RadialLayout(sortBy:Array = null)
+    public function RadialLayout(sortBy:Array = null, innerRadius:int = 240)
     {
+      this.innerRadius = innerRadius;
       this.sortBy = sortBy ? sortBy : [];
       layoutType = Layout.CARTESIAN;
     }
@@ -71,8 +73,6 @@
         doZigZag = 1;
       }
 
-      // TODO: express as fraction of layoutBounds.width
-      var innerRadius:Number = 240;
       var angle:Number;
 
       for each(n in innerRing)
@@ -114,6 +114,8 @@
           _t.$(n).angle += angleDiff * .75 / numVisibleLinks;
         }, NodeSprite.ALL_LINKS, eq("props.distance", 1));
       }
+      
+      var i:int = 0;
     }
   }
 }
