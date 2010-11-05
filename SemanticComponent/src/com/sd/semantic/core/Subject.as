@@ -199,6 +199,90 @@ package com.sd.semantic.core
     }
 
     /**
+     * Get the preffered URLs for the subject.
+     * 
+     * Note: this function is influenced by the <prefLabelAttributes /> setting of the General.xml setting file.
+     *   
+     * @param prefLabelAttributes
+     * @return 
+     */
+    public function getPrefURL(prefURLAttributes:Array = null):String
+    {
+      if(prefURLAttributes == null)
+      {
+        /** by default, there is at least one such attribute: iron:prefLabel */
+        prefURLAttributes = new Array("http://purl.org/ontology/iron#prefURL");
+      }
+      
+      for each(var prefURLAttribute:String in prefURLAttributes)
+      {
+        if((predicates[prefURLAttribute] && predicates[prefURLAttribute].length > 0))
+        {
+          return (predicates[prefURLAttribute][0]["value"]);
+        }
+        
+        if((predicates[namespaces.getVariable(prefURLAttribute)]
+          && predicates[namespaces.getVariable(prefURLAttribute)].length > 0))
+        {
+          var test:String = namespaces.getVariable(prefURLAttribute);
+          return (predicates[namespaces.getVariable(prefURLAttribute)][0]["value"]);
+        }
+        
+        if((predicates[namespaces.getNamespace(prefURLAttribute)]
+          && predicates[namespaces.getNamespace(prefURLAttribute)].length > 0))
+        {
+          return (predicates[namespaces.getNamespace(prefURLAttribute)][0]["value"]);
+        }
+      }
+      
+      return ("");
+    }    
+    
+    /**
+     * Get the preffered URLs for the subject.
+     * 
+     * Note: this function is influenced by the <prefLabelAttributes /> setting of the General.xml setting file.
+     *   
+     * @param prefLabelAttributes
+     * @return 
+     */
+    public function getDescription(descriptionAttributes:Array = null):String
+    {
+      if(descriptionAttributes == null)
+      {
+        /** by default, there is at least one such attribute: iron:prefLabel */
+        descriptionAttributes = new Array("http://purl.org/ontology/iron#description",
+                                          "http://www.w3.org/2004/02/skos/core#definition",
+                                          "http://purl.org/dc/terms/description",
+                                          "http://purl.org/dc/elements/1.1/description",
+                                          "http://www.w3.org/1999/02/22-rdf-syntax-ns#comment");
+      }
+      
+      for each(var descriptionAttribute:String in descriptionAttributes)
+      {
+        if((predicates[descriptionAttribute] && predicates[descriptionAttribute].length > 0))
+        {
+          return (predicates[descriptionAttribute][0]["value"]);
+        }
+        
+        if((predicates[namespaces.getVariable(descriptionAttribute)]
+          && predicates[namespaces.getVariable(descriptionAttribute)].length > 0))
+        {
+          var test:String = namespaces.getVariable(descriptionAttribute);
+          return (predicates[namespaces.getVariable(descriptionAttribute)][0]["value"]);
+        }
+        
+        if((predicates[namespaces.getNamespace(descriptionAttribute)]
+          && predicates[namespaces.getNamespace(descriptionAttribute)].length > 0))
+        {
+          return (predicates[namespaces.getNamespace(descriptionAttribute)][0]["value"]);
+        }
+      }
+      
+      return ("");
+    }        
+    
+    /**
      * Get the prefixed ID of an attribute or type, from its full URI, given the list of prefixes
      * defined in the input resultset structXML file.
      * 
@@ -218,6 +302,83 @@ package com.sd.semantic.core
       }
 
       return (uri);
+    }
+    
+    /**
+    * Get the structXML serialization of the Subject.
+    * 
+    * @param includeResultset Include the resultset wrapper to the serialized Subject.
+    *                         If this parameter is true, it means that the user
+    *                         want to use it as a resultset with a single subject.
+    * @return The structXML serialization of the subject.
+    */
+    public function getXMLSerialization(includeResultset:Boolean = false):String
+    {
+      var xml:String = "";
+      
+      if(includeResultset == true)
+      {
+        xml += "<resultset>\n";
+        
+
+        xml += "  <prefix entity=\"owl\" uri=\"http://www.w3.org/2002/07/owl#\"/>\n";
+        xml += "  <prefix entity=\"rdf\" uri=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"/>\n";
+        xml += "  <prefix entity=\"rdfs\" uri=\"http://www.w3.org/2000/01/rdf-schema#\"/>\n";
+      }
+
+      xml += "  <subject type=\"" + type + "\" uri=\"" + uri + "\">\n";
+      
+      for(var predicateType in predicates)
+      {
+        for each(var object:Array in predicates[predicateType])
+        {
+          xml += "    <predicate type=\"" + namespaces.getNamespace(predicateType) + "\">\n";
+          
+          if(object["uri"] == "")
+          {
+            if(object["reify"] == undefined)
+            {
+              xml += "      <object type=\"rdfs:Literal\">" + object["value"] + "</object>\n";
+            }
+            else
+            {
+              // Currently not supported in structXML
+            }
+          }
+          else
+          {
+            if(object["reify"] == undefined)
+            {
+              xml += "      <object type=\"" + namespaces.getNamespace(object["type"]) + "\"" +
+                                  " uri=\"" + object["uri"] + "\"" +
+                            " />\n";
+            }
+            else
+            {
+              xml += "      <object type=\"" + namespaces.getNamespace(object["type"]) + "\"" +
+                                  " uri=\"" + object["uri"] + "\" >\n"; 
+              
+              xml += "        <reify type=\"" + namespaces.getNamespace(object["reify"]["type"]) + "\" value=\"" + 
+                                                namespaces.getNamespace(object["reify"]["value"]) + "\">\n"; 
+                                  
+              xml += "      </object>\n"; 
+            }
+            
+          }
+
+          xml += "    </predicate>\n";
+        }
+      }
+          
+      xml += "  </subject>\n";
+      
+      
+      if(includeResultset == true)
+      {
+        xml += "</resultset>\n";
+      }   
+      
+      return(xml);
     }
   }
 }
