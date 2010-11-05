@@ -816,11 +816,11 @@
             branch = branch.reverse();
           }
         /*          
-                  else
-                  {
-                    // nothing found in that direction
-                    return(null);
-                  }
+          else
+          {
+            // nothing found in that direction
+            return(null);
+          }
         */
         }
       }
