@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='UTF-8'?>
+
+<!-- Default Workbench settings file. Modify it for the purpose of your application -->
+
+<settings>
+
+  <!-- structWSF instance base URL -->
+  <structWSFBaseURL>http://my-web-site.com/ws</structWSFBaseURL>   <!-- *WITHOUT* ending slash -->
+  
+  <!-- behavior of the browser when the user click on a story or wikipedia link -->
+  <navigatorBehavior>_blank</navigatorBehavior>
+  
+  <!-- Array of sticky records used for comparison purposes -->
+  <stickyRecords>[]</stickyRecords>
+
+</settings>

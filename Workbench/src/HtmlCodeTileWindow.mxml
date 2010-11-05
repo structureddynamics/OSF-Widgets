@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Tile window that shows the user the code to embed in a webpage to display a session file -->
+
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml" title="Get HTML Code to Embed" x="200" y="200" width="822"
+                height="715" creationComplete = "init()" >
+  
+  <mx:Script>
+    <![CDATA[       
+      import mx.controls.Alert;
+      import mx.managers.PopUpManager;
+      
+      /**
+      * Initialize the tile window
+      */
+      private function init():void
+      {
+        if(this.parent.document.loadedSessionFile == "")
+        {
+          Alert.show("You have to load an existing session, or to save the current one in order to be able" +
+            "to properly generate the HTML code to embed to display this session within a webpage", 
+            "HTML Code Generation Error");
+          
+          return;
+        }
+        else
+        {
+          dashboardSessionFileURLText.text = this.parent.document.loadedSessionFile;
+        }
+      }
+      
+      /**
+      * Generate the HTML code of the dashboard session to embed in any other HTML web page
+      */
+      private function generateHtmlCode():void
+      {
+        if(this.parent.document.loadedSessionFile == "")
+        {
+          Alert.show("You have to load an existing session, or to save the current one in order to be able" +
+                     "to properly generate the HTML code to embed to display this session within a webpage", 
+                     "HTML Code Generation Error");
+          
+          return;
+        }
+        
+        /** Generate the code that goes into the header */
+        var headerCode:String = ' <link rel="stylesheet" type="text/css" href="'+pcaLocation.text+'history/history.css" />' + "\n" +
+                                ' <script src="'+pcaLocation.text+'AC_OETags.js" language="javascript"></script>' + "\n" +
+                                ' <script src="'+pcaLocation.text+'history/history.js" language="javascript"></script>' + "\n" +
+                                ' <script language="JavaScript" type="text/javascript">' + "\n" +
+                                '   var requiredMajorVersion = 10;' + "\n" +
+                                '   var requiredMinorVersion = 0;' + "\n" +
+                                '   var requiredRevision = 0;' + "\n" +
+                                ' </script>';
+        
+        codeHeader.text = headerCode;
+
+        var flashVarsContent:String = "baseAppUrl=" + escape(pcaLocation.text) + "&inputSchemas=";
+        
+        if(pcaSchema.text == "")
+        {
+          /** If the user hasn't provided any schema, then we use the ones of the Workbench by default */
+          if(this.parent.document.inputSchemas != "")
+          {
+            var schemas:Array = this.parent.document.inputSchemas.split(";");
+            
+            schemaToLoad = schemas.length;
+            
+            var i:int = 0;
+            for each(var schemaUrl:String in schemas)
+            {
+              if(i != schemas.length && i != 0)
+              {
+                flashVarsContent += ";";
+              }
+                
+              flashVarsContent += escape(schemaUrl);
+              
+              i++;
+            }
+          }
+        }
+        else
+        {
+          flashVarsContent += escape(pcaSchema.text);
+        }
+        
+        flashVarsContent += "&inputTargetRecords="+ escape("http://current-target-record");
+        
+        flashVarsContent += "&inputTargetAttributes=" + escape("http://purl.org/ontology/sco#dashboardSessionFileUri");
+        
+        var recordDescription:String = 
+    '<?xml version="1.0" encoding="utf-8"?>' + "\n" +
+    '<!DOCTYPE resultset PUBLIC "-//Structured Dynamics LLC//Crud Read DTD 0.1//EN" "crud/crudRead.dtd">' + " \n "  + 
+    '<resultset>'   +   " \ n "  + 
+    '  <prefix entity="owl" uri="http://www.w3.org/2002/07/owl#"/>'   +   " \n "  + 
+    '  <prefix entity="rdf" uri="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/>'   +   " \n "  + 
+    '  <prefix entity="rdfs" uri="http://www.w3.org/2000/01/rdf-schema#"/>'   +   " \n "  + 
+    '  <prefix entity="wsf" uri="http://purl.org/ontology/wsf#"/>'   +   " \n "  + 
+    '  <subject type="http://purl.org/ontology/sco#DashboardSession" uri="http://current-target-record">' + " \n "  + 
+    '    <predicate type="http://purl.org/ontology/sco#dashboardSessionFileUri">'   +   " \n "  + 
+    '      <object type="rdfs:Literal">' + this.parent.document.loadedSessionFile + '</object>'   +   " \n "  + 
+    '    </predicate>'   +   " \n "  + 
+    '  </subject>'   +   " \n "  + 
+    '</resultset>'; 
+        
+        flashVarsContent += "&inputData=" + escape(recordDescription);
+        
+        var bodyCode:String = 
+          ' <script language="JavaScript" type="text/javascript">' + "\n" +
+          ' <!--' + "\n" +
+          ' // Version check for the Flash Player that has the ability to start Player Product Install (6.0r65)' + "\n" +
+          ' var hasProductInstall = DetectFlashVer(6, 0, 65);' + "\n" +
+          ' ' + "\n" +
+          ' // Version check based upon the values defined in globals' + "\n" +
+          ' var hasRequestedVersion = DetectFlashVer(requiredMajorVersion, requiredMinorVersion, requiredRevision);' + "\n" +
+          ' ' + "\n" +
+          ' if ( hasProductInstall && !hasRequestedVersion ) {' + "\n" +
+          ' 	// DO NOT MODIFY THE FOLLOWING FOUR LINES' + "\n" +
+          ' 	// Location visited after installation is complete if installation is required' + "\n" +
+          ' 	var MMPlayerType = (isIE == true) ? "ActiveX" : "PlugIn";' + "\n" +
+          ' 	var MMredirectURL = window.location;' + "\n" +
+          '     document.title = document.title.slice(0, 47) + " - Flash Player Installation";' + "\n" +
+          '     var MMdoctitle = document.title;' + "\n" +
+          ' ' + "\n" +
+          ' 	AC_FL_RunContent(' + "\n" +
+          ' 		"src", "'+pcaLocation.text+'playerProductInstall.swf",' + "\n" +
+          ' 		"FlashVars", "MMredirectURL="+MMredirectURL+\'&MMplayerType=\'+MMPlayerType+\'&MMdoctitle=\'+MMdoctitle+"",' + "\n" +
+          ' 		"width", "100%",' + "\n" +
+          ' 		"height", "100%",' + "\n" +
+          ' 		"align", "middle",' + "\n" +
+          ' 		"id", "PortableControlApplication",' + "\n" +
+          ' 		"quality", "high",' + "\n" +
+          ' 		"bgcolor", "#869ca7",' + "\n" +
+          ' 		"name", "PortableControlApplication",' + "\n" +
+          ' 		"allowScriptAccess","sameDomain",' + "\n" +
+          ' 		"type", "application/x-shockwave-flash",' + "\n" +
+          ' 		"pluginspage", "http://www.adobe.com/go/getflashplayer"' + "\n" +
+          ' 	);' + "\n" +
+          ' } else if (hasRequestedVersion) {' + "\n" +
+          ' 	// if we\'ve detected an acceptable version' + "\n" +
+        ' 	// embed the Flash Content SWF when all tests are passed' + "\n" +
+        ' 	AC_FL_RunContent(' + "\n" +
+          ' 			"src", "'+pcaLocation.text+'PortableControlApplication.swf",' + "\n" +
+          ' 			"width", "100%",' + "\n" +
+          ' 			"height", "100%",' + "\n" +
+          ' 			"align", "middle",' + "\n" +
+          ' 			"id", "PortableControlApplication",' + "\n" +
+          ' 			"quality", "high",' + "\n" +
+          ' 			"bgcolor", "#869ca7",' + "\n" +
+          ' 			"name", "PortableControlApplication",' + "\n" +
+          ' 			"allowScriptAccess","sameDomain",' + "\n" +
+          ' 			' + "\n" +
+          ' 			"allowFullScreen", "true",' + "\n" +
+          ' ' + "\n" +
+          '       /* Dashboard */' + "\n" +
+          '       "flashVars", "' + flashVarsContent + '",' + "\n" +
+          '       ' + "\n" +
+          ' 			"type", "application/x-shockwave-flash",' + "\n" +
+          '   		"wmode", "transparent",' + "\n" +
+          ' 			"pluginspage", "http://www.adobe.com/go/getflashplayer"' + "\n" +
+          ' 	);' + "\n" +
+          '   } else {  // flash is too old or we can\'t detect the plugin' + "\n" +
+        '     var alternateContent = \'Alternate HTML content should be placed here. \'' + "\n" +
+        '   	+ \'This content requires the Adobe Flash Player. \'' + "\n" +
+        '    	+ \'<a href=http://www.adobe.com/go/getflash/>Get Flash</a>\';' + "\n" +
+        '     document.write(alternateContent);  // insert non-flash content' + "\n" +
+        '   }' + "\n" +
+          ' // -->' + "\n" +
+          ' </script>' + "\n" +
+          ' <noscript>' + "\n" +
+          '   	<object classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000"' + "\n" +
+          ' 			id="PortableControlApplication" width="100%" height="100%"' + "\n" +
+          ' 			codebase="http://fpdownload.macromedia.com/get/flashplayer/current/swflash.cab">' + "\n" +
+          ' 			<param name="movie" value="'+pcaLocation.text+'PortableControlApplication.swf" />' + "\n" +
+          ' 			<param name="quality" value="high" />' + "\n" +
+          ' 			<param name="bgcolor" value="#869ca7" />' + "\n" +
+          ' 			<param name="wmode" value="transparent" />' + "\n" +
+          ' 			<param name="allowScriptAccess" value="sameDomain" />' + "\n" +
+          ' 			<param name="allowFulllScreen" value="true" />' + "\n" +
+          ' 			<embed src="'+pcaLocation.text+'PortableControlApplication.swf" quality="high" bgcolor="#869ca7"' + "\n" +
+          ' 				width="100%" height="100%" name="PortableControlApplication" align="middle"' + "\n" +
+          ' 				play="true"' + "\n" +
+          ' 				loop="false"' + "\n" +
+          ' 				quality="high"' + "\n" +
+          ' 				allowScriptAccess="sameDomain"' + "\n" +
+          ' 				allowFullScreen="true"' + "\n" +
+          ' 				wmode="transparent"' + "\n" +
+          ' 				type="application/x-shockwave-flash"' + "\n" +
+          ' 				pluginspage="http://www.adobe.com/go/getflashplayer">' + "\n" +
+          ' 			</embed>' + "\n" +
+          ' 	</object>' + "\n" +
+          ' </noscript>';
+        
+        codeBody.text = bodyCode;
+      }      
+                 
+    ]]>
+  </mx:Script>
+  
+  <mx:Text text="This utility allows you to create HTML code for inserting a Dashboard view in any Web page within your application.&#xa;
+           To do so:&#xa;&#xa;  (1) Follow the sequence below&#xa;  (2) Generate the HTML code&#xa;  (3) Copy &amp; paste code into its respective section"/>
+  <mx:HRule width="100%" height="3"/>
+  <mx:Text text="The URL location of your Dashboard session file is:"/>
+  <mx:TextArea id="dashboardSessionFileURLText" color="#000101" width="100%" height="40" />
+  <mx:HRule width="100%" height="3"/>
+  <mx:Text text="Base URL of PortalControlApplication (leave blank if new file is placed in PCA folder):" paddingTop="5"/>
+  <mx:TextInput id="pcaLocation" width="100%"/>
+  <mx:Text text="Schema for data used (see instructions; separate multiple schema by &quot;;&quot;):"/>
+  <mx:TextInput id="pcaSchema" width="100%"/>
+  <mx:HBox horizontalAlign="center" width="100%">
+    <mx:Button label="Generate HTML Code" click="generateHtmlCode();" id="generateHtmlCodeButton"/>
+  </mx:HBox>
+  <mx:Text text="Copy then paste this &lt;header&gt; GENERATED CODE &lt;/header&gt; into Header section"/>
+  <mx:TextArea id="codeHeader" width="100%" height="91" color="#000101"/>
+  <mx:Text text="Copy then paste &lt;body&gt; GENERATED CODE &lt;/body&gt; into Body section"/>
+  <mx:TextArea width="100%" height="91" id="codeBody" color="#000101"/>
+  
+  
+  <mx:HBox horizontalAlign="center" width="100%">
+    <mx:Button label="Done" click="PopUpManager.removePopUp(this);"/>
+  </mx:HBox>  
+  
+</mx:TitleWindow> 
