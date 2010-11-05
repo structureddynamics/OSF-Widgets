@@ -32,6 +32,7 @@
       <mx:SetProperty target="{image1}" name="scaleContent" value="true"/>
       <mx:SetProperty target="{image1}" name="height" value="74"/>
       <mx:SetStyle target="{text1}" name="color" value="#FFFFFF"/>
+      <mx:SetProperty target="{searchQuery}" name="width" value="318"/>
     </mx:State>
   </mx:states>
 
@@ -434,38 +435,38 @@
     ]]>
   </mx:Script>
 
-  <mx:HBox width="800" cornerRadius="7" borderStyle="solid" borderColor="#C6CDD0" paddingTop="15" paddingLeft="15"
+  <mx:HBox width="420" cornerRadius="7" borderStyle="solid" borderColor="#C6CDD0" paddingTop="15" paddingLeft="15"
     paddingRight="15" paddingBottom="15" backgroundColor="#393939" verticalGap="15" id="hbox1">
     <mx:Image source="images/sd_logo_dark_260.png" id="image1" width="260" height="73"/>
  
     <mx:VBox verticalAlign="middle" height="100%" width="100%">
-      <mx:Text text="Semantic Web Sweet Tools Search" color="#FFFFFF" fontSize="26" textAlign="center" width="100%"
+      <mx:Text text="Semantic Web Sweet Tools Search" color="#FFFFFF" fontSize="16" textAlign="center" width="100%"
         height="47" id="text1"/>
-      <mx:Text text="An Ontology Driven Application Demo" width="100%" textAlign="center"  color="#FFFFFF" fontStyle="italic" fontSize="13"/>
+      <mx:Text text="An Ontology Driven Application Demo" width="100%" textAlign="center"  color="#FFFFFF" fontStyle="italic" fontSize="12"/>
     </mx:VBox>
   </mx:HBox>
 
   <mx:Canvas height="30"/>
 
   <mx:HBox>
-    <mx:TextInput id="searchQuery" width="696" keyDown="detectEnterKey(event)" enabled="true"/>
+    <mx:TextInput id="searchQuery" width="318" keyDown="detectEnterKey(event)" enabled="true"/>
 
     <mx:Button id="searchButton" label="Search" width="95" click="currentState = ''; search();"/>
   </mx:HBox>
 
-  <mx:Panel id="resultsetPanel" width="800" height="230" layout="vertical" title="Search results"
+  <mx:Panel id="resultsetPanel" width="420" height="230" layout="vertical" title="Search results"
     horizontalAlign="center" horizontalScrollPolicy="off">
     <mx:HorizontalList id="resultsList" width="100%" height="100%" change="displayItemDescription(event)">
     </mx:HorizontalList>
   </mx:Panel>
 
-  <mx:TabNavigator id="navigationTabId" width="800" height="500" creationPolicy="all">
+  <mx:TabNavigator id="navigationTabId" width="420" height="500" creationPolicy="all">
     <mx:Canvas id="resultDescriptionPanel" label="Result view" width="100%" height="100%">
     </mx:Canvas>
 
     <mx:Canvas label="Filter" width="100%" height="100%">
       <mx:HBox>
-        <semanticComponents:sPieChart id="semanticWedgeStackChart" itemClick="pieChartItemClick(event)" width="570"
+        <semanticComponents:sPieChart id="semanticWedgeStackChart" itemClick="pieChartItemClick(event)" width="200"
           height="500"/>
 
         <mx:VBox horizontalAlign="center">
