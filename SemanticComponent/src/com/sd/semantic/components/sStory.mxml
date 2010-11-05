@@ -1,0 +1,1120 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!---
+  The story viewer is a component that displays stories text. Each story is related 
+  to "is-about" concepts, related named entities and other related stories. Each 
+  "is-about" concepts and named entities are tagged by a GATE process pipeline. 
+  Normally this tagging is performed using the MUNI  Ontology and dictionaries of 
+  named entities that are most-likely to be part of these stories.
+  
+  Related concepts and named entities can be highlighted in the story's text and 
+  related stories can be explored. A search feature has been implemented in the 
+  component, along with a full-screen mode. However, due to full-screen limitations 
+  in Flex, the search feature is disabled in full-screen mode. 
+  
+  @author Frederick Giasson, Structured Dynamics LLC.
+-->
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:components="com.sd.semantic.components.*" styleName="sStory"
+  xmlns:toolbox="com.flextoolbox.controls.*" width="100%" height="100%" creationComplete="init()">
+  <mx:Script>
+    <![CDATA[
+
+    import com.flextoolbox.controls.*;
+    import com.sd.semantic.components.stories.Annotation;
+    import com.sd.semantic.components.stories.Annotations;
+    import com.sd.semantic.core.*;
+    import com.sd.semantic.events.*;
+    import com.sd.semantic.settings.StorySettings;
+    import com.sd.semantic.utilities.ColorGenerator;
+    import com.sd.semantic.utilities.SpriteUIComponent;
+    
+    import flash.display.BlendMode;
+    
+    import mx.collections.ArrayCollection;
+    import mx.controls.Alert;
+    import mx.core.Application;
+    import mx.events.ListEvent;
+    import mx.managers.SystemManager;
+    import mx.rpc.events.FaultEvent;
+    import mx.rpc.events.ResultEvent;
+    import mx.rpc.http.HTTPService;
+    
+    import org.tl.text.*;
+
+    /** Core varibles shared amongst all semantic controls */
+    
+    /** 
+     * Specifies that this component is a semantic component. If a component in a Flex application is a semantic
+     * semantic component, this means that other semantic component can't behave differently depending of the "kind"
+     * (semantic or not) of components that are present in the layout. This variable is just to specify is a component
+     * is a semantic one or not.
+     */
+    public var semanticComponent:Boolean = true;
+    
+    /**
+     * Specifies that this control is required within a display cluster.
+     * This means that if we have a SemanticHBox that has 2 required semantic
+     * components and that these components have removed themselves from the display
+     * this means that the parent layout cluster (the smeantic hbox), will remove
+     * itself as well. If a semantic component is marked as not required (required=false)
+     * it means that it won't be considered by the semantic hbox. So, even if such a semantic
+     * component has data in it, its parent cluster can remove itself.
+     */
+    public var required:Boolean = true;
+    
+    /** Target record attributes to display in the component */
+    public var targetAttributes:Array = [];
+    
+    /** Target record types to display in the component */
+    public var targetTypes:Array = [];
+    
+    /** Specifies if the sControl's targetAttribute has been bound to a know semantic control. */
+    public var bound:Boolean = false;
+    
+    private var _semanticDataProvider:Resultset;
+    
+    /** Input records. This is a Resultset structure (see the structXML XML data structure) */
+    public function get semanticDataProvider():Resultset
+    {
+      return (_semanticDataProvider);
+    }
+    
+    public function set semanticDataProvider(value:Resultset):void
+    {
+      _semanticDataProvider = value;
+      
+      if(_initialized)
+      {
+        loadStoryData();
+      }
+    }
+    
+    /** Specifies what attribute(s) of a record have been bound to this semantic component */
+    public var boundAttributes:Array = [];
+    
+    /** Specifies if the component has already been initialized or not. */
+    private var _initialized:Boolean = false;      
+      
+    /** Members specific to that component */  
+      
+    /** Story Viewer settings */  
+    private var settings:StorySettings;
+
+    /** Text component used to display the text of the story */       
+    private var storyTextField:TextField = null;
+      
+    /** Highlighter class used to highlight  search keywords */  
+    public var searchHighlighter:Highlighter = null;
+      
+    /** Highlighter class used to highlight concept keywords */  
+    public var highlighter:Highlighter = null;
+      
+    /** Highlighter class used to highlight named entities keywords */  
+    public var neHighlighter:Highlighter = null;
+      
+    /** Set of conceptual annotations */  
+    public var annotations:Annotations = new Annotations();
+      
+    /** Set of named entities annotations */
+    public var neAnnotations:Annotations = new Annotations();
+      
+    /** Colors used to highlight concepts and named entities */
+    public var conceptColor:Array = [];
+      
+    /** All selected concepts (checked concepts) */ 
+    public var selectedConcepts:Array = [];
+
+    /** All selected concepts (checked named entities) */ 
+    public var selectedNamedEntities:Array = [];
+
+    private var _schema:Schema;
+
+    /** Conceptual structure used by the component */
+    public function get schema():Schema
+    {
+      return (_schema);
+    }
+
+    public function set schema(value:Schema):void
+    {
+      this._schema = value;
+    }
+
+    /** Invalidate the story viewer to redraw it */
+    public function invalidate():void
+    {
+      loadStoryData();
+    }
+
+    /** Initialize the story viewer component */
+    public function init():void
+    {
+      if(_initialized == false)
+      {
+        if(_semanticDataProvider != null)
+        {
+          /**
+           * Load settings
+           * 
+           * Check if the application that embede this semantic component defined its 
+           * baseAppUrl. If it didn't, we simply use the default local location "./"
+           */
+          
+          /** Base URL of the flex component */
+          var baseUrl:String = "./";
+
+          if(Application.application.baseAppUrl && Application.application.baseAppUrl != "")
+          {
+            baseUrl = Application.application.baseAppUrl;
+          }
+
+          /** URL Loader for the map settings file */          
+          var settingsLoader:URLLoader = new URLLoader();
+          settingsLoader.load(new URLRequest(baseUrl + "settings/sStory.xml"));
+          settingsLoader.addEventListener(Event.COMPLETE, processSettingsHandler);
+          
+          /** Keep track of the attributes, from the record, that have been bound to this control. */
+          if(targetAttributes.length > 0)
+          {
+            for each(var tAttr in targetAttributes)
+            {
+              boundAttributes.push(tAttr);
+            }
+          }          
+        }
+
+        /** Set up full screen handler. */
+        if(systemManager != null)
+        {
+          systemManager.stage.addEventListener(FullScreenEvent.FULL_SCREEN, fullScreenHandler);
+        }
+
+        _initialized = true;
+      }
+    }
+
+    /**
+     * Get, parse and process the story viewer settings 
+     * 
+     * @param event URLLoader success/failure event
+     */      
+    private function processSettingsHandler(event:Event):void
+    {
+      var isError:Boolean = false;
+
+      try
+      {
+        /** Create the MapSettings class from the XML file */        
+        settings = new StorySettings(new XML(event.target.data));
+      }
+      catch(error:Error)
+      {
+        Alert.show("Can't load settings file '/settings/sStory.xml'. The story viewer tool won't be displayed.");
+        isError = true;
+      }
+      
+      if(!isError)
+      {
+        if(settings.error == true)
+        {
+          Alert.show(
+            "Required settings are missing in the settings file '/settings/sStory.xml'. The story viewer tool won't be displayed.");
+          isError = true;
+        }
+      }
+
+      /** If the setting file is properly loaded, we continue to process the story viewer component */      
+      if(!isError)
+      {
+        loadStoryData();
+      }
+      
+      this.removeEventListener(Event.COMPLETE, processSettingsHandler);
+    }
+
+    /** Load story data: stoy text & annotated text */
+    private function loadStoryData():void
+    {
+      /** Make sure we have some data in the semantic data provider */
+      if(_semanticDataProvider == null || !_semanticDataProvider.subjects[0])
+      {
+        return;
+      }
+
+      /** Check if the administrator wants to display the panel with related stories */
+      if(!settings.displayRelatedStories)
+      {
+        panelRelatedStories.parent.removeChild(panelRelatedStories);
+      }
+
+      /** Get the text from the peg:storyTextUri attribute */
+      if(_semanticDataProvider.subjects[0].predicates.hasOwnProperty(settings.storyTextUriAttr))
+      {
+        var xmlLoader:URLLoader = new URLLoader();
+        xmlLoader.load(
+          new URLRequest(_semanticDataProvider.subjects[0].predicates[settings.storyTextUriAttr][0]["value"]));
+        xmlLoader.addEventListener(Event.COMPLETE, processStoryTextHandler);
+      }
+
+      /** Get the text from the peg:storyAnnotetedTextUri attribute */
+      if(_semanticDataProvider.subjects[0].predicates.hasOwnProperty(settings.storyAnnotatedTextUriAttr))
+      {
+        xmlLoader = new URLLoader();
+        xmlLoader.load(
+          new URLRequest(_semanticDataProvider.subjects[0].predicates[settings.storyAnnotatedTextUriAttr][0]["value"]));
+        xmlLoader.addEventListener(Event.COMPLETE, processStoryAnnotatedTextHandler);
+      }
+
+      /** Initialize the search buttons */
+      findPreviousButton.addEventListener(MouseEvent.CLICK, findPreviousClickHandler);
+      findNextButton.addEventListener(MouseEvent.CLICK, findNextClickHandler);
+      fullScreenButton.addEventListener(MouseEvent.CLICK, fullScreenClickHandler);
+    }
+
+    /** Toggle fulls screen mode click event */
+    private function fullScreenClickHandler(event:MouseEvent):void
+    {
+      toggleFullScreen();
+    }
+
+    /** Perform actions when the fullscreen mode quicks in and out */
+    private function fullScreenHandler(evt:FullScreenEvent):void
+    {
+      if(evt.fullScreen)
+      {
+        /** Do something specific here if we switched to full screen mode. */
+        searchBox.enabled = false;
+      }
+      else
+      {
+        /** Do something specific here if we switched to normal mode. */
+        searchBox.enabled = true;
+      }
+    }
+
+    /** Toggle full screen mode */
+    private function toggleFullScreen():void
+    {
+      try
+      {
+        switch(systemManager.stage.displayState)
+        {
+          case StageDisplayState.FULL_SCREEN:
+          /** If already in full screen mode, switch to normal mode. */
+          systemManager.stage.displayState = StageDisplayState.NORMAL;
+          break;
+          
+          default:
+          /** If not in full screen mode, switch to full screen mode. */
+          systemManager.stage.displayState = StageDisplayState.FULL_SCREEN;
+          break;
+        }
+      }
+      catch(err:SecurityError)
+      {
+        /** ignore */
+      }
+    }
+
+    /** Find previous search keyword click event handler */
+    private function findPreviousClickHandler(event:MouseEvent):void
+    {
+      searchHighlighter.highlightPrevious(searchBox.text);
+    }
+
+    /** Find next search keyword click event handler */
+    private function findNextClickHandler(event:MouseEvent):void
+    {
+      searchHighlighter.highlightNext(searchBox.text);
+    }
+
+    /** Story text area input handler */
+    private function storyTextAreaTextInputHandler(event:TextEvent):void
+    {
+      /** Discard all keystrokes input from the user when the story text area is focused */
+      event.preventDefault();
+    }
+
+    /** Story's text URL loader event handler */  
+    private function processStoryTextHandler(event:Event):void
+    {
+      /** error status */
+      var isError:Boolean = false;
+      
+      /** Story's text */
+      var storyText:String = "";
+
+      try
+      {
+        storyText = new XML(event.target.data);
+      }
+      catch(error:Error)
+      {
+        Alert.show("Error loading the text of the story");
+        isError = true;
+      }
+
+      /** if no load errors have been detected, we load the story in the text area */
+      if(!isError)
+      {
+        this.storyTextArea.text = storyText;
+
+        this.storyTextField = getTextField(this.storyTextArea);
+
+        this.highlighter = new Highlighter(storyTextField, storyText, 0xffff0000);
+        this.neHighlighter = new Highlighter(storyTextField, storyText, 0xffff0000);
+        this.searchHighlighter = new Highlighter(storyTextField, storyText, 0xff00ff00);
+      }
+      
+      this.removeEventListener(Event.COMPLETE, processStoryTextHandler);
+    }
+
+    /** Story's GATE annotated text URL loader event handler */  
+    private function processStoryAnnotatedTextHandler(event:Event):void
+    {
+      /** error status */
+      var isError:Boolean = false;
+      
+      /** Story's annotated text (in GATE XML) */
+      var storyAnnotatedTextXML:XML;
+
+      try
+      {
+        storyAnnotatedTextXML = new XML(event.target.data);
+      }
+      catch(error:Error)
+      {
+        Alert.show("Error loading the annotated text of the story");
+        isError = true;
+      }
+
+      /** if no load errors have been detected, we parse the annotations */      
+      if(!isError)
+      {
+        /** get Annotations */
+        for each(var annotationSet:XML in storyAnnotatedTextXML.AnnotationSet)
+        {
+          if(annotationSet.attribute("Name") == settings.conceptAnnotationSet)
+          {
+            for each(annotation in annotationSet.Annotation)
+            {
+              /** number of annotation features found */
+              var featuresFound:int = 0;
+
+              for each(var feature:XML in annotation.Feature)
+              {
+                /** Make sure it is a URI feature */
+                if(feature.Name == "URI")
+                {
+                  featuresFound++;
+                }
+
+                /** Make sure it is a class type */
+                if(feature.Name == "type" && feature.Value == "class")
+                {
+                  featuresFound++;
+                }
+
+                /** Once we made sure that we have a good annotation, we add it to the set of annotations */
+                if(featuresFound == 2)
+                {
+                  /** Annotation to add to the annotations set */
+                  var ann:Annotation =
+                    new Annotation(annotation.@Id, annotation.@StartNode, annotation.@EndNode, feature.Value);
+                  this.annotations.addAnnotation(ann);
+
+                  /** stop the processing and start processing the next annotation */
+                  break;
+                }
+              }
+            }
+          }
+        }
+
+        /** get extracted named entities */
+        for each(var annotationSet:XML in storyAnnotatedTextXML.AnnotationSet)
+        {
+          /** Make sure that the name of the annotation set is the one tha has been configured */
+          if(annotationSet.attribute("Name") == settings.namedEntitiesAnnotationSet)
+          {
+            for each(annotation in annotationSet.Annotation)
+            {
+              for each(feature in annotation.Feature)
+              {
+                /** Make sure the named entity is a majorType */
+                if(feature.Name == "majorType")
+                {
+                  /** Add the annotation to the named entities annotation set */
+                  ann = new Annotation(annotation.@Id, annotation.@StartNode, annotation.@EndNode, feature.Value);
+
+                  this.neAnnotations.addAnnotation(ann);
+                }
+              }
+            }
+          }
+        }
+
+
+        /** Populate the StoriesViewer sidebar with all isAbout references for highlighting. */
+
+        /** Keep track of the concepts that have been added that comes from the named entities classes */
+        var addedConceptsFromNes:Array = new Array();
+
+        /** Collection of is-abouts concepts */
+        var isAbouts:ArrayCollection = new ArrayCollection();
+
+        /** Colors to use to highlight concepts and keywords */
+/*        var colors
+          :Array = [0xFFD2B48C, 0xFFBC8F8F, 0xFFF4A460, 0xFFDAA520, 0xFFB8860B, 0xFFCD853F, 0xFFD2691E, 0xFF8B4513,
+          0xFFA0522D, 0xFFA52A2A, 0xFF800000, 0xFFCD5C5C, 0xFFF08080, 0xFFFA8072, 0xFFE9967A, 0xFFFFA07A, 0xFFDC143C,
+          0xFFFF0000, 0xFFB22222, 0xFF8B0000, 0xFFFFB6C1, 0xFFFF69B4, 0xFFFF1493, 0xFFC71585, 0xFFDB7093, 0xFFFFA07A,
+          0xFFFF7F50, 0xFFFF6347, 0xFFFF4500, 0xFFFF8C00, 0xFFFFD700, 0xFFFFFF00, 0xFFD8BFD8, 0xFFDDA0DD, 0xFFEE82EE,
+          0xFFDA70D6, 0xFFFF00FF, 0xFFBA55D3, 0xFF9370DB, 0xFF9966CC, 0xFF8A2BE2, 0xFF800080, 0xFF4B0082, 0xFF6A5ACD,
+          0xFF483D8B, 0xFFADFF2F, 0xFF7FFF00, 0xFF00FF00, 0xFF32CD32, 0xFF98FB98, 0xFF00FA9A, 0xFF00FF7F, 0xFF3CB371,
+          0xFF2E8B57, 0xFF228B22, 0xFF006400, 0xFF9ACD32, 0xFF6B8E23, 0xFF808000, 0xFF556B2F, 0xFF66CDAA, 0xFF8FBC8F,
+          0xFF20B2AA, 0xFF008B8B, 0xFF00FFFF, 0xFFAFEEEE, 0xFF7FFFD4, 0xFF40E0D0, 0xFF5F9EA0, 0xFF4682B4, 0xFFB0C4DE,
+          0xFFB0E0E6, 0xFF87CEFA, 0xFF00BFFF, 0xFF1E90FF, 0xFF6495ED, 0xFF7B68EE, 0xFF4169E1, 0xFF0000FF];
+*/
+        var colors:Array = [0xFFf5800b, 0xFFeb0810, 0xFFf4e601, 0xFFc6d816, 0xFF0c5e2c, 0xFF00a5d9,
+                            0xFF581886, 0xFFab1057];
+
+        var nbAdditionalConcepts:int = 0;
+        
+        /** Calculate the number of other concepts that come from named entitites types */
+        if(this.neAnnotations.annotations.length > 0)
+        {
+          for each(var anno:Annotation in this.neAnnotations.annotations)
+          {
+            /** make sure that this concept is not already in the concepts list. */
+            if(this.annotations.getIsAboutAnnotations(anno.isAbout).length <= 0
+              && addedConceptsFromNes.indexOf(anno.isAbout) == -1)
+            {
+              nbAdditionalConcepts++;
+            }
+          }
+        }
+
+        var nbNeededColors:int = this.annotations.getIsAbouts().length + nbAdditionalConcepts;
+        
+        
+        /** Cycle colors if there are too many items for the number of colors defined. */
+        var addColorIterator:int = 0;
+        if(nbNeededColors > colors.length)
+        {
+          while(nbNeededColors > colors.length)
+          {
+            colors.push(colors[addColorIterator]);  
+            
+            addColorIterator++;
+          }
+        }
+        
+        if(nbNeededColors < colors.length)
+        {
+          for(var y:int = nbNeededColors; y < colors.length; y++)
+          {
+            colors[y] = 0x00000000;
+          }          
+        }        
+        
+        /** Pad the colors table with transparent nodes */
+        for(var y:int = 0; y < 256; y++)
+        {
+          colors.push(0x00000000);
+        }
+        
+        var i:int = -1;
+
+        for each(var isAbout:String in this.annotations.getIsAbouts())
+        {
+          i += 1;
+
+          /** annotation item to feed to the different list components */
+          var item:Array = [];
+
+          item["isAbout"] = isAbout;
+
+          /** type of the annotation */
+          var type:SchemaType = _schema.getType(isAbout);
+          
+          /** preferred label of the annotation */
+          var prefLabel:String = "";
+          
+          /** check if the preferred label has been extracted from its URI */
+          var extractPrefLabelFromUri = false;
+
+          if(type)
+          {
+            if(type.prefLabel)
+            {
+              prefLabel = type.prefLabel;
+            }
+            else if(type.altLabels.length > 0)
+            {
+              prefLabel = type.altLabels[0];
+            }
+            else
+            {
+              /** the prefLabel has to be extracted from its URI */
+              prefLabel = isAbout;
+              extractPrefLabelFromUri = true;
+            }
+          }
+          else
+          {
+            prefLabel = isAbout;
+            extractPrefLabelFromUri = true;
+          }
+
+          /** extract the prefLabel of the annotation form its URI */
+          if(extractPrefLabelFromUri)
+          {
+            var end:int = 0;
+
+            end = prefLabel.lastIndexOf("#");
+
+            if(end == -1)
+            {
+              end = prefLabel.lastIndexOf("/");
+            }
+
+            if(end > 0)
+            {
+              prefLabel = prefLabel.substr(end + 1, (prefLabel.length - end));
+            }
+
+            prefLabel = prefLabel.replace(/[^a-zA-Z0-9]/g, " ");
+          }
+
+          item["prefLabel"] = prefLabel;
+
+          item["backgroundColor"] = colors[i];
+
+          item["enabled"] = "enabled";
+
+          conceptColor[isAbout] = colors[i];
+
+          isAbouts.addItem(item);
+        }
+
+        /** Add concepts that come from potential named entities annotated to the story. */
+        if(this.neAnnotations.annotations.length > 0)
+        {
+          for each(var anno:Annotation in this.neAnnotations.annotations)
+          {
+            i += 1;
+
+            /** make sure that this concept is not already in the concepts list. */
+            if(this.annotations.getIsAboutAnnotations(anno.isAbout).length <= 0
+              && addedConceptsFromNes.indexOf(anno.isAbout) == -1)
+            {
+              addedConceptsFromNes.push(anno.isAbout);
+
+              item = new Array();
+
+              item["isAbout"] = anno.isAbout;
+
+              type = _schema.getType(anno.isAbout);
+              prefLabel = "";
+              extractPrefLabelFromUri = false;
+
+              if(type)
+              {
+                if(type.prefLabel)
+                {
+                  prefLabel = type.prefLabel;
+                }
+                else if(type.altLabels)
+                {
+                  prefLabel = type.altLabels[0];
+                }
+                else
+                {
+                  prefLabel = anno.isAbout;
+                  extractPrefLabelFromUri = true;
+                }
+              }
+              else
+              {
+                prefLabel = anno.isAbout;
+                extractPrefLabelFromUri = true;
+              }
+
+              if(extractPrefLabelFromUri)
+              {
+                var end:int = 0;
+
+                end = prefLabel.lastIndexOf("#");
+
+                if(end == -1)
+                {
+                  end = prefLabel.lastIndexOf("/");
+                }
+
+                if(end > 0)
+                {
+                  prefLabel = prefLabel.substr(end + 1, (prefLabel.length - end));
+                }
+
+                prefLabel = prefLabel.replace(/[^a-zA-Z0-9]/g, " ");
+              }
+
+              item["prefLabel"] = prefLabel;
+
+              item["backgroundColor"] = colors[i];
+
+              item["enabled"] = "enabled";
+
+              conceptColor[anno.isAbout] = colors[i];
+
+              isAbouts.addItem(item);
+            }
+          }
+        }
+
+
+        /** Create the list tree based on the concepts hierarchy */
+        /*        
+                var structure:Array = new Array();
+                for each(var concept:Object in isAbouts)
+                {
+                  // Step #1: the the hierarchy branch of the concept
+                  var branch:Array = new Array();
+                  
+                  branch = getTypeBranch(schema.getType(concept.isAbout), schema.typesStructure);
+                  
+                }
+        */
+
+        isAboutCheckboxesListControl.dataProvider = isAbouts;
+        isAboutCheckboxesListControl.itemBackgroundColors = colors;
+
+         /** Populate the named entities list */
+        
+        /** Named entities annotations */
+        var namedEntities:ArrayCollection = new ArrayCollection();
+        
+        /** Colors to feed to the list component to highlight named entities */
+        var neItemColors:Array = new Array();
+
+        if(this.neAnnotations.annotations.length > 0)
+        {
+          /** Re-calculate the colors pallet for the named entities */
+          var colors:Array = [0xFFf5800b, 0xFFeb0810, 0xFFf4e601, 0xFFc6d816, 0xFF0c5e2c, 0xFF00a5d9,
+            0xFF581886, 0xFFab1057];
+          
+          var nbAdditionalConcepts:int = 0;
+          
+          var nbNeededColors:int = this.neAnnotations.annotations.length;
+          
+          
+          /** Cycle colors if there are too many items for the number of colors defined. */
+          var addColorIterator:int = 0;
+          if(nbNeededColors > colors.length)
+          {
+            while(nbNeededColors > colors.length)
+            {
+              colors.push(colors[addColorIterator]);  
+              
+              addColorIterator++;
+            }
+          }
+          
+          if(nbNeededColors < colors.length)
+          {
+            for(var y:int = nbNeededColors; y < colors.length; y++)
+            {
+              colors[y] = 0x00000000;
+            }          
+          }        
+          
+          /** Pad the colors table with transparent nodes */
+          for(var y:int = 0; y < 256; y++)
+          {
+            colors.push(0x00000000);
+          } 
+          
+          i = 0;
+          
+          panelRelatedStories.percentHeight = 35;
+          panelConcepts.percentHeight = 35;
+          panelNamedEntities.percentHeight = 30;
+
+          panelNamedEntities.visible = true;
+          panelNamedEntities.includeInLayout = true;
+
+          for each(anno in this.neAnnotations.annotations)
+          {
+            /** Get the label of the named entity from the text */
+            prefLabel = this.storyTextArea.text.substr(anno.startChar, (anno.endChar - anno.startChar));
+
+            /** Make sure the named entity is not already in the list of named entities */
+            var found:Boolean = false;
+
+            for each(var ne:Array in namedEntities)
+            {
+              if(ne["prefLabel"] == prefLabel)
+              {
+                found = true;
+                break;
+              }
+            }
+
+            if(found)
+            {
+              continue;
+            }
+
+
+            item = new Array();
+
+            item["isAbout"] = anno.isAbout;
+
+            item["prefLabel"] = prefLabel;
+
+            item["backgroundColor"] = colors[i];
+            neItemColors.push(colors[i]);
+
+            item["enabled"] = "enabled";
+
+            conceptColor[prefLabel] = colors[i];
+
+            namedEntities.addItem(item);
+            
+            i += 1;            
+          }
+        }
+
+        neCheckboxesListControl.dataProvider = namedEntities;
+        neCheckboxesListControl.itemBackgroundColors = neItemColors;
+      }
+      
+      this.removeEventListener(Event.COMPLETE, processStoryAnnotatedTextHandler);
+    }
+
+    private function getTypeBranch(targetType:SchemaType, tStructure:Array):Array
+    {
+      var branch:Array = new Array();
+      var namespaces:Namespaces = new Namespaces();
+
+      for each(var type:Array in tStructure) // deep first
+      {
+        if(type[0].type.uri == targetType.uri || type[0].type.uri == namespaces.getVariable(targetType.uri))
+        {
+          // we found the target type. The recursion ends here.
+          return (new Array());
+        }
+        else
+        {
+          branch = getTypeBranch(targetType, type[0].subTypes);
+
+          if(branch)
+          {
+            // we happen the current type to the branch.
+            branch = branch.reverse();
+            branch.push(type[0].type);
+            branch = branch.reverse();
+          }
+        /*          
+                  else
+                  {
+                    // nothing found in that direction
+                    return(null);
+                  }
+        */
+        }
+      }
+
+      if(tStructure.length > 0)
+      {
+        return (branch);
+      }
+      else
+      {
+        return (null);
+      }
+    }
+
+    /**     
+    * Find the TextField object in the component.
+    *    
+    * Since textField is protected, we resort to this rather than extend every component that has a textField we'd 
+    * like to highlight.
+    * 
+    * @param component Text area component used to display the text of the story 
+    */
+    public function getTextField(component:TextArea):TextField
+    {
+      var len:int = component.numChildren;
+      var r:TextField;
+
+      for(var i:int = 0; i < len; i++)
+      {
+        var thisChild:DisplayObject = component.getChildAt(i);
+
+        if(thisChild is TextField)
+        {
+          r = thisChild;
+        }
+      }
+
+      return r;
+    }
+
+    /** Detect "Enter" keys from the search box to trigger to search within the text. */
+    private function detectEnterKeyHandler(event:KeyboardEvent):void
+    {
+      /** Enter key pressed */
+      if(event.charCode == 13)
+      {
+        searchHighlighter.highlightNext(searchBox.text);
+      }
+    }
+
+    ]]>
+  </mx:Script>
+
+  <mx:HBox height="100%" width="100%">
+    <mx:VBox styleName="sStoryToolsVBox" height="100%" width="300">
+      <mx:HBox height="29" width="100%" paddingTop="4" verticalAlign="middle">
+        <mx:Text text="Search:"/>
+
+        <mx:TextInput id="searchBox" keyDown="detectEnterKeyHandler(event)"/>
+
+        <mx:Image id="findPreviousButton" useHandCursor="true" buttonMode="true"/>
+
+        <mx:Image id="findNextButton" useHandCursor="true" buttonMode="true"/>
+
+        <mx:HBox width="100%" horizontalAlign="right" paddingRight="5">
+          <mx:Image id="fullScreenButton" useHandCursor="true" buttonMode="true"/>
+        </mx:HBox>
+      </mx:HBox>
+
+      <mx:Panel styleName="sStoryConceptsPanel" id="panelConcepts" title="Story's Concepts" height="100%" width="100%">
+        <toolbox:CheckBoxList id="isAboutCheckboxesListControl" styleName="isAboutCheckboxesListControl" width="100%"
+          height="100%" labelField="prefLabel" enabledField="enabled" change="onCheckboxChangeHandler(event);">
+          <mx:Script>
+            <![CDATA[
+
+            private function onCheckboxChangeHandler(event:Event):void
+            {
+              /** check if the concept has been selected or unselected */
+              if(this.selectedConcepts.indexOf(event.itemRenderer.data.isAbout) == -1)
+              {
+                this.selectedConcepts.push(event.itemRenderer.data.isAbout);
+              }
+              else
+              {
+                this.selectedConcepts.splice(this.selectedConcepts.indexOf(event.itemRenderer.data.isAbout), 1);
+              }
+
+              /** Remove all highlighted words. */
+              this.highlighter.reset();
+
+              /** Namespaces structure of the components */
+              var namespaces:Namespaces = new Namespaces();
+
+              for each(var concept:String in this.selectedConcepts)
+              {
+                var annotationsToHighlights:Array = new Array();
+
+                /** 
+                * Check if there are named entities individuals in this concept class (or one of its sub-concept 
+                * class) 
+                */
+                for each(var neAnnotation:Annotation in this.neAnnotations.annotations)
+                {
+                  /**
+                  * #1: check if the isAbout of the NE annotation is the current concept
+                  * #2: else, check if one of the super-concept of the current concept is the isAbout
+                  *     of the NE annotation.
+                  */
+                  if(neAnnotation.isAbout == concept)
+                  {
+                    /** #1 */
+                    annotationsToHighlights.push(neAnnotation);
+                  }
+                  else
+                  {
+                    /** #2 */
+                    for each(var superConcept:SchemaType in this.schema.getSuperTypes(neAnnotation.isAbout, true))
+                    {
+                      if(superConcept.uri == neAnnotation.isAbout
+                        || superConcept.uri == namespaces.getVariable(neAnnotation.isAbout))
+                      {
+                        annotationsToHighlights.push(neAnnotation);
+                        break;
+                      }
+                    }
+                  }
+                }
+
+                annotationsToHighlights =
+                  annotationsToHighlights.concat(this.annotations.getIsAboutAnnotations(concept));
+
+                this.highlighter.highlightAnnotatedWords(annotationsToHighlights, this.conceptColor[concept]);
+              }
+
+
+              /** Create a SPARQL query to get all the stories related to checked concepts */
+              if(this.selectedConcepts.length > 0 && settings.displayRelatedStories == true)
+              {
+                /** SPARQL query used to query a structWSF SPARQL endpoint to get related stories */
+                var sparqlQuery:String = "select distinct ?story ?prefLabel where" +
+                  "{";
+
+                for each(concept in this.selectedConcepts)
+                {
+                  sparqlQuery += "  ?story <" + settings.relatedStoryRelation + "> <" + namespaces.getNamespace(concept)
+                    + "> .";
+                }
+
+                sparqlQuery += "  ?story <" + settings.relatedStoryLabel + "> ?prefLabel ." +
+                  "}";
+
+                /** Get related stories from a SPARQL endpoint */
+                var requestParameters:Object = {query: sparqlQuery, dataset:settings.storiesDataset};
+
+                var httpService:HTTPService = new HTTPService();
+
+                httpService.url = settings.sparqlWebServiceEndpoint;
+                httpService.method = "POST";
+                httpService.headers['Accept'] = "application/sparql-results+xml;q=1";
+                httpService.showBusyCursor = true;
+                httpService.addEventListener(ResultEvent.RESULT, resultHandler);
+                httpService.addEventListener(FaultEvent.FAULT, faultHandler);
+
+                httpService.send(requestParameters);
+              }
+            }
+
+            /** SPARQL endpoint query Fault handler */
+            private function faultHandler(event:FaultEvent):void
+            {
+              Alert.show(event.message.rootCause.target.data);
+              
+              this.removeEventListener(FaultEvent.FAULT, faultHandler);
+            }
+
+              /** SPARQL endpoint query Result handler */
+            private function resultHandler(event:ResultEvent):void
+            {
+              /** HTTP querier */
+              var httpService:HTTPService =
+                event.target as HTTPService;
+
+              /** SPARQL resultset */
+              var resultsetStr:String = event.message.body;
+
+              resultsetStr = "<sparql>" + resultsetStr.substr((resultsetStr.indexOf(">") + 1),
+                resultsetStr.length - (resultsetStr.indexOf(">") + 1));
+
+              /** SPARQL resultset in XML */
+              var resultset:XML = XML(resultsetStr);
+
+              /** SPARQL variable that refers to the story' URI */
+              var targetVarStory:String = "story";
+              
+              /** SPARQL variable that refers to the story's name */
+              var targetVarPrefLabel:String = "prefLabel";
+
+              /** Links */
+              var links:Array = new Array();
+
+              var nbStories:int = 1;
+              for each(var result:XML in resultset.results.result)
+              {
+                /** Story's URI */
+                var storyURI:String = result.binding.(@name == targetVarStory).uri.toString();
+                
+                /** Story's preferred label */
+                var storyPrefLabel:String = nbStories + ". " + result.binding.(@name == targetVarPrefLabel).literal.toString();
+
+                /** Story's link */
+                var storyPageLink:String = settings.structViewUrl + "?" +
+                  "uri=" + escape(storyURI) +
+                  "&dataset=" + escape(settings.storiesDataset);
+
+                links.push({prefLabel: storyPrefLabel, link:storyPageLink});
+                
+                nbStories++;
+              }
+
+              relatedStoriesList.dataProvider = links;
+              relatedStoriesList.labelField = "prefLabel";
+              relatedStoriesList.setStyle("textAlign", "left");
+              
+              this.removeEventListener(ResultEvent.RESULT, resultHandler);
+            }
+
+            /** "Open in the browser" story's list click event handler */
+            private function gotoStoryHandler(event:ListEvent):void
+            {
+              var item:Object = (event.target as List).selectedItem;
+
+              if(item.link)
+              {
+                navigateToURL(new URLRequest(item.link), settings.navigatorBehavior);
+              }
+            }
+
+            ]]>
+          </mx:Script>
+        </toolbox:CheckBoxList>
+      </mx:Panel>
+
+      <mx:Panel styleName="sStoryRelatedStoriesPanel" id="panelRelatedStories" title="Related Stories" height="100%"
+        width="100%">
+        <mx:List id="relatedStoriesList" styleName="relatedStoriesList" width="100%" height="100%"
+          itemClick="gotoStoryHandler(event)" wordWrap="true"/>
+      </mx:Panel>
+
+      <mx:Panel styleName="sStoryNamedEntitiesPanel" id="panelNamedEntities" title="Named Entites" height="100%" width="100%"
+        visible="false" includeInLayout="false">
+        <toolbox:CheckBoxList id="neCheckboxesListControl" styleName="neCheckboxesListControl" width="100%"
+          height="100%" labelField="prefLabel" enabledField="enabled" change="onNeCheckboxChangeHandler(event);">
+          <mx:Script>
+            <![CDATA[
+
+            private function onNeCheckboxChangeHandler(event:Event):void
+            {
+              /** check if the concept has been selected or unselected */
+              if(this.selectedNamedEntities.indexOf(event.itemRenderer.data.prefLabel) == -1)
+              {
+                this.selectedNamedEntities.push(event.itemRenderer.data.prefLabel);
+              }
+              else
+              {
+                this.selectedNamedEntities.splice(this.selectedNamedEntities.indexOf(event.itemRenderer.data.prefLabel),
+                  1);
+              }
+
+              /** Remove all highlighted words. */
+              this.neHighlighter.reset();
+
+              for each(var prefLabel:String in this.selectedNamedEntities)
+              {
+                /** Named entities annotations to highlight */
+                var neToHighlight:Array = new Array();
+
+                for each(var anno:Annotation in this.neAnnotations.annotations)
+                {
+                  if(this.storyTextArea.text.substr(anno.startChar, (anno.endChar - anno.startChar)) == prefLabel)
+                  {
+                    neToHighlight.push(anno);
+                  }
+                }
+
+                this.neHighlighter.highlightAnnotatedWords(neToHighlight, this.conceptColor[prefLabel]);
+              }
+            }
+
+            ]]>
+          </mx:Script>
+        </toolbox:CheckBoxList>
+      </mx:Panel>
+    </mx:VBox>
+    <mx:TextArea styleName="storyTextAreaStyle" id="storyTextArea" width="100%" height="100%"
+                 textInput="storyTextAreaTextInput(event);"/>    
+  </mx:HBox>
+</mx:Canvas>
