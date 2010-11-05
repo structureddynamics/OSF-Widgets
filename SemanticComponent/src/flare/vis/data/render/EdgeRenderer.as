@@ -4,7 +4,7 @@ package flare.vis.data.render {
 	import flare.vis.data.DataSprite;
 	import flare.vis.data.EdgeSprite;
 	import flare.vis.data.NodeSprite;
-
+	
 	import flash.display.Graphics;
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
@@ -169,7 +169,13 @@ package flare.vis.data.render {
 			var lineAlpha:Number = e.lineAlpha;
 			if (lineAlpha == 0) return;
 			
-			g.lineStyle(e.lineWidth, e.lineColor, lineAlpha, 
+      var lineWeight:int = e.lineWidth;
+      
+      if(e.data.skin)
+      {
+        lineWeight = e.data.skin.lineWeight;
+      }
+			g.lineStyle(lineWeight, e.lineColor, lineAlpha, 
 				pixelHinting, scaleMode, caps, joints, miterLimit);
 		}
 
