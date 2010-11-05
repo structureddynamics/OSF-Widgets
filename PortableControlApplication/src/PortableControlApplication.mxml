@@ -3,10 +3,10 @@
   xmlns:degrafa="http://www.degrafa.com/2007" xmlns:charts="org.axiis.charts.*"
   xmlns:geometry="com.degrafa.geometry.*" xmlns:components="com.sd.semantic.components.*" layout="absolute"
   creationComplete="init()">
-  
+   
   <mx:Script>
     <![CDATA[
-
+ 
     import mx.controls.Alert; 
     import mx.events.StyleEvent;
     import flash.xml.XMLDocument;
@@ -16,6 +16,7 @@
     import com.sd.semantic.components.sControl;
     import com.sd.semantic.events.SchemaLoadedEvent;
     import com.sd.semantic.settings.GeneralSettings;
+    import mx.core.Application;
 
     /**
     * The purpose of this application is to select the proper semantic component to use
@@ -322,8 +323,8 @@
         }
       }
 
-      /** get target records */
-      targetRecords = inputTargetRecords.split(";");
+      /** get target records */ 
+      targetRecords = inputTargetRecords.split(";"); 
 
       var semanticControl:sControl = new sControl();
       var resultset:Resultset = new Resultset(XML(inputData));
@@ -333,6 +334,7 @@
       semanticControl.percentHeight = 100;
       semanticControl.targetAttributes = targetAttributes;
       semanticControl.targetTypes = targetTypes;
+      semanticControl.targetRecords = targetRecords;
       semanticControl.semanticDataProvider = resultset;
       semanticControl.schema = schema;
 
