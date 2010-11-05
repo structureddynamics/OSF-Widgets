@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+ Displays a list of links.
+-->
+<PodContentBase
+	xmlns="com.esria.samples.dashboard.view.*"
+	xmlns:mx="http://www.adobe.com/2006/mxml"
+	width="100%" height="100%">
+	<mx:Script>
+		<![CDATA[
+			import mx.controls.Label;
+			import flash.net.navigateToURL;
+			import mx.collections.ArrayCollection;
+			import mx.events.ListEvent;
+			import mx.rpc.events.ResultEvent;
+							
+			[Bindable]
+			private var dataProvider:ArrayCollection;
+			
+			override protected function onResultHttpService(e:ResultEvent):void
+			{
+				var a:Array = xmlListToObjectArray(e.result.item);
+				dataProvider = new ArrayCollection(a);
+			}
+			
+			private function onClickList(e:MouseEvent):void
+			{
+				// Only respond to clicks if the user clicks the label rather than the entire width of the renderer.
+				if (e.target is Label)
+				{
+					var urlRequest:URLRequest = new URLRequest(dataProvider[List(e.currentTarget).selectedIndex].url);
+					navigateToURL(urlRequest, "_blank");
+				}
+			}
+			
+		]]>
+	</mx:Script>
+	<mx:List
+		id="list"
+		width="100%" height="100%"
+		dataProvider="{dataProvider}"
+		click="onClickList(event)"
+		borderStyle="none"
+		themeColor="#ffffff"
+		itemRenderer="com.esria.samples.dashboard.renderers.ListPodRenderer" />
+</PodContentBase>
