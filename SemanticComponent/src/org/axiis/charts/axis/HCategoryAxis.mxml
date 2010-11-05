@@ -93,6 +93,17 @@ OTHER DEALINGS IN THE SOFTWARE.
 			
 			var maxMarkerWidth:int=Math.floor(markerSpacing*dataItems.length-2);
 
+      /** @Patch Frederick Giasson - 20 September 2010 */
+      /** 
+      * Path to make sure that if the last marker is too big for the screen, 
+      * we rotate it by 45 degrees to make it fit 
+      */      
+      if(maxMarkerWidth > maxWidth)
+      {
+        labelRotation = 45;
+      }
+      /** endpatch */      
+      
 			lastX=0;
 
 		}
@@ -109,7 +120,33 @@ OTHER DEALINGS IN THE SOFTWARE.
 		private function onItemPreDraw():void {
 			label.x=line.x-(labelRotation == 0 ? label.textWidth/2 : maxWidth/2);
 			label.y=line.y1+5;
-			
+      
+      /** @Patch Frederick Giasson - 20 September 2010 */
+      /** 
+       * Make sure that the leftmost label is not drawn outside of the control. 
+       */       
+      if(label.x < 0)
+      {
+        label.x = 0;
+      }
+      
+      if(label.textWidth > 100)
+      {
+        /** Truncate the text if it is too wide */
+        var testTitle:TextField = new TextField();
+        
+        testTitle.text = label.text + "...";
+        
+        while(testTitle.textWidth > 100)
+        {
+          testTitle.text = testTitle.text.substr(0, testTitle.length - 4) + "...";
+        }
+        
+        label.text = testTitle.text;
+      }
+      
+      /** endpatch */
+      
 			if (currentIndex==0 || currentIndex==itemCount-1) {
 				line.visible=true;
 				label.visible=true;
