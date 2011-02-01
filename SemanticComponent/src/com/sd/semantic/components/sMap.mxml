@@ -137,10 +137,20 @@
           
           /** Base URL of the flex component */
           var baseUrl:String = "./";
-
-          if(Application.application.baseAppUrl && Application.application.baseAppUrl != "")
+          
+          if(Application.application.hasOwnProperty("baseAppUrl"))
           {
-            baseUrl = Application.application.baseAppUrl;
+            if(Application.application.baseAppUrl != "")
+            {
+              baseUrl = Application.application.baseAppUrl;
+            }
+          } 
+          else if(Application.application.parameters.baseAppUrl)
+          {
+            if(Application.application.parameters.baseAppUrl != "")
+            {
+              baseUrl = Application.application.parameters.baseAppUrl;
+            }
           }
 
           /** URL Loader for the map settings file */
@@ -215,7 +225,8 @@
       }
       catch(error:Error)
       {
-        Alert.show("Can't load settings file '/settings/sMap.xml'. The map tool won't be displayed.");
+        Alert.show("Can't load settings file '/settings/sMap.xml'. The map tool won't be displayed." +
+                   "(" + error.message + ")");
         isError = true;
       }
 
