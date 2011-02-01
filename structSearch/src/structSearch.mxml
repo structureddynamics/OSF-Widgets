@@ -79,24 +79,14 @@
     public var displayFilters:ArrayCollection = new ArrayCollection();
 
     /** Settings */
-    private var settings:Config;      
+    private var settings:Config;  
+      
+    [Bindable]
+    private var windowWidth:uint = 420;
       
     /** Initialize the structSearch application */
     private function init():void
     {
-      /**
-      * Initialize the ontological structure used to describe records manipulated by
-      * this semantic application
-      *
-      * Two sources can be exploited:
-      * (1) local schema file(s)
-      * (2) remote schema file(s)
-      */
-
-      /** Load all local schema files needed by this semantic application */
-      schema.loadSchema("data/schemas/iron.xml");
-      schema.loadSchema("data/schemas/cosmo.xml");
-
       /** Load settings */
       /**
        * Load settings
@@ -122,6 +112,19 @@
           baseUrl = Application.application.parameters.baseAppUrl;
         }
       }
+
+      /**
+       * Initialize the ontological structure used to describe records manipulated by
+       * this semantic application
+       *
+       * Two sources can be exploited:
+       * (1) local schema file(s)
+       * (2) remote schema file(s)
+       */
+      
+      /** Load all local schema files needed by this semantic application */
+      schema.loadSchema(baseUrl+"data/schemas/iron.xml");
+      schema.loadSchema(baseUrl+"data/schemas/cosmo.xml");      
       
       /** URL Loader for the map settings file */
       var settingsLoader:URLLoader = new URLLoader();
@@ -167,6 +170,8 @@
       }
       
       this.removeEventListener(Event.COMPLETE, processSettingsHandler);
+      
+      windowWidth = settings.windowWidth;
     }      
            
 
@@ -516,7 +521,7 @@
     ]]>
   </mx:Script>
 
-  <mx:HBox width="{settings.windowWidth}" cornerRadius="7" borderStyle="solid" borderColor="#C6CDD0" paddingTop="15" paddingLeft="15"
+  <mx:HBox width="{windowWidth}" cornerRadius="7" borderStyle="solid" borderColor="#C6CDD0" paddingTop="15" paddingLeft="15"
     paddingRight="15" paddingBottom="15" backgroundColor="#393939" verticalGap="15" id="hbox1">
     <mx:Image source="images/sd_logo_dark_260.png" id="image1" width="260" height="73"/>
  
@@ -535,19 +540,19 @@
     <mx:Button id="searchButton" label="Search" width="95" click="currentState = ''; search();"/>
   </mx:HBox>
 
-  <mx:Panel id="resultsetPanel" width="420" height="230" layout="vertical" title="Search results"
+  <mx:Panel id="resultsetPanel" width="{windowWidth}" height="230" layout="vertical" title="Search results"
     horizontalAlign="center" horizontalScrollPolicy="off">
     <mx:HorizontalList id="resultsList" width="100%" height="100%" change="displayItemDescription(event)">
     </mx:HorizontalList>
   </mx:Panel>
 
-  <mx:TabNavigator id="navigationTabId" width="420" height="500" creationPolicy="all">
+  <mx:TabNavigator id="navigationTabId" width="{windowWidth}" height="500" creationPolicy="all">
     <mx:Canvas id="resultDescriptionPanel" label="Result view" width="100%" height="100%">
     </mx:Canvas>
 
     <mx:Canvas label="Filter" width="100%" height="100%">
       <mx:HBox>
-        <semanticComponents:sPieChart id="semanticWedgeStackChart" itemClick="pieChartItemClick(event)" width="200"
+        <semanticComponents:sPieChart id="semanticWedgeStackChart" itemClick="pieChartItemClick(event)" width="{windowWidth*0.65}"
           height="500"/>
 
         <mx:VBox horizontalAlign="center">
