@@ -41,6 +41,5 @@
 		dataProvider="{dataProvider}"
 		click="onClickList(event)"
 		borderStyle="none"
-		themeColor="#ffffff"
 		itemRenderer="com.esria.samples.dashboard.renderers.ListPodRenderer" />
 </PodContentBase>
