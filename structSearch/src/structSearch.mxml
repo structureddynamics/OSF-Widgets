@@ -39,10 +39,17 @@
   <mx:Script>
     <![CDATA[
 
+    import com.sd.semantic.core.*;
+    import com.sd.semantic.events.*;
+    import com.sd.semantic.settings.*;
+    
     import components.ItemResult;
     import components.ItemResultDescription;
+    
     import events.*;
+    
     import flash.events.KeyboardEvent;
+    
     import mx.collections.ArrayCollection;
     import mx.containers.Canvas;
     import mx.controls.Alert;
@@ -56,9 +63,8 @@
     import mx.rpc.events.ResultEvent;
     import mx.rpc.http.HTTPService;
     import mx.utils.ObjectProxy;
+    
     import org.axiis.events.LayoutItemEvent;
-    import com.sd.semantic.events.*;
-    import com.sd.semantic.core.*;
       
     /** Namespaces references used to resolve attributes and types URIs */
     public var namespaces:Namespaces = new Namespaces();
@@ -72,6 +78,9 @@
     /** Available filters that can be applied to filter the search resultset */
     public var displayFilters:ArrayCollection = new ArrayCollection();
 
+    /** Settings */
+    private var settings:Config;      
+      
     /** Initialize the structSearch application */
     private function init():void
     {
@@ -87,7 +96,79 @@
       /** Load all local schema files needed by this semantic application */
       schema.loadSchema("data/schemas/iron.xml");
       schema.loadSchema("data/schemas/cosmo.xml");
+
+      /** Load settings */
+      /**
+       * Load settings
+       * 
+       * Check if the application that embede this semantic component defined its 
+       * baseAppUrl. If it didn't, we simply use the default local location "./"
+       */
+      
+      /** Base URL of the flex component */
+      var baseUrl:String = "./";
+      
+      if(Application.application.hasOwnProperty("baseAppUrl"))
+      {
+        if(Application.application.baseAppUrl != "")
+        {
+          baseUrl = Application.application.baseAppUrl;
+        }
+      } 
+      else if(Application.application.parameters.baseAppUrl)
+      {
+        if(Application.application.parameters.baseAppUrl != "")
+        {
+          baseUrl = Application.application.parameters.baseAppUrl;
+        }
+      }
+      
+      /** URL Loader for the map settings file */
+      var settingsLoader:URLLoader = new URLLoader();
+      settingsLoader.load(new URLRequest(baseUrl + "settings/Config.xml"));
+      settingsLoader.addEventListener(Event.COMPLETE, processSettingsHandler);      
     }
+      
+    /**
+     * Get, parse and process the settings 
+     * 
+     * @param event URLLoader success/failure event
+     */
+    private function processSettingsHandler(event:Event):void
+    {
+      /** Check if there is any load/parsing error */
+      var isError:Boolean = false;
+      
+      try
+      {
+        /** Create the MapSettings class from the XML file */
+        settings = new Config(new XML(event.target.data));
+      }
+      catch(error:Error)
+      {
+        Alert.show("Can't load settings file 'settings/Config.xml'. The tool won't be displayed." +
+                   "(" + error.message + ")");
+        isError = true;
+      }
+      
+      if(!isError)
+      {
+        if(settings.error == true)
+        {
+          Alert.show(
+            "Required settings are missing in the settings file '/settings/Config.xml'. The tool won't be displayed.");
+          isError = true;
+        }
+      }
+      
+      /** If the setting file is properly loaded, we continue to process the map componet */
+      if(!isError)
+      {
+      }
+      
+      this.removeEventListener(Event.COMPLETE, processSettingsHandler);
+    }      
+           
 
     /** Fault handler for the Search web service endpoint */
     private function faultHandler(event:FaultEvent):void
@@ -287,12 +368,12 @@
         resultDescriptionPanel.removeAllChildren();
 
         var requestParameters
-          :Object = {query: searchQuery.text, datasets: "http://constructscs.com/wsf/datasets/740/", items: 100,
+          :Object = {query: searchQuery.text, datasets: settings.dataset, items: 100,
           page: 0, inference: "on", include_aggregates:"false"};
 
         var httpService:HTTPService = new HTTPService();
 
-        httpService.url = "http://constructscs.com/ws/search/";
+        httpService.url = settings.searchEndpointUrl;
         httpService.method = "POST";
         httpService.headers['Accept'] = 'text/xml';
         httpService.showBusyCursor = true;
@@ -435,7 +516,7 @@
     ]]>
   </mx:Script>
 
-  <mx:HBox width="420" cornerRadius="7" borderStyle="solid" borderColor="#C6CDD0" paddingTop="15" paddingLeft="15"
+  <mx:HBox width="{settings.windowWidth}" cornerRadius="7" borderStyle="solid" borderColor="#C6CDD0" paddingTop="15" paddingLeft="15"
     paddingRight="15" paddingBottom="15" backgroundColor="#393939" verticalGap="15" id="hbox1">
     <mx:Image source="images/sd_logo_dark_260.png" id="image1" width="260" height="73"/>
  
