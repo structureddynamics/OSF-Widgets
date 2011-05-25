@@ -61,6 +61,7 @@ The cartographic information come from various tiling servers.
       
       import mx.collections.ArrayCollection;
       import mx.controls.Alert;
+      import mx.controls.Image;
       import mx.core.Application;
       import mx.events.FlexEvent;
       import mx.events.ResizeEvent;
@@ -68,6 +69,8 @@ The cartographic information come from various tiling servers.
       import mx.rpc.events.FaultEvent;
       import mx.rpc.events.ResultEvent;
       import mx.rpc.http.HTTPService;
+      
+      import com.sd.semantic.core.Schema;
       
       /** Core varibles shared amongst all semantic controls */
       
@@ -177,6 +180,25 @@ The cartographic information come from various tiling servers.
       public function invalidate():void
       {
       }
+      
+      private var _schema:Schema;
+      
+      /** 
+       * Schema used to create the nodes of the graph to be displayed in the relation browser. Each type
+       * will become a node, and each subClassOf relationship will become a sub-concept/super-concept 
+       * relationship between two nodes in the graph.
+       * 
+       * This is a irXML schema.
+       */ 
+      public function get schema():Schema
+      {
+        return (_schema);
+      }
+      
+      public function set schema(value:Schema):void
+      {
+        this._schema = value;
+      }      
       
       /** Initialize the map component */
       public function init():void
@@ -476,8 +498,40 @@ The cartographic information come from various tiling servers.
                 
                 if(lat.length == 1 && long.length == 1)
                 {
+                  var iconUrl = "";
+                  
+                  if(this.schema.getType(subject.type).mapMarkerImageUrls[0] != undefined &&
+                    this.schema.getType(subject.type).mapMarkerImageUrls[0] != "")
+                  {
+                    iconUrl = this.schema.getType(subject.type).mapMarkerImageUrls[0];
+                  }
+                  
+                  if(iconUrl == "" && this.settings.defaultMarkerUrl != "")
+                  {
+                    iconUrl = this.settings.defaultMarkerUrl;
+                  }
+
+                  var markerOptions:MarkerOptions;
+                  
+                  if(iconUrl != "")
+                  {
+                    var icon:Image = new Image();
+                    icon.source = iconUrl;
+                    
+                    markerOptions = new MarkerOptions({ 
+                                                        fillStyle: { color: 0xCC0000 }, 
+                                                        icon: icon
+                                                      });
+                  }
+                  else
+                  {
+                    markerOptions = new MarkerOptions({ 
+                      fillStyle: { color: 0xCC0000 }
+                    });
+                  }
+                  
                   var marker:DataMarker = new DataMarker(new LatLng(lat[0].value, long[0].value), 
-                                                         new MarkerOptions( { fillStyle: { color: 0xCC0000 }} ));
+                                                         markerOptions);
                   
                   marker.data = subject;
                   
