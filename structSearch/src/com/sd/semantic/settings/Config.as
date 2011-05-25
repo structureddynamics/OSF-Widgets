@@ -16,6 +16,7 @@ package com.sd.semantic.settings
     public var error:Boolean = false;    
     
     public var searchEndpointUrl:String = "";
+    public var browseEndpointUrl:String = "";
     public var dataset:String = "";
     public var windowWidth:uint = 400;
 
