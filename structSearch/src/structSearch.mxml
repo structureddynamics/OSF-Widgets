@@ -167,11 +167,56 @@
       /** If the setting file is properly loaded, we continue to process the map componet */
       if(!isError)
       {
+        var requestParameters
+        :Object = {datasets: settings.dataset, items: 0,
+          page: 0, inference: "on", include_aggregates:"true"};
+        
+        var httpService:HTTPService = new HTTPService();
+        
+        httpService.url = settings.browseEndpointUrl;
+        httpService.method = "POST";
+        httpService.headers['Accept'] = 'text/xml';
+        httpService.showBusyCursor = true;
+        httpService.resultFormat = "e4x";
+        httpService.addEventListener(ResultEvent.RESULT, browseResultHandler);
+        httpService.addEventListener(FaultEvent.FAULT, browseFaultHandler);
+        
+        httpService.send(requestParameters);        
       }
       
       this.removeEventListener(Event.COMPLETE, processSettingsHandler);
       
       windowWidth = settings.windowWidth;
+    } 
+      
+    /** Fault handler for the Search web service endpoint */
+    private function browseFaultHandler(event:FaultEvent):void
+    {
+      Alert.show(event.fault.message.toString());
+    }
+    
+    /** Result handler for the Search web service endpoint */
+    private function browseResultHandler(event:ResultEvent):void
+    {
+      var httpService:HTTPService = event.target as HTTPService;
+      
+      /** resultset structured returned by the Search web service endpoint */
+      var resultset:Resultset = new Resultset(event.result);
+      
+      /** Get the total number of records that matches this query */
+      var aggregates = resultset.getSubjectsByType("http://purl.org/ontology/aggregate#Aggregate");
+      
+      var totalResults:Number = 0;
+      
+      for each(var aggr:Subject in aggregates)
+      {
+        if(aggr.predicates["aggr_property"][0].uri == "http://rdfs.org/ns/void#Dataset")
+        {
+          totalResults = Number(aggr.predicates["aggr_count"][0].value);
+        }
+      }
+      
+      nbTotalItems.text = "(" + totalResults + " Sweet Tools)";
     }      
            
 
@@ -200,7 +245,21 @@
 
       /** resultset structured returned by the Search web service endpoint */
       var resultset:Resultset = new Resultset(rset);
+      
 
+      /** Get the total number of records that matches this query */
+      var aggregates = resultset.getSubjectsByType("http://purl.org/ontology/aggregate#Aggregate");
+      
+      var totalResults:Number = 0;
+      
+      for each(var aggr:Subject in aggregates)
+      {
+        if(aggr.predicates["aggr_property"][0].uri == "http://rdfs.org/ns/void#Dataset")
+        {
+          totalResults = Number(aggr.predicates["aggr_count"][0].value);
+        }
+      }
+      
       /** Iterate over all instance records */
       if(resultset.subjects.length > 0)
       {
@@ -209,6 +268,11 @@
           var instanceRecordItem:Array = [];
 
           var instanceRecord:Subject = resultset.subjects[recordNum];
+          
+          if(instanceRecord.type == "http://purl.org/ontology/aggregate#Aggregate")
+          {
+            continue;
+          }
 
           /** 
           * Each subject of the resulset become a sub-resultset that we will feed to the semantic data provier
@@ -323,7 +387,7 @@
       resultDescriptionPanel.addChild(resultItem);
 
       /** Display the number of results found */
-      resultsetPanel.title = resultsetItems.length + " result(s) found";
+      resultsetPanel.title = totalResults + " result(s) found (displaying "+resultsetItems.length+")";
 
       /**
       * Populate the filtering combo box for the pie chart tool
@@ -374,7 +438,7 @@
 
         var requestParameters
           :Object = {query: searchQuery.text, datasets: settings.dataset, items: 100,
-          page: 0, inference: "on", include_aggregates:"false"};
+          page: 0, inference: "on", include_aggregates:"true"};
 
         var httpService:HTTPService = new HTTPService();
 
@@ -528,6 +592,8 @@
     <mx:VBox verticalAlign="middle" height="100%" width="100%">
       <mx:Text text="Semantic Web Sweet Tools Search" color="#FFFFFF" fontSize="16" textAlign="center" width="100%"
         height="47" id="text1"/>
+      <mx:Text id="nbTotalItems"  color="#FFFFFF" fontSize="16" textAlign="center" width="100%"
+               height="47" />
       <mx:Text text="An Ontology Driven Application Demo" width="100%" textAlign="center"  color="#FFFFFF" fontStyle="italic" fontSize="12"/>
     </mx:VBox>
   </mx:HBox>
