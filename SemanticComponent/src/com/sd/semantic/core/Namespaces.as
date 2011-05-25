@@ -38,6 +38,7 @@ package com.sd.semantic.core
       namespaces["http://rdfs.org/ns/void#"] = "void_";
       namespaces["http://purl.org/ontology/muni#"] = "muni_";
       namespaces["http://purl.org/ontology/sco#"] = "sco_";
+      namespaces["http://www.w3.org/2003/01/geo/wgs84_pos#"] = "wgs84pos_";
     }
 
     /**
