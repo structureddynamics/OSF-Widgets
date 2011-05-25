@@ -139,6 +139,7 @@
             child.semanticDataProvider = _semanticDataProvider;
             child.targetAttributes = targetAttributes;
             child.targetTypes = targetTypes;
+            child.schema = schema;
           }
           
           if(child is sBarChart)
@@ -534,6 +535,7 @@
           controlWebMap.semanticDataProvider = _semanticDataProvider;
           controlWebMap.targetAttributes = targetAttributes;
           controlWebMap.targetTypes = targetTypes;
+          controlWebMap.schema = schema;
           
           this.addChildAt(controlWebMap, 0);
           
