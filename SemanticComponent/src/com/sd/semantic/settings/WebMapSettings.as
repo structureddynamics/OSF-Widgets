@@ -98,6 +98,8 @@ package com.sd.semantic.settings
     /** URL of the default map icon image to use as a marker on the map. */
     public var defaultMarkerUrl:String = "";
     
+    public var displayAttributesWithoutResults:Boolean = false;
+    
     
     /**
      * Constructor
