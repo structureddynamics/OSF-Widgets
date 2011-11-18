@@ -6,25 +6,22 @@
   creationComplete="init()" xmlns:panel="com.visualempathy.extensions.panel.*">
   <mx:Script>
     <![CDATA[
-
     import com.esria.samples.dashboard.managers.PodLayoutManager;
     import com.esria.samples.dashboard.managers.StateManager;
     import com.esria.samples.dashboard.view.Pod;
-    import com.sd.semantic.components.sControl;
-    import com.sd.semantic.components.sMap;
     import com.sd.semantic.core.*;
     import com.sd.semantic.events.SchemaLoadedEvent;
     import com.sd.semantic.events.SemanticComponentItemEvent;
     import com.sd.semantic.settings.GeneralSettings;
     import com.sd.semantic.utilities.SemanticUtils;
     import com.visualempathy.extensions.panel.SuperPanelPlus;
-
+    
     import events.IndicatorEvent;
-
+    
     import flash.utils.describeType;
     import flash.utils.getQualifiedClassName;
     import flash.xml.XMLDocument;
-
+    
     import mx.collections.ArrayCollection;
     import mx.collections.XMLListCollection;
     import mx.containers.TitleWindow;
@@ -35,18 +32,24 @@
     import mx.events.DragEvent;
     import mx.events.ListEvent;
     import mx.events.MenuEvent;
+    import mx.events.ModuleEvent;
+    import mx.events.StyleEvent;
     import mx.managers.DragManager;
     import mx.managers.PopUpManager;
     import mx.managers.SystemManager;
+    import mx.modules.IModuleInfo;
+    import mx.modules.ModuleManager;
     import mx.rpc.events.FaultEvent;
     import mx.rpc.events.ResultEvent;
     import mx.rpc.http.HTTPService;
-
-    import org.axiis.events.LayoutItemEvent;
+    import mx.utils.ObjectUtil;
+    
     import org.sunlightlabs.ClearMaps.FeatureEvent;
-
+    
     import settings.*;
-
+    
+    public var info:IModuleInfo;		
+      
     /** Workbench settings */
     public var workbenchSettings:WorkbenchSettings;
 
@@ -67,6 +70,12 @@
     /** Reference to one or multiple target schemas URLs */
     [Bindable]public var inputSchemas:String = "";
 
+    /** 
+     * Specifies a folder path where the settings file for this instance can be found
+     * at the baseAppUrl. 
+     */
+    [Bindable]public var settingsFolder:String = "settings/";
+      
     /** Number of schemas that are supposed to be loaded by the workbench */
     private var schemaToLoad:int = 0;
 
@@ -123,7 +132,7 @@
      * 
      * The structure of this array is: selectedIndicators[...] = attribute-uri
      * 
-     * @default Array()
+     * @default Array() 
      */
     public var selectedIndicators:Array = [];
 
@@ -141,6 +150,26 @@
     /** Selection mode to interact with records from the records list. Two modes: (1) 'selection', (2) 'drag' */
     private var selectionMode:String = "selection";
 
+    /** Base URL of the flex component */
+    private var baseUrl:String = "./";
+    
+    /** Base URL of the flex component */
+    private var settingsUrl:String = "./settings/"; 
+      
+    /** Dashboard component */
+    public var dashboard:DisplayObject;
+      
+    /** 
+    * List of initially selected attributes. These attributes are used to initialize the
+    * Workbench session. This is used to limit the number of columns in the records selector
+    * window.
+    */
+    public var includeAttributesList:Array = [];
+      
+    var columnsColors:Array = [0xFFF7977A, 0xFFF9AD81, 0xFFFDC68A, 0xFFFFF79A, 0xFFC4DF9B, 0xFFA2D39C, 0xFF82CA9D, 0xFF7BCDC8, 0xFF6ECFF6, 0xFF7EA7D8, 0xFF8493CA, 0xFF8882BE, 0xFFA187BE, 0xFFBC8DBF, 0xFFF49AC2, 0xFFF6989D, 0xFFF7977A, 0xFFF9AD81, 0xFFFDC68A, 0xFFFFF79A, 0xFFC4DF9B, 0xFFA2D39C, 0xFF82CA9D, 0xFF7BCDC8, 0xFF6ECFF6, 0xFF7EA7D8, 0xFF8493CA, 0xFF8882BE, 0xFFA187BE, 0xFFBC8DBF, 0xFFF49AC2, 0xFFF6989D, 0xFFF7977A, 0xFFF9AD81, 0xFFFDC68A, 0xFFFFF79A, 0xFFC4DF9B, 0xFFA2D39C, 0xFF82CA9D, 0xFF7BCDC8, 0xFF6ECFF6, 0xFF7EA7D8, 0xFF8493CA, 0xFF8882BE, 0xFFA187BE, 0xFFBC8DBF, 0xFFF49AC2, 0xFFF6989D];      
+      
+      
+      
     /** Initialization of the Workbench */
     private function init():void
     {
@@ -157,6 +186,11 @@
       {
         inputSchemas = Application.application.parameters.inputSchemas;
       }
+      
+      if(Application.application.parameters.settingsFolder)
+      {
+        settingsFolder = Application.application.parameters.settingsFolder;
+      }      
 
       /** 
       * Initialize the non-Indicator component structure used to update records when
@@ -205,17 +239,19 @@
           * Check if the application that embede this semantic component defined its 
           * baseAppUrl. If it didn't, we simply use the default local location "./".
           */
-
-          /** baseURL of the Workbench */
-          var baseUrl:String = "./";
-
+          
           if(Application.application.baseAppUrl && Application.application.baseAppUrl != "")
           {
             baseUrl = Application.application.baseAppUrl;
           }
+          
+          if(Application.application.settingsFolder && Application.application.settingsFolder != "")
+          {
+            settingsUrl = baseUrl + settingsFolder;
+          }          
 
           var settingsLoader:URLLoader = new URLLoader();
-          settingsLoader.load(new URLRequest(baseUrl + "settings/General.xml"));
+          settingsLoader.load(new URLRequest(settingsUrl + "General.xml"));
           settingsLoader.addEventListener(Event.COMPLETE, processGeneralSettingsHandler);
         }
       }
@@ -248,13 +284,6 @@
 
       if(!isError)
       {
-        var baseUrl:String = "./";
-
-        if(Application.application.baseAppUrl && Application.application.baseAppUrl != "")
-        {
-          baseUrl = Application.application.baseAppUrl;
-        }
-
         /** Load the theme if a theme has to be loaded for this application */
         if(generalSettings.theme != "")
         {
@@ -262,7 +291,7 @@
         }
 
         var settingsLoader:URLLoader = new URLLoader();
-        settingsLoader.load(new URLRequest(baseUrl + "settings/Workbench.xml"));
+        settingsLoader.load(new URLRequest(settingsUrl + "Workbench.xml"));
         settingsLoader.addEventListener(Event.COMPLETE, processWorkbenchSettingsHandler);
       }
 
@@ -296,63 +325,100 @@
 
       if(!isError)
       {
-        /** Start the application */
-
-        /** attribute filters */
-        var attributeFilters:String = "all";
-
-        /** dataset filters */
-        var datasetFilters:String = "";
-
-        if(workbenchSettings.filterDatasets.length > 0)
-        {
-          var i:int = 0;
-
-          for each(var filter:String in workbenchSettings.filterDatasets)
-          {
-            if(i > 0)
-            {
-              datasetFilters += (";" + filter);
-            }
-            else
-            {
-              datasetFilters += filter;
-            }
-
-            i++;
-          }
-        }
-        else
-        {
-          datasetFilters = "all";
-        }
-
-        /** type filters */
-        var typeFilters:String = "all";
-
-        /** Get the description of the sticky records */
-        getStickyRecordsDescription(workbenchSettings.stickyRecords);
-
-        /** Get the initial state of the structWSF data */
-
-        var requestParameters
-          :Object = {attributes: attributeFilters, types: typeFilters, datasets: datasetFilters, items: "120",
-          page: "0", include_aggregates:"true"};
-
-        var httpService:HTTPService = new HTTPService();
-
-        httpService.url = workbenchSettings.structWSFBaseURL + "/browse/";
-        httpService.method = "POST";
-        httpService.headers['Accept'] = 'text/xml;q=1';
-        httpService.showBusyCursor = true;
-        httpService.resultFormat = "e4x";
-        httpService.addEventListener(ResultEvent.RESULT, filterResultsetHandler);
-        httpService.addEventListener(FaultEvent.FAULT, filterResultsetFaultHandler);
-
-        httpService.send(requestParameters);
+        /** Create the Dashboard module */
+        info = ModuleManager.getModule(baseUrl + "sDashboard.swf");
+        info.addEventListener(ModuleEvent.READY, modDashboardReadyHandler);
+          
+        info.load();              
       }
 
       this.removeEventListener(Event.COMPLETE, processWorkbenchSettingsHandler);
+    }
+      
+    private function modDashboardReadyHandler(e:ModuleEvent):void 
+    {
+      dashboard = info.factory.create() as DisplayObject;
+      
+      dashboard.baseUrl = this.baseUrl;
+      
+      dashboardPanel.addChild(dashboard);
+      
+      /** Properly position the minimize, maximaze and resize buttons on the SuperPanel */
+      dashboardPanel.positionChildren();
+      
+      /** Create the initial tab */
+      dashboard.addTab("Main");       
+  
+      /** 
+      * Display the tile window that asks to pre-select a series of indicators to use 
+      * initially for the Workbench
+      */ 
+      var selectIndicatorsTileWindow:SelectIndicatorsTileWindow =
+        SelectIndicatorsTileWindow(PopUpManager.createPopUp(this, SelectIndicatorsTileWindow, true));
+    }
+      
+    public function getInitialRecords():void
+    {
+      /** Start the application */
+      
+      /** attribute filters */
+      var attributeFilters:String = "all";
+      
+      /** dataset filters */
+      var datasetFilters:String = "";
+      
+      if(workbenchSettings.filterDatasets.length > 0)
+      {
+        var i:int = 0;
+        
+        for each(var filter:String in workbenchSettings.filterDatasets)
+        {
+          if(i > 0)
+          {
+            datasetFilters += (";" + filter);
+          }
+          else
+          {
+            datasetFilters += filter;
+          }
+          
+          i++;
+        }
+      }
+      else
+      {
+        datasetFilters = "all";
+      }
+      
+      /** type filters */
+      var typeFilters:String = "all";
+      
+      /** Get the description of the sticky records */
+      getStickyRecordsDescription(workbenchSettings.stickyRecords);
+      
+      /** Get the initial state of the structWSF data */
+      
+      var requestParameters:Object = {
+        attributes: attributeFilters, 
+        types: typeFilters, 
+        datasets: datasetFilters, 
+        items: "300",
+        page: "0", 
+        include_aggregates:"true", 
+        include_attributes_list: includeAttributesList.join(";")
+      };
+      
+      var httpService:HTTPService = new HTTPService();
+      
+      httpService.url = workbenchSettings.structWSFBaseURL + "/search/";
+      httpService.method = "POST";
+      httpService.headers['Accept'] = 'text/xml;q=1';
+      httpService.showBusyCursor = true;
+      httpService.resultFormat = "e4x";
+      httpService.addEventListener(ResultEvent.RESULT, filterResultsetHandler);
+      httpService.addEventListener(FaultEvent.FAULT, filterResultsetFaultHandler);
+      
+      httpService.send(requestParameters);         
     }
 
     /** Browse structWSF event handler */
@@ -434,6 +500,11 @@
       {
         return a.indexOf(e) == i;
       })
+        
+      if(recordsTypes.length == 0)
+      {
+        return;
+      }
 
       /** List of all attributes used to create columns in the datagrid */
       var recordsAttributes:Array = [];
@@ -508,6 +579,10 @@
 
       /** Description that goes with the name of the attribute/column */
       var attributeNamesDescription:Array = [];
+      
+      /** Array with the ordered columns to created in the DataGrid */
+      var orderedColumnsClusters:Array = [];
+      var createdAttributes:Array = [];
 
       for each(recordType in recordsTypes)
       {
@@ -555,7 +630,7 @@
           for each(var record:Subject in recordsType)
           {
             /** record element of the datagrid data array */
-            var rec:Array = [];
+            var rec:Object = {};
 
             /**
             * First we create the data for the two main columns:
@@ -568,14 +643,12 @@
             currentRecordID++;
 
             rec["id"] = currentRecordID;
-            rec.length++;
 
             /** Bind the row ID with the record URI */
             recordsUriById[currentRecordID] = record.uri;
 
             /** Get the preferred label of the record to be displayed in the "record" column */
             rec["record"] = record.getPrefLabel(generalSettings.prefLabelAttributes);
-            rec.length++;
 
             /** Get the name of the type of the record */
 
@@ -617,85 +690,336 @@
             }
 
             rec["kind"] = recordTypeName;
-            rec.length++;
 
-            /**
-            * For each unique records attributes, we create a column if they comply with some criterias (see below).
-            */
-            for each(var ra:String in recordsAttributes)
+            for each(var includeAttribute:String in includeAttributesList)
             {
               /** Try to get the description of the attribute in the schema structure */
-              var values:Array = record.getPredicateValues(ra);
-              var attr:SchemaAttribute = schema.getAttribute(ra);
-
-              /**
-              * Only display attributes that can be dispayed in Workbench tools. These
-              * attributes are:
-              *
-              * (1) The ones that have numberic allowedValue (a) Integer (b) Float (c) Boolean
-              * (2) The ones are have a supported display control
-              */
+              var values:Array = record.getPredicateValues(includeAttribute);
+              var attr:SchemaAttribute = schema.getAttribute(includeAttribute);
+              
               if(attr != null)
               {
-                if(attr.allowedPrimitiveValues.indexOf("Integer") != -1 || attr.allowedPrimitiveValues.indexOf("Float")
-                  != -1 || attr.allowedPrimitiveValues.indexOf("Boolean") != -1)
+                /** Get the name of the column to display */
+                var columnName:String = "";
+  
+                columnName = attr.prefLabel
+                  
+                /**
+                * If no preferred label is available for this attribute, we get it by manipulating the
+                * URI of the attribute.
+                */
+                if(columnName == "")
                 {
-                  /** Get the name of the column to display */
-                  var columnName:String = "";
+                  columnName = includeAttribute;
 
-                  columnName = attr.prefLabel
+                  var fullURI = namespaces.getNamespace(includeAttribute);
 
-                  /**
-                  * If no preferred label is available for this attribute, we get it by manipulating the
-                  * URI of the attribute.
-                  */
-                  if(columnName == "")
+                  var end:int = 0;
+
+                  end = fullURI.lastIndexOf("#");
+
+                  if(end == -1)
                   {
-                    columnName = ra;
-
-                    var fullURI = namespaces.getNamespace(ra);
-
-                    var end:int = 0;
-
-                    end = fullURI.lastIndexOf("#");
-
-                    if(end == -1)
-                    {
-                      end = fullURI.lastIndexOf("/");
-                    }
-
-                    if(end > 0)
-                    {
-                      columnName = fullURI.substr(end + 1, (fullURI.length - end));
-                    }
+                    end = fullURI.lastIndexOf("/");
                   }
 
-                  attributeNamesDescription[columnName] = attr;
-
-                  if(values.length > 0)
+                  if(end > 0)
                   {
-                    /**
-                    * @todo Right now, we are only displaying the first value that appears for an attribute.
-                    * We should extend that so that we display a combobox, with all values, for 
-                    * this given datagrid cell.
-                    */
-                    rec[columnName] = values[0].value;
-                    rec.length++;
+                    columnName = fullURI.substr(end + 1, (fullURI.length - end));
+                  }
+                }
+                
+                /** 
+                * Check if the name of the attribute is already existing. If it does, it means
+                * that two attributes share the same prefLabel. In that case, we add something
+                * to it to distinct it from the other one
+                */
+                if(rec[columnName])
+                {
+                  var modfiedColumnName:String = includeAttribute;
+                  
+                  var fullURI = namespaces.getNamespace(includeAttribute);
+                  
+                  var end:int = 0;
+                  
+                  end = fullURI.lastIndexOf("#");
+                  
+                  if(end == -1)
+                  {
+                    end = fullURI.lastIndexOf("/");
+                  }
+                  
+                  if(end > 0)
+                  {
+                    modfiedColumnName = fullURI.substr(end + 1, (fullURI.length - end));
+                  }  
+                  
+                  columnName += " [" + modfiedColumnName + "]";
+                }      
+                
+                attributeNamesDescription[columnName] = attr;
+  
+                /** We define the columns, and their order */    
+                
+                /** We cluster attributes that are comparable one between the others */   
+                if(createdAttributes.indexOf(attr.uri) == -1)
+                {
+                  createdAttributes.push(attr.uri);
+                  
+                  if(!orderedColumnsClusters[0])
+                  {
+                    /** The first set is the one of the attributes which are not comparable with anything else */                  
+                    orderedColumnsClusters = [{
+                      comparableWith: [],
+                      attributes: []
+                    }];
+                  }
+                  
+                  if(attr.comparableWith.length == 0)
+                  {
+                    /** Not comparable with anything */
+                    orderedColumnsClusters[0]["attributes"].push({
+                      "attribute": columnName,
+                      "ordering": columnName
+                    });
                   }
                   else
                   {
-                    rec[columnName] = "";
-                    rec.length++;
+                    /** 
+                    * Try to find a set where one of the comparable attribute can be found.
+                    * If nothing can be found, then we create a new set
+                    */
+                    
+                    var found:Boolean = false;
+                    for(var clusterId = 0; clusterId < orderedColumnsClusters.length; clusterId++)
+                    {
+                      if(clusterId == 0)
+                      {
+                        continue;
+                      }
+                      
+                      for(var i = 0; i < orderedColumnsClusters[clusterId].comparableWith.length; i++)
+                      {
+                        if(orderedColumnsClusters[clusterId].comparableWith[i] == attr.uri)
+                        {
+                          /** We found the cluster where to put that attribute that can be ordered */
+                          orderedColumnsClusters[clusterId]["attributes"].push({
+                            "attribute": columnName,
+                            "ordering": attr.orderingValue
+                          });
+                          
+                          found = true;
+                          break;
+                        }
+                      }
+                      
+                      if(found)
+                      {
+                        break;
+                      }
+                    }
+                    
+                    if(!found)
+                    {
+                      /** Create a new cluster */
+                      orderedColumnsClusters.push({
+                        comparableWith: attr.comparableWith,
+                        attributes: [{
+                          "attribute": columnName,
+                          "ordering": attr.orderingValue
+                        }]
+                      });
+                    }
                   }
                 }
+                
+//                if(attr.orderingValue != "")
+//                {
+//                  /**
+//                   * If an ordering value is defined in the schema, then we use it to order the attributes.
+//                   */
+//                  orderedColumnsClusters[attr.comparableWith].push({
+//                    "attribute": columnName,
+//                    "ordering": attr.orderingValue
+//                  });
+//                }
+//                else
+//                {
+//                  /**
+//                   * If no ordering value is defined in the schema, then we use the attribute's name
+//                   * as ordering value
+//                   */
+//                  orderedColumnsClusters[attr.comparableWith].push({
+//                    "attribute": columnName,
+//                    "ordering": columnName
+//                  });                    
+//                }
+                
+                
+                /** We prepare the values to put in each column, for each row. */
+                if(values.length > 0)
+                {
+                  /**
+                  * @todo Right now, we are only displaying the first value that appears for an attribute.
+                  * We should extend that so that we display a combobox, with all values, for 
+                  * this given datagrid cell.
+                  */
+                  rec[columnName] = values[0].value;
+                }
+                else
+                {
+                  rec[columnName] = "";
+                }                
               }
             }
+            
+//            /**
+//            * For each unique records attributes, we create a column if they comply with some criterias (see below).
+//            */
+//            for each(var ra:String in recordsAttributes)
+//            {
+//              /** Try to get the description of the attribute in the schema structure */
+//              var values:Array = record.getPredicateValues(ra);
+//              var attr:SchemaAttribute = schema.getAttribute(ra);
+//
+//              /**
+//              * Only display attributes that can be dispayed in Workbench tools. These
+//              * attributes are:
+//              *
+//              * (1) The ones that have numberic allowedValue (a) Integer (b) Float (c) Boolean
+//              * (2) The ones are have a supported display control
+//              */
+//              if(attr != null)
+//              {
+//                if(attr.allowedPrimitiveValues.indexOf("Integer") != -1 || 
+//                   attr.allowedPrimitiveValues.indexOf("Float") != -1 || 
+//                   attr.allowedPrimitiveValues.indexOf("Boolean") != -1 ||
+//                   attr.displayControls.indexOf("sBarChart") != -1 ||
+//                   attr.displayControls.indexOf("sLinearChart") != -1)
+//                {
+//                  /** Get the name of the column to display */
+//                  var columnName:String = "";
+//
+//                  columnName = attr.prefLabel
+//
+//                  /**
+//                  * If no preferred label is available for this attribute, we get it by manipulating the
+//                  * URI of the attribute.
+//                  */
+//                  if(columnName == "")
+//                  {
+//                    columnName = ra;
+//
+//                    var fullURI = namespaces.getNamespace(ra);
+//
+//                    var end:int = 0;
+//
+//                    end = fullURI.lastIndexOf("#");
+//
+//                    if(end == -1)
+//                    {
+//                      end = fullURI.lastIndexOf("/");
+//                    }
+//
+//                    if(end > 0)
+//                    {
+//                      columnName = fullURI.substr(end + 1, (fullURI.length - end));
+//                    }
+//                  }
+//                  
+//                  /** 
+//                  * Check if the name of the attribute is already existing. If it does, it means
+//                  * that two attributes share the same prefLabel. In that case, we add something
+//                  * to it to distinct it from the other one
+//                  */
+//                  if(rec[columnName])
+//                  {
+//                    var modfiedColumnName:String = ra;
+//                    
+//                    var fullURI = namespaces.getNamespace(ra);
+//                    
+//                    var end:int = 0;
+//                    
+//                    end = fullURI.lastIndexOf("#");
+//                    
+//                    if(end == -1)
+//                    {
+//                      end = fullURI.lastIndexOf("/");
+//                    }
+//                    
+//                    if(end > 0)
+//                    {
+//                      modfiedColumnName = fullURI.substr(end + 1, (fullURI.length - end));
+//                    }  
+//                    
+//                    columnName += " [" + modfiedColumnName + "]";
+//                  }
+//
+//                  attributeNamesDescription[columnName] = attr;
+//
+//                  if(values.length > 0)
+//                  {
+//                    /**
+//                    * @todo Right now, we are only displaying the first value that appears for an attribute.
+//                    * We should extend that so that we display a combobox, with all values, for 
+//                    * this given datagrid cell.
+//                    */
+//                    rec[columnName] = values[0].value;
+//                    rec.length++;
+//                  }
+//                  else
+//                  {
+//                    rec[columnName] = "";
+//                    rec.length++;
+//                  }
+//                }
+//              }
+//            }
 
             records.addItem(rec);
           }
         }
       }
 
+      /** The list of columns ordered for the data grid */
+      var orderedColumns:Array = [];
+            
+      for(var clusterId = 0; clusterId < orderedColumnsClusters.length; clusterId++)
+      {
+        if(clusterId == 0)
+        {
+          /** Skip the cluster of un-clustered element; we will re-introduce them at the end of the columns */
+          continue;
+        }
+        
+        var columnColor = columnsColors[clusterId];
+        
+        orderedColumnsClusters[clusterId]["attributes"].sortOn("ordering");
+        
+        for(var attributeId = 0; attributeId < orderedColumnsClusters[clusterId]["attributes"].length; attributeId++)
+        {
+          orderedColumns.push({
+            "attribute": orderedColumnsClusters[clusterId]["attributes"][attributeId]["attribute"],
+            "columnColor": columnColor
+          });
+        }
+      }
+      
+      var columnColor = columnsColors[clusterId+1];
+      
+      orderedColumnsClusters[0]["attributes"].sortOn("ordering");
+      
+      /** Now re-integrate the un-clustered attributes */
+      for(var attributeId = 0; attributeId < orderedColumnsClusters[0]["attributes"].length; attributeId++)
+      {
+        orderedColumns.push({
+          "attribute": orderedColumnsClusters[0]["attributes"][attributeId]["attribute"],
+          "columnColor": columnColor
+        });        
+      }
+      
+      
+      
       /**
       * Saves the selection list of the datagrid component.
       * It will be used to re-select possible selected elements after the refresh of the component.
@@ -743,15 +1067,21 @@
         columnType.setStyle("backgroundColor", "#CEE3F6");
         columnType.setStyle("color", "#000000");
         columns.push(columnType);
+        
 
         /** Now we iterate all coloumns that have been created to add checkboxes for each of them */
-        for(var columnName:String in records[0])
+        for(var columnId:int = 0; columnId < orderedColumns.length; columnId++)
         {
+          var columnName:String = orderedColumns[columnId]["attribute"];
+          
           if(columnName != "record" && columnName != "kind" && columnName != "id")
           {
             /** Custom column generated from individual attribute of records populating the datagrid */
             var column:DataGridIndicatorColumn = new DataGridIndicatorColumn(columnName);
 
+            column.setStyle("backgroundColor", "#"+orderedColumns[columnId]["columnColor"].toString(16));
+            column.setStyle("color", "#000000");            
+            
             var testText:TextField = new TextField();
             testText.text = columnName;
             column.width = testText.textWidth + 100;
@@ -762,7 +1092,8 @@
             var checkBoxItemRenderer:ClassFactory = new ClassFactory(RecordsSelectorHeaderRenderer);
 
             /** Check if the column is already selected (when loading a session) */
-            if(selectedIndicators.indexOf(attributeNamesDescription[columnName].uri) != -1)
+            if(attributeNamesDescription[columnName] && 
+               selectedIndicators.indexOf(attributeNamesDescription[columnName].uri) != -1)
             {
               checkBoxItemRenderer.properties = {dataField: {isSelected: true}};
             }
@@ -970,6 +1301,7 @@
         {
           dataset.nbRecords = 0;
           dataset.displayLabel = dataset.prefLabel + " (" + dataset.nbRecords + ")";
+          dataset.enabled = false;
         }
       }
 
@@ -1000,16 +1332,20 @@
             {
               dataset.nbRecords = nbRecords;
               dataset.displayLabel = dataset.prefLabel + " (" + nbRecords + ")";
+              dataset.enabled = (parseInt(nbRecords) == 0 ? false : true);
             }
           }
         }
         else
         {
           datasets.push({displayLabel: datasetsTitles[datasetURI] + " (" + nbRecords + ")",
-            prefLabel: datasetsTitles[datasetURI], nbRecords: nbRecords, uri:datasetURI});
+            prefLabel: datasetsTitles[datasetURI], nbRecords: nbRecords, uri:datasetURI, 
+            enabled: (parseInt(nbRecords) == 0 ? false : true)});
         }
       }
 
+      datasets.sortOn("displayLabel", Array.ASCENDING);
+      
       /**
       * If the allDatasets array is empty, we consider that this the result of the first call to the browse
       * web service, and so that it lists all datasets, kinds and attributes available to the user
@@ -1065,6 +1401,7 @@
         {
           t.nbRecords = 0;
           t.displayLabel = t.prefLabel + " (" + t.nbRecords + ")";
+          t.enabled = false;
         }
       }
 
@@ -1109,16 +1446,19 @@
             {
               t.nbRecords = nbRecords;
               t.displayLabel = t.prefLabel + " (" + nbRecords + ")";
+              t.enabled = (parseInt(nbRecords) == 0 ? false : true);
             }
           }
         }
         else
         {
           types.push({displayLabel: prefLabel + " (" + nbRecords + ")", prefLabel: prefLabel, nbRecords: nbRecords,
-            uri:typeURI});
+            uri:typeURI, enabled: (parseInt(nbRecords) == 0 ? false : true)});
         }
       }
 
+      types.sortOn("displayLabel", Array.ASCENDING);
+      
       /**
       * If the allDatasets array is empty, we consider that this the result of the first call to the browse
       * web service, and so that it lists all datasets, kinds and attributes available to the user
@@ -1168,6 +1508,7 @@
         {
           attr.nbRecords = 0;
           attr.displayLabel = attr.prefLabel + " (" + attr.nbRecords + ")";
+          attr.enabled = false;
         }
       }
 
@@ -1212,16 +1553,19 @@
             {
               attr.nbRecords = nbRecords;
               attr.displayLabel = attr.prefLabel + " (" + nbRecords + ")";
+              attr.enabled = (parseInt(nbRecords) == 0 ? false : true);
             }
           }
         }
         else
         {
           attributes.push({displayLabel: prefLabel + " (" + nbRecords + ")", prefLabel: prefLabel, nbRecords: nbRecords,
-            uri:attributeURI});
+            uri:attributeURI, enabled: (parseInt(nbRecords) == 0 ? false : true)});
         }
       }
 
+      attributes.sortOn("displayLabel", Array.ASCENDING);
+      
       /**
       * If the allDatasets array is empty, we consider that this the result of the first call to the browse
       * web service, and so that it lists all datasets, kinds and attributes available to the user
@@ -1258,7 +1602,7 @@
       var datasets:String = "";
       var types:String = "";
       var attributes:String = "";
-
+     
       if(filteredDatasets.length > 0)
       {
         for each(var dataset:String in filteredDatasets)
@@ -1270,7 +1614,28 @@
       }
       else
       {
-        datasets = "all";
+        if(workbenchSettings.filterDatasets.length > 0)
+        {
+          var i:int = 0;
+          
+          for each(var filter:String in workbenchSettings.filterDatasets)
+          {
+            if(i > 0)
+            {
+              datasets += (";" + filter);
+            }
+            else
+            {
+              datasets += filter;
+            }
+            
+            i++;
+          }
+        }
+        else
+        {
+          datasets = "all";
+        }        
       }
 
       if(filteredKinds.length > 0)
@@ -1301,12 +1666,21 @@
         attributes = "all";
       }
 
-      var requestParameters:Object = {datasets: datasets, types: types, attributes: attributes, items: "50", page: "0",
-        include_inference: "true", include_aggregates:"true"};
+      var requestParameters:Object = {
+        datasets: datasets, 
+        types: types, 
+        attributes: attributes, 
+        items: "300", 
+        page: "0",
+        include_inference: "true", 
+        include_aggregates:"true", 
+        include_attributes_list: includeAttributesList.join(";"),
+        attributes_boolean_operator: "and"
+      };
 
       var httpService:HTTPService = new HTTPService();
 
-      httpService.url = workbenchSettings.structWSFBaseURL + "/browse/";
+      httpService.url = workbenchSettings.structWSFBaseURL + "/search/";
       httpService.method = "POST";
       httpService.headers['Accept'] = 'text/xml;q=1';
       httpService.showBusyCursor = true;
@@ -1390,7 +1764,7 @@
 
       if(lastSelectedRecord == null)
       {
-        var lastSelectedRecord:Subject =
+        lastSelectedRecord =
           selectionsResultset.getSubjectByURI(recordsUriById[event.target.dataProvider[event.target.selectedIndex].id]);
       }
 
@@ -1408,7 +1782,7 @@
         if(attr != null)
         {
           /** skip the sControl creation if it has already been created */
-          var stopComponentCreation = false;
+          var stopComponentCreation:Boolean = false;
 
           for each(var displayControl:String in attr.displayControls)
           {
@@ -1428,8 +1802,12 @@
             continue;
           }
 
-          if((attr.allowedPrimitiveValues.indexOf("Uri") != -1 || attr.allowedPrimitiveValues.indexOf("String") != -1)
-            && attr.displayControls.length > 0)
+          if((attr.allowedPrimitiveValues.indexOf("Uri") != -1 || 
+              attr.allowedPrimitiveValues.indexOf("String") != -1) && 
+             attr.displayControls.length > 0 &&
+             attr.displayControls.indexOf("sBarChart") == -1 &&
+             attr.displayControls.indexOf("sLinearChart") == -1             
+             )
           {
             selectedNonIndicators.push(attr.uri);
 
@@ -1553,14 +1931,29 @@
 
                 this.addEventListener(FeatureEvent.FEATURE_SELECTED, mapFeatureSelectedHandler);
 
-                dashboard.addPod(panelId, title, semanticControl);
+                /** Define a new contextual menu to use for this pod. We use it to rename the title of the pod */
+                var menuItemRenameTitle:ContextMenuItem = new ContextMenuItem("Rename title...");
+                
+                menuItemRenameTitle.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, renamePodTitle);
+                
+                var customContextMenu:ContextMenu = new ContextMenu();
+                
+                /** Hide the default Flash menu items */
+                customContextMenu.hideBuiltInItems();
+                customContextMenu.customItems.push(menuItemRenameTitle);
+
+                /** Add the new pod to the Dashboar */
+                dashboard.addPod(panelId, title, semanticControl, false, customContextMenu);
 
                 targetNonIndicator = semanticControl;
               }
             }
 
             /** Populate the components with the values */
-            targetNonIndicator.semanticDataProvider = new Resultset(records);
+            if(targetNonIndicator != null)
+            {
+              targetNonIndicator.semanticDataProvider = new Resultset(records);
+            }
           }
         }
       }
@@ -1934,6 +2327,7 @@
         var createTab:CreateTabTileWindow =
           CreateTabTileWindow(PopUpManager.createPopUp(this, CreateTabTileWindow, true));
         return;
+        break;
       }
 
       /** Check if the event come from the "view" menu item */
@@ -1997,6 +2391,16 @@
 
         return;
         break;
+        
+        case "select_indocators":
+          /** 
+           * Display the tile window that asks to select a series of indicators to use 
+           * for the Workbench
+           */ 
+          var selectIndicatorsTileWindow:SelectIndicatorsTileWindow =
+          SelectIndicatorsTileWindow(PopUpManager.createPopUp(this, SelectIndicatorsTileWindow, true));
+        return;
+        break;
       }
     }
 
@@ -2042,7 +2446,10 @@
       }
       else
       {
-        dashboard.schema = this.schema;
+        registerClassAlias("com.sd.semantic.core.Schema", Schema);
+        registerClassAlias("com.sd.semantic.core.Namespaces", Namespaces);
+
+        dashboard.schema = ObjectUtil.copy(this.schema) as Schema;
       }
 
       /** Load the session in the Dashboard */
@@ -2052,7 +2459,11 @@
       selectionMode = "drag";
       recordsSelectorPanel.title = "Records selector (drag-and-drop mode)";
 
+      /** Remove all the references to all previously selected indicators */
+      selectedIndicators = [];      
+      
       /** Make sure that all the sControl accept the dragged-and-dropped elements */
+      /*
       var controls:Array = [];
 
       SemanticUtils.getChildrenRecur([this], controls);
@@ -2065,14 +2476,37 @@
           control.addEventListener(DragEvent.DRAG_DROP, dragDropHandler);
         }
       }
+      */
+      
+      /**
+      * Try to load the columns that are in the dashboard session but that may be missing in the workbench
+      */
+      
+      var namespaces:Namespaces = new Namespaces();
+      
+      for each(var tab:XML in event.result.tabs.tab)
+      {
+        for each(var pod:XML in tab.pods.pod)
+        {
+          for each(var targetAttribute:XML in pod.control.targetAttributes.targetAttribute)
+          {
+            if(includeAttributesList.indexOf(targetAttribute.toString()) == -1)
+            {
+              includeAttributesList.push(namespaces.getNamespace(targetAttribute.toString()));
+              selectedIndicators.push(targetAttribute.toString());
+            }
+          }
+        }
+      }      
+      
+      /** Initialize the workbench with the proper data and columns */
+      getInitialRecords();
+      
 
       /** 
       * Make sure that for all loaded controls, we check the column (if it exists) in the
       * records selector panel.
       */
-
-      /** Remove all the references to all previously selected indicators */
-      selectedIndicators = [];
 
       /** 
       * Re-populate the selected indicators list with the possible values
@@ -2159,12 +2593,21 @@
 
         sessionXML += "      <pods>\n";
 
-        /** Add non minimized pods */
+        /** Add non maximized pods */
         for each(var pod:Pod in manager.items)
         {
           sessionXML += "        <pod id=\"" + pod.id + "\">\n";
           sessionXML += "          <title>" + pod.title + "</title>\n";
           sessionXML += "          <minimized>false</minimized>\n";
+          
+          if(pod.getChildAt(0).displayControlSwitcher)
+          {
+            sessionXML += "          <showControlSwitcher>true</showControlSwitcher>\n";
+          }
+          else
+          {
+            sessionXML += "          <showControlSwitcher>false</showControlSwitcher>\n";
+          }
 
           sessionXML += "          <control id=\"" + pod.getChildAt(0).id + "\">\n";
 
@@ -2186,8 +2629,22 @@
 
           sessionXML += "            </targetTypes>\n";
 
+          var selectedComponentObj:Object = pod.getChildAt(0).getChildAt(0).getChildAt(0);
+          var selectedComponentObjName:String = flash.utils.getQualifiedClassName(selectedComponentObj);
+          
+          if(selectedComponentObjName == "sBarChart" ||
+            selectedComponentObjName == "sLinearChart")
+          {
+            sessionXML += "            <vScale min=\""+selectedComponentObj.vScale.minValue+"\" max=\""+selectedComponentObj.vScale.maxValue+"\" />\n";
+          }
+          
+          if(selectedComponentObjName == "sLinearChart")
+          {
+            sessionXML += "            <vAxisLabel>"+selectedComponentObj.getVerticalAxisLabel()+"</vAxisLabel>\n";
+          }
+          
           sessionXML += "            <selectedComponent>"
-            + flash.utils.getQualifiedClassName(pod.getChildAt(0).getChildAt(0)) +
+            + selectedComponentObjName +
             "</selectedComponent>\n";
 
           sessionXML += "              <resultset>\n";
@@ -2214,6 +2671,15 @@
           sessionXML += "        <pod id=\"" + pod.id + "\">\n";
           sessionXML += "          <title>" + pod.title + "</title>\n";
           sessionXML += "          <minimized>true</minimized>\n";
+                    
+          if(pod.getChildAt(0).displayControlSwitcher)
+          {
+            sessionXML += "          <showControlSwitcher>true</showControlSwitcher>\n";
+          }
+          else
+          {
+            sessionXML += "          <showControlSwitcher>false</showControlSwitcher>\n";
+          }         
 
           sessionXML += "          <control id=\"" + pod.getChildAt(0).id + "\">\n";
 
@@ -2387,7 +2853,15 @@
       {
         menuBar.menus[3].dataProvider[4] = XML(deleteTabMenuXML);
       }
-    }
+    }     
+    
+    public function renamePodTitle(event:ContextMenuEvent):void
+    {
+      var renamePod:RenamePodTileWindow =
+        RenamePodTileWindow(PopUpManager.createPopUp(this, RenamePodTileWindow, true));
+      
+      renamePod.targetPod = event.contextMenuOwner;      
+    }  
 
     ]]>
   </mx:Script>
@@ -2427,6 +2901,9 @@
         </menuitem>
 
         <menuitem label="Get HTML Code to Embed" action="get_html"/>
+      </menuitem>
+      <menuitem label="Records">
+        <menuitem label="Select Indicators..." action="select_indocators" />
       </menuitem>
     </mx:XMLList>
   </mx:MenuBar>
@@ -2538,7 +3015,7 @@
     <panel:SuperPanelPlus id="dashboardPanel" x="201" y="301" width="100%" height="100%" layout="absolute"
       title="Dashboard" showControls="true" dragEnabled="true" resizeEnabled="true"
       closeClickEvent="hidePanelHandler(event)" verticalScrollPolicy="off" horizontalScrollPolicy="off">
-      <components:sDashboard id="dashboard" width="100%" height="100%" creationComplete="setup()">
+      <!--components:sDashboard id="dashboard" width="100%" height="100%" creationComplete="setup()">
         <mx:Script>
           <![CDATA[
 
@@ -2553,7 +3030,7 @@
 
           ]]>
         </mx:Script>
-      </components:sDashboard>
+      </components:sDashboard-->
     </panel:SuperPanelPlus>
   </mx:Canvas>
 </mx:Application>
