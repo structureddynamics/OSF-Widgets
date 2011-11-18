@@ -112,6 +112,31 @@ package com.sd.semantic.core
         subjects.push(subject);
       }
     }
+    
+    /**
+     * Remove a subject to the set of subjects belonging to the resultset.
+     *  
+     * @param subject Subject to be removed to the resultset
+     * 
+     * @return Returns nothing
+     * 
+     */
+    public function removeSubject(subject:Subject):void
+    {
+      /**
+       * Check if the subject already exists in the resultset. If it does, we ignore it.
+       */
+      if(subject)
+      {
+        for(var i = 0; i < subjects.length; i++)
+        {
+          if(subjects[i].uri == subject.uri)
+          {
+            subjects.splice(i, 1);
+          }
+        }
+      }
+    }    
 
     /**
      * Get all sujects of a certain type from the resultset.
@@ -292,12 +317,12 @@ package com.sd.semantic.core
       {
         var breakLoop = false;
 
-        for(var predicate:String in subject.predicates)
+        for(var pred:String in subject.predicates)
         {
-          for each(var predicateValue:Array in subject.predicates[predicate])
+          for each(var predicateValue:Array in subject.predicates[pred])
           {
-            if(predicateValue.uri == objectValue || predicateValue.uri == namespaces.getVariable(objectValue)
-              || predicateValue.uri == namespaces.getNamespace(objectValue))
+            if((predicateValue.uri == objectValue || predicateValue.uri == namespaces.getVariable(objectValue)
+               || predicateValue.uri == namespaces.getNamespace(objectValue)) && pred == predicate)
             {
               results.push(subject);
               breakLoop = true;

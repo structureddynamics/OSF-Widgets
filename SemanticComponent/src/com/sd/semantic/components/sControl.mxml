@@ -133,7 +133,15 @@
             child.targetAttributes = targetAttributes;
             child.targetTypes = targetTypes;
           }
-
+          
+          if(child is sWebMap)
+          {
+            child.semanticDataProvider = _semanticDataProvider;
+            child.targetAttributes = targetAttributes;
+            child.targetTypes = targetTypes;
+            child.schema = schema;
+          }
+          
           if(child is sBarChart)
           {
             child.semanticDataProvider = _semanticDataProvider;
@@ -286,7 +294,7 @@
               
               bound = true;
             }
-              break;
+            break;
             
             case "sMap":
             {
@@ -299,10 +307,27 @@
               {
                 switchableControls.push({prefLabel: "Map view", control: null, controlName:displayControl});
               }
-  
+              
               bound = true;
             }
             break;
+            
+            case "sWebMap":
+            {
+              if(bound == false)
+              {
+                this.createControl(displayControl);
+                switchableControls.push({prefLabel: "Web Map view", control: this.getChildAt(0), controlName:displayControl});
+              }
+              else
+              {
+                switchableControls.push({prefLabel: "Web Map view", control: null, controlName:displayControl});
+              }
+              
+              bound = true;
+            }
+            break;
+            
             case "sBarChart":
             {
               if(bound == false)
@@ -494,13 +519,30 @@
           controlMap.semanticDataProvider = _semanticDataProvider;
           controlMap.targetAttributes = targetAttributes;
           controlMap.targetTypes = targetTypes;
-
+          
           this.addChildAt(controlMap, 0);
-
+          
           /** Set the main styleName of the semantic component to this parent sControl */
           if(StyleManager.getStyleDeclaration(".sMap"))
           {
             this.styleName = "sMap";
+          }
+        }
+        break;
+        case "sWebMap":
+        {
+          var controlWebMap:sWebMap = new sWebMap();
+          controlWebMap.semanticDataProvider = _semanticDataProvider;
+          controlWebMap.targetAttributes = targetAttributes;
+          controlWebMap.targetTypes = targetTypes;
+          controlWebMap.schema = schema;
+          
+          this.addChildAt(controlWebMap, 0);
+          
+          /** Set the main styleName of the semantic component to this parent sControl */
+          if(StyleManager.getStyleDeclaration(".sWebMap"))
+          {
+            this.styleName = "sWebMap";
           }
         }
         break;

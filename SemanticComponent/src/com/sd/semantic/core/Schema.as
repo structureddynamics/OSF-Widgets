@@ -483,12 +483,20 @@ package com.sd.semantic.core
       schema.push(schemaXML);
       
       /** Parse the irXML schema file */
-      var attrs:XMLList = schemaXML.attributeList.children();
+      var prefixes:XMLList = schemaXML.prefixList.children();
+
+      /** Parse prefixes */
+      for each(var prefix:XML in prefixes)
+      {
+        this.namespaces.namespaces[prefix.toString()] = prefix.localName() + "_";
+      }
       
       /** Parse attributes */
+      var attrs:XMLList = schemaXML.attributeList.children();
+      
       for each(var attribute:XML in attrs)
       {
-        attributes[attribute.localName()] = new SchemaAttribute(attribute);
+        attributes[attribute.localName()] = new SchemaAttribute(attribute, this.namespaces);
       }
       
       var tps:XMLList = schemaXML.typeList.children();
@@ -496,7 +504,7 @@ package com.sd.semantic.core
       /** Parse types */
       for each(var type:XML in tps)
       {
-        types[type.localName()] = new SchemaType(type);
+        types[type.localName()] = new SchemaType(type, namespaces);
       }
       
       /** Create the hierarchical types structure */

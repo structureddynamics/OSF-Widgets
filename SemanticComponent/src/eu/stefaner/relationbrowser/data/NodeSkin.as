@@ -3,6 +3,7 @@ package eu.stefaner.relationbrowser.data
   public class NodeSkin
   {
     public var type:String = "";
+    public var uri:String = "";
     public var image:String = "";
     public var tooltips:Boolean = true; 
     public var shape:String = "circle";

@@ -206,9 +206,19 @@
         /** Base URL of the flex component */
         var baseUrl:String = "./";
         
-        if(Application.application.baseAppUrl && Application.application.baseAppUrl != "")
+        if(Application.application.hasOwnProperty("baseAppUrl"))
         {
-          baseUrl = Application.application.baseAppUrl;
+          if(Application.application.baseAppUrl != "")
+          {
+            baseUrl = Application.application.baseAppUrl;
+          }
+        } 
+        else if(Application.application.parameters.baseAppUrl)
+        {
+          if(Application.application.parameters.baseAppUrl != "")
+          {
+            baseUrl = Application.application.parameters.baseAppUrl;
+          }
         }
         
         var generalSettingsLoader:URLLoader = new URLLoader();
@@ -243,7 +253,8 @@
         }
         catch(error:Error)
         { 
-          Alert.show("Can't load settings file '/settings/General.xml'. The linear chart tool won't be displayed.");
+          Alert.show("Can't load settings file '/settings/General.xml'. The linear chart tool won't be displayed." +
+                     "(" + error.message + ")");
           isError = true;
         }
         
@@ -262,10 +273,20 @@
           /** Base URL of the flex component */
           var baseUrl:String = "./";
           
-          if(Application.application.baseAppUrl && Application.application.baseAppUrl != "")
+          if(Application.application.hasOwnProperty("baseAppUrl"))
           {
-            baseUrl = Application.application.baseAppUrl;
-          }          
+            if(Application.application.baseAppUrl != "")
+            {
+              baseUrl = Application.application.baseAppUrl;
+            }
+          } 
+          else if(Application.application.parameters.baseAppUrl)
+          {
+            if(Application.application.parameters.baseAppUrl != "")
+            {
+              baseUrl = Application.application.parameters.baseAppUrl;
+            }
+          }        
           
           /** URL Loader for the map settings file */
           var settingsLoader:URLLoader = new URLLoader();
@@ -292,7 +313,8 @@
         }
         catch(error:Error)
         { 
-          Alert.show("Can't load settings file '/settings/sRelationBrowser.xml'. The map tool won't be displayed.");
+          Alert.show("Can't load settings file '/settings/sRelationBrowser.xml'. The map tool won't be displayed." +
+                     "(" + error.message + ")");
           isError = true;
         }
          
@@ -311,10 +333,20 @@
           /** Base URL of the flex component */
           var baseUrl:String = "./";
           
-          if(Application.application.baseAppUrl && Application.application.baseAppUrl != "")
+          if(Application.application.hasOwnProperty("baseAppUrl"))
           {
-            baseUrl = Application.application.baseAppUrl;
-          }              
+            if(Application.application.baseAppUrl != "")
+            {
+              baseUrl = Application.application.baseAppUrl;
+            }
+          } 
+          else if(Application.application.parameters.baseAppUrl)
+          {
+            if(Application.application.parameters.baseAppUrl != "")
+            {
+              baseUrl = Application.application.parameters.baseAppUrl;
+            }
+          }            
           
           var skinsLoader:URLLoader = new URLLoader();
           
@@ -342,6 +374,11 @@
         {
           var nodeSkin:NodeSkin = new NodeSkin(node.@type.toString());
             
+          if(node.@uri != undefined)
+          {
+            nodeSkin.uri = node.@uri.toString();
+          }
+          
           if(node.tooltips != undefined)
           {
             if(node.tooltips.toString().toLocaleLowerCase() == "true")
@@ -984,7 +1021,7 @@
         /** Get the record description of that node. */
         
         /** Make sure we have the proper settings to get relations betwen concepts and things */
-        if(settings.thingsDataset.length > 0 && settings.sparqlWebServiceEndpoint != "")
+        if(settings.conceptsDataset.length > 0 && settings.sparqlWebServiceEndpoint != "")
         {          
           /** Namespaces know by this application */
           var namespaces:Namespaces = new Namespaces();          
@@ -1399,7 +1436,7 @@
         var subject:Subject = targetRecordResultset.getSubjectByURI(targetRecordURI);
 
         /** If the target node's type is ignore in the settings file, we don't display it */
-        if(settings.ignoreNodeTypes.indexOf(subject.type) == -1)
+        if(settings.ignoreNodeTypes.indexOf(subject.type) == -1 && settings.ignoreNodeUris.indexOf(subject.uri) == -1)
         {
           /** Add this new node selection to the breadcrum navigation tool */
           
@@ -1417,19 +1454,48 @@
             }             
           }
                     
-          /** If the node has mode than one type, we choose the first one that has a node skin defined */
+          /** If the node has more than one type, we choose the first one that has a node skin defined */
           var nodeType:String = subject.type;
-          var nodeSkin:NodeSkin = skinsManager.getNodeSkinByType(subject.type);
           
-          for each(var tt:Array in subject.getPredicateValues("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))
+          /** 
+           * First check if there is a sco:relationBrowserNodeType relationship defined for this record.
+           * If there is, we will use this assignation instead of the type definition of the record
+           * to bind the skin to this record.
+           */
+          var scoType:Array = subject.getPredicateValues("http://purl.org/ontology/sco#relationBrowserNodeType");
+          
+          var nodeSkin:NodeSkin;
+          
+          if(scoType.length > 0)
           {
-            nodeSkin = skinsManager.getNodeSkinByType(tt["uri"]);
-            
-            if(nodeSkin.defaultNode == false)
+            nodeSkin = skinsManager.getNodeSkinByType(scoType[0].uri);
+          }
+          else
+          {
+            nodeSkin = skinsManager.getNodeSkinByType(subject.type);
+          
+            for each(var tt:Array in subject.getPredicateValues("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))
             {
-              nodeType = tt["uri"];
-              break;
+              nodeSkin = skinsManager.getNodeSkinByType(tt["uri"]);
+              
+              if(nodeSkin.defaultNode == false)
+              {
+                nodeType = tt["uri"];
+                break;
+              }
             }
+          }
+          
+          /** 
+          * If there is a node skin defined for this specific URI, we use it instead of the
+          * node skin by type
+          */
+          
+          var nodeSkinByUri:NodeSkin = skinsManager.getNodeSkinByUri(subject.uri);
+          
+          if(nodeSkinByUri != null)
+          {
+            nodeSkin = nodeSkinByUri;
           }
           
           var selectedNodeTypes:Array = [];
@@ -1501,7 +1567,7 @@
           if(linkedSubject)
           {
             /** Check if the linked node has to be ignored by the settings file */
-            if(settings.ignoreNodeTypes.indexOf(linkedSubject.type) == -1)
+            if(settings.ignoreNodeTypes.indexOf(linkedSubject.type) == -1 && settings.ignoreNodeUris.indexOf(linkedSubject.uri) == -1)
             {
               /** Name of the linked subject node */
               var linkedSubjectName:String = "";
@@ -1511,18 +1577,47 @@
     
               /** If the node has mode than one type, we choose the first one that has a node skin defined */
               var nodeType:String = linkedSubject.type;
-              var nodeSkin:NodeSkin = skinsManager.getNodeSkinByType(linkedSubject.type);
               
-              for each(var lType:Array in linkedSubject.getPredicateValues("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))
+              /** 
+               * First check if there is a sco:relationBrowserNodeType relationship defined for this record.
+               * If there is, we will use this assignation instead of the type definition of the record
+               * to bind the skin to this record.
+               */
+              var scoType:Array = linkedSubject.getPredicateValues("http://purl.org/ontology/sco#relationBrowserNodeType");
+              
+              var nodeSkin:NodeSkin;
+              
+              if(scoType.length > 0)
               {
-                nodeSkin = skinsManager.getNodeSkinByType(lType["uri"]);
+                nodeSkin = skinsManager.getNodeSkinByType(scoType[0].uri);
+              }
+              else
+              {
+                nodeSkin = skinsManager.getNodeSkinByType(linkedSubject.type);
                 
-                if(nodeSkin.defaultNode == false)
+                for each(var lType:Array in linkedSubject.getPredicateValues("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))
                 {
-                  nodeType = lType["uri"];
-                  break;
-                }
-              }           
+                  nodeSkin = skinsManager.getNodeSkinByType(lType["uri"]);
+                  
+                  if(nodeSkin.defaultNode == false)
+                  {
+                    nodeType = lType["uri"];
+                    break;
+                  }
+                }                
+              }              
+              
+              /** 
+               * If there is a node skin defined for this specific URI, we use it instead of the
+               * node skin by type
+               */
+              
+              var nodeSkinByUri:NodeSkin = skinsManager.getNodeSkinByUri(linkedSubject.uri);
+              
+              if(nodeSkinByUri != null)
+              {
+                nodeSkin = nodeSkinByUri;
+              }              
               
               /** Generate a node for each target node. */
               relationBrowser.addNode(new NodeData(nodeArc.uri, 
@@ -1617,7 +1712,7 @@
           if(linkedSubject)
           {    
             /** Check if the linked node has to be ignored by the settings file */
-            if(settings.ignoreNodeTypes.indexOf(linkedSubject.type) == -1)
+            if(settings.ignoreNodeTypes.indexOf(linkedSubject.type) == -1 && settings.ignoreNodeUris.indexOf(linkedSubject.uri) == -1)
             {            
               /** Name of the linked subject node */
               var linkedSubjectName:String = "";
@@ -1626,18 +1721,47 @@
               
               /** If the node has mode than one type, we choose the first one that has a node skin defined */
               var nodeType:String = linkedSubject.type;
-              var nodeSkin:NodeSkin = skinsManager.getNodeSkinByType(linkedSubject.type);
               
-              for each(var lType:Array in linkedSubject.getPredicateValues("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))
+              /** 
+               * First check if there is a sco:relationBrowserNodeType relationship defined for this record.
+               * If there is, we will use this assignation instead of the type definition of the record
+               * to bind the skin to this record.
+               */
+              var scoType:Array = linkedSubject.getPredicateValues("http://purl.org/ontology/sco#relationBrowserNodeType");
+              
+              var nodeSkin:NodeSkin;
+              
+              if(scoType.length > 0)
               {
-                nodeSkin = skinsManager.getNodeSkinByType(lType["uri"]);
+                nodeSkin = skinsManager.getNodeSkinByType(scoType[0].uri);
+              }
+              else
+              {
+                nodeSkin = skinsManager.getNodeSkinByType(linkedSubject.type);
                 
-                if(nodeSkin.defaultNode == false)
+                for each(var lType:Array in linkedSubject.getPredicateValues("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))
                 {
-                  nodeType = lType["uri"];
-                  break;
-                }
-              }                
+                  nodeSkin = skinsManager.getNodeSkinByType(lType["uri"]);
+                  
+                  if(nodeSkin.defaultNode == false)
+                  {
+                    nodeType = lType["uri"];
+                    break;
+                  }
+                }       
+              }                            
+              
+              /** 
+               * If there is a node skin defined for this specific URI, we use it instead of the
+               * node skin by type
+               */
+              
+              var nodeSkinByUri:NodeSkin = skinsManager.getNodeSkinByUri(linkedSubject.uri);
+              
+              if(nodeSkinByUri != null)
+              {
+                nodeSkin = nodeSkinByUri;
+              }              
               
               /** Generate a node for each target node. */
               relationBrowser.addNode(new NodeData(nodeArc.from, 

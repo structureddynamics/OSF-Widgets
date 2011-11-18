@@ -39,10 +39,17 @@
   <mx:Script>
     <![CDATA[
 
+    import com.sd.semantic.core.*;
+    import com.sd.semantic.events.*;
+    import com.sd.semantic.settings.*;
+    
     import components.ItemResult;
     import components.ItemResultDescription;
+    
     import events.*;
+    
     import flash.events.KeyboardEvent;
+    
     import mx.collections.ArrayCollection;
     import mx.containers.Canvas;
     import mx.controls.Alert;
@@ -56,9 +63,8 @@
     import mx.rpc.events.ResultEvent;
     import mx.rpc.http.HTTPService;
     import mx.utils.ObjectProxy;
+    
     import org.axiis.events.LayoutItemEvent;
-    import com.sd.semantic.events.*;
-    import com.sd.semantic.core.*;
       
     /** Namespaces references used to resolve attributes and types URIs */
     public var namespaces:Namespaces = new Namespaces();
@@ -72,22 +78,147 @@
     /** Available filters that can be applied to filter the search resultset */
     public var displayFilters:ArrayCollection = new ArrayCollection();
 
+    /** Settings */
+    private var settings:Config;  
+      
+    [Bindable]
+    private var windowWidth:uint = 420;
+      
     /** Initialize the structSearch application */
     private function init():void
     {
+      /** Load settings */
       /**
-      * Initialize the ontological structure used to describe records manipulated by
-      * this semantic application
-      *
-      * Two sources can be exploited:
-      * (1) local schema file(s)
-      * (2) remote schema file(s)
-      */
+       * Load settings
+       * 
+       * Check if the application that embede this semantic component defined its 
+       * baseAppUrl. If it didn't, we simply use the default local location "./"
+       */
+      
+      /** Base URL of the flex component */
+      var baseUrl:String = "./";
+      
+      if(Application.application.hasOwnProperty("baseAppUrl"))
+      {
+        if(Application.application.baseAppUrl != "")
+        {
+          baseUrl = Application.application.baseAppUrl;
+        }
+      } 
+      else if(Application.application.parameters.baseAppUrl)
+      {
+        if(Application.application.parameters.baseAppUrl != "")
+        {
+          baseUrl = Application.application.parameters.baseAppUrl;
+        }
+      }
 
+      /**
+       * Initialize the ontological structure used to describe records manipulated by
+       * this semantic application
+       *
+       * Two sources can be exploited:
+       * (1) local schema file(s)
+       * (2) remote schema file(s)
+       */
+      
       /** Load all local schema files needed by this semantic application */
-      schema.loadSchema("data/schemas/iron.xml");
-      schema.loadSchema("data/schemas/cosmo.xml");
+      schema.loadSchema(baseUrl+"data/schemas/iron.xml");
+      schema.loadSchema(baseUrl+"data/schemas/cosmo.xml");      
+      
+      /** URL Loader for the map settings file */
+      var settingsLoader:URLLoader = new URLLoader();
+      settingsLoader.load(new URLRequest(baseUrl + "settings/Config.xml"));
+      settingsLoader.addEventListener(Event.COMPLETE, processSettingsHandler);      
     }
+      
+    /**
+     * Get, parse and process the settings 
+     * 
+     * @param event URLLoader success/failure event
+     */
+    private function processSettingsHandler(event:Event):void
+    {
+      /** Check if there is any load/parsing error */
+      var isError:Boolean = false;
+      
+      try
+      {
+        /** Create the MapSettings class from the XML file */
+        settings = new Config(new XML(event.target.data));
+      }
+      catch(error:Error)
+      {
+        Alert.show("Can't load settings file 'settings/Config.xml'. The tool won't be displayed." +
+                   "(" + error.message + ")");
+        isError = true;
+      }
+      
+      if(!isError)
+      {
+        if(settings.error == true)
+        {
+          Alert.show(
+            "Required settings are missing in the settings file '/settings/Config.xml'. The tool won't be displayed.");
+          isError = true;
+        }
+      }
+      
+      /** If the setting file is properly loaded, we continue to process the map componet */
+      if(!isError)
+      {
+        var requestParameters
+        :Object = {datasets: settings.dataset, items: 0,
+          page: 0, inference: "on", include_aggregates:"true"};
+        
+        var httpService:HTTPService = new HTTPService();
+        
+        httpService.url = settings.browseEndpointUrl;
+        httpService.method = "POST";
+        httpService.headers['Accept'] = 'text/xml';
+        httpService.showBusyCursor = true;
+        httpService.resultFormat = "e4x";
+        httpService.addEventListener(ResultEvent.RESULT, browseResultHandler);
+        httpService.addEventListener(FaultEvent.FAULT, browseFaultHandler);
+        
+        httpService.send(requestParameters);        
+      }
+      
+      this.removeEventListener(Event.COMPLETE, processSettingsHandler);
+      
+      windowWidth = settings.windowWidth;
+    } 
+      
+    /** Fault handler for the Search web service endpoint */
+    private function browseFaultHandler(event:FaultEvent):void
+    {
+      Alert.show(event.fault.message.toString());
+    }
+    
+    /** Result handler for the Search web service endpoint */
+    private function browseResultHandler(event:ResultEvent):void
+    {
+      var httpService:HTTPService = event.target as HTTPService;
+      
+      /** resultset structured returned by the Search web service endpoint */
+      var resultset:Resultset = new Resultset(event.result);
+      
+      /** Get the total number of records that matches this query */
+      var aggregates = resultset.getSubjectsByType("http://purl.org/ontology/aggregate#Aggregate");
+      
+      var totalResults:Number = 0;
+      
+      for each(var aggr:Subject in aggregates)
+      {
+        if(aggr.predicates["aggr_property"][0].uri == "http://rdfs.org/ns/void#Dataset")
+        {
+          totalResults = Number(aggr.predicates["aggr_count"][0].value);
+        }
+      }
+      
+      nbTotalItems.text = "(" + totalResults + " Sweet Tools)";
+    }      
+           
 
     /** Fault handler for the Search web service endpoint */
     private function faultHandler(event:FaultEvent):void
@@ -114,7 +245,21 @@
 
       /** resultset structured returned by the Search web service endpoint */
       var resultset:Resultset = new Resultset(rset);
+      
 
+      /** Get the total number of records that matches this query */
+      var aggregates = resultset.getSubjectsByType("http://purl.org/ontology/aggregate#Aggregate");
+      
+      var totalResults:Number = 0;
+      
+      for each(var aggr:Subject in aggregates)
+      {
+        if(aggr.predicates["aggr_property"][0].uri == "http://rdfs.org/ns/void#Dataset")
+        {
+          totalResults = Number(aggr.predicates["aggr_count"][0].value);
+        }
+      }
+      
       /** Iterate over all instance records */
       if(resultset.subjects.length > 0)
       {
@@ -123,6 +268,11 @@
           var instanceRecordItem:Array = [];
 
           var instanceRecord:Subject = resultset.subjects[recordNum];
+          
+          if(instanceRecord.type == "http://purl.org/ontology/aggregate#Aggregate")
+          {
+            continue;
+          }
 
           /** 
           * Each subject of the resulset become a sub-resultset that we will feed to the semantic data provier
@@ -237,7 +387,7 @@
       resultDescriptionPanel.addChild(resultItem);
 
       /** Display the number of results found */
-      resultsetPanel.title = resultsetItems.length + " result(s) found";
+      resultsetPanel.title = totalResults + " result(s) found (displaying "+resultsetItems.length+")";
 
       /**
       * Populate the filtering combo box for the pie chart tool
@@ -287,12 +437,12 @@
         resultDescriptionPanel.removeAllChildren();
 
         var requestParameters
-          :Object = {query: searchQuery.text, datasets: "http://constructscs.com/wsf/datasets/740/", items: 100,
-          page: 0, inference: "on", include_aggregates:"false"};
+          :Object = {query: searchQuery.text, datasets: settings.dataset, items: 100,
+          page: 0, inference: "on", include_aggregates:"true"};
 
         var httpService:HTTPService = new HTTPService();
 
-        httpService.url = "http://constructscs.com/ws/search/";
+        httpService.url = settings.searchEndpointUrl;
         httpService.method = "POST";
         httpService.headers['Accept'] = 'text/xml';
         httpService.showBusyCursor = true;
@@ -435,13 +585,15 @@
     ]]>
   </mx:Script>
 
-  <mx:HBox width="420" cornerRadius="7" borderStyle="solid" borderColor="#C6CDD0" paddingTop="15" paddingLeft="15"
+  <mx:HBox width="{windowWidth}" cornerRadius="7" borderStyle="solid" borderColor="#C6CDD0" paddingTop="15" paddingLeft="15"
     paddingRight="15" paddingBottom="15" backgroundColor="#393939" verticalGap="15" id="hbox1">
     <mx:Image source="images/sd_logo_dark_260.png" id="image1" width="260" height="73"/>
  
     <mx:VBox verticalAlign="middle" height="100%" width="100%">
       <mx:Text text="Semantic Web Sweet Tools Search" color="#FFFFFF" fontSize="16" textAlign="center" width="100%"
         height="47" id="text1"/>
+      <mx:Text id="nbTotalItems"  color="#FFFFFF" fontSize="16" textAlign="center" width="100%"
+               height="47" />
       <mx:Text text="An Ontology Driven Application Demo" width="100%" textAlign="center"  color="#FFFFFF" fontStyle="italic" fontSize="12"/>
     </mx:VBox>
   </mx:HBox>
@@ -454,19 +606,19 @@
     <mx:Button id="searchButton" label="Search" width="95" click="currentState = ''; search();"/>
   </mx:HBox>
 
-  <mx:Panel id="resultsetPanel" width="420" height="230" layout="vertical" title="Search results"
+  <mx:Panel id="resultsetPanel" width="{windowWidth}" height="230" layout="vertical" title="Search results"
     horizontalAlign="center" horizontalScrollPolicy="off">
     <mx:HorizontalList id="resultsList" width="100%" height="100%" change="displayItemDescription(event)">
     </mx:HorizontalList>
   </mx:Panel>
 
-  <mx:TabNavigator id="navigationTabId" width="420" height="500" creationPolicy="all">
+  <mx:TabNavigator id="navigationTabId" width="{windowWidth}" height="500" creationPolicy="all">
     <mx:Canvas id="resultDescriptionPanel" label="Result view" width="100%" height="100%">
     </mx:Canvas>
 
     <mx:Canvas label="Filter" width="100%" height="100%">
       <mx:HBox>
-        <semanticComponents:sPieChart id="semanticWedgeStackChart" itemClick="pieChartItemClick(event)" width="200"
+        <semanticComponents:sPieChart id="semanticWedgeStackChart" itemClick="pieChartItemClick(event)" width="{windowWidth*0.65}"
           height="500"/>
 
         <mx:VBox horizontalAlign="center">

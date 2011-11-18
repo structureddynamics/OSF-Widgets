@@ -130,9 +130,20 @@
         
         /** Base URL of the flex component */
         var baseUrl:String = "./";
-        if(Application.application.baseAppUrl && Application.application.baseAppUrl != "")
+        
+        if(Application.application.hasOwnProperty("baseAppUrl"))
         {
-          baseUrl = Application.application.baseAppUrl;
+          if(Application.application.baseAppUrl != "")
+          {
+            baseUrl = Application.application.baseAppUrl;
+          }
+        } 
+        else if(Application.application.parameters.baseAppUrl)
+        {
+          if(Application.application.parameters.baseAppUrl != "")
+          {
+            baseUrl = Application.application.parameters.baseAppUrl;
+          }
         }
         
         var settingsLoader:URLLoader = new URLLoader();
@@ -169,7 +180,8 @@
       }
       catch(error:Error)
       { 
-        Alert.show("Can't load settings file '/settings/General.xml'. The bar chart tool won't be displayed.");
+        Alert.show("Can't load settings file '/settings/General.xml'. The bar chart tool won't be displayed." +
+                   "(" + error.message + ")");
         isError = true;
       }
       
