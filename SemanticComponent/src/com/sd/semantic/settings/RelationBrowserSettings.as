@@ -55,9 +55,12 @@ package com.sd.semantic.settings
     
     /** URI of the property defining the label to use to display the name of a related thing */
     public var relatedThingsLabels:Array = [];
-
+    
     /** List of URIs of node types to ignore when getting node data from the graph structure. */
     public var ignoreNodeTypes:Array = [];    
+    
+    /** List of URIs of node to ignore when getting node data from the graph structure. */
+    public var ignoreNodeUris:Array = [];    
     
     /** URI of the dataset where the things records are indexed */
     public var thingsDataset:String = "";

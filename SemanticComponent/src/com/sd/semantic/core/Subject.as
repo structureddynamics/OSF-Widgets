@@ -201,10 +201,11 @@ package com.sd.semantic.core
     /**
      * Get the preffered URLs for the subject.
      * 
-     * Note: this function is influenced by the <prefLabelAttributes /> setting of the General.xml setting file.
+     * Note: this function is influenced by the <prefURLAttributes /> setting of the General.xml setting file.
      *   
-     * @param prefLabelAttributes
-     * @return 
+     * @param prefURLAttributes
+     * @return The preffered URL to use to refer to this subject. If no preffered label are defined, the 
+     *         URI of the subject is returned.
      */
     public function getPrefURL(prefURLAttributes:Array = null):String
     {
@@ -235,7 +236,7 @@ package com.sd.semantic.core
         }
       }
       
-      return ("");
+      return(uri);
     }    
     
     /**

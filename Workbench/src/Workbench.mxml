@@ -620,7 +620,7 @@
             rec.length++;
 
             /**
-            * For each unique records attributes, we create a column if they comply with some criterias (see bellow).
+            * For each unique records attributes, we create a column if they comply with some criterias (see below).
             */
             for each(var ra:String in recordsAttributes)
             {
