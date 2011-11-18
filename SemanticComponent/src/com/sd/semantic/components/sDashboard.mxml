@@ -205,10 +205,20 @@ The semanict dashboard instances are created (saved) using the Workbench applica
 
           /** Base URL of the flex component */
           var baseUrl:String = "./";
-
-          if(Application.application.baseAppUrl && Application.application.baseAppUrl != "")
+          
+          if(Application.application.hasOwnProperty("baseAppUrl"))
           {
-            baseUrl = Application.application.baseAppUrl;
+            if(Application.application.baseAppUrl != "")
+            {
+              baseUrl = Application.application.baseAppUrl;
+            }
+          } 
+          else if(Application.application.parameters.baseAppUrl)
+          {
+            if(Application.application.parameters.baseAppUrl != "")
+            {
+              baseUrl = Application.application.parameters.baseAppUrl;
+            }
           }
 
           /** Keep track of the attributes, from the record, that have been bound to this control. */

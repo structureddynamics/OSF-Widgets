@@ -14,7 +14,7 @@ package eu.stefaner.relationbrowser.data
     {
       for each(var skin:NodeSkin in nodes)
       {
-        if(skin.type == nodeSkin.type)
+        if(skin.type == nodeSkin.type && skin.uri == nodeSkin.uri)
         {
           return;
         }
@@ -36,6 +36,20 @@ package eu.stefaner.relationbrowser.data
       /** If no skin is found for this type, we simply return a default one */
       return(new NodeSkin(type, true));
     }
+    
+    public function getNodeSkinByUri(uri:String):NodeSkin
+    {
+      for each(var skin:NodeSkin in nodes)
+      {
+        if(skin.uri == uri)
+        {
+          return(skin);
+        }
+      }
+      
+      /** If no skin is found for this type, we simply return a default one */
+      return(null);
+    }    
     
     public function addEdgeSkin(edgeSkin:EdgeSkin):void
     {

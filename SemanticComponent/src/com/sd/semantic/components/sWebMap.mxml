@@ -1,0 +1,1758 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--- 
+
+The sWebMap component is used to display interactive maps. These interactive maps
+are generally used to contextualize records in a geographic matter.
+The cartographic information come from various tiling servers.
+
+@author Frederick Giasson, Structured Dynamics LLC.
+
+-->
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml"
+           xmlns:toolbox="com.flextoolbox.controls.*"
+           creationComplete="init()" 
+           width="100%" 
+           height="100%"
+           horizontalScrollPolicy="off" 
+           verticalScrollPolicy="off" >
+  
+  <mx:Script>
+    <![CDATA[
+      import com.flextoolbox.controls.CheckBoxList;
+      import com.flextoolbox.controls.listClasses.CheckBoxListItemRenderer;
+      import com.google.maps.InfoWindowOptions;
+      import com.google.maps.LatLng;
+      import com.google.maps.LatLngBounds;
+      import com.google.maps.Map;
+      import com.google.maps.MapEvent;
+      import com.google.maps.MapMouseEvent;
+      import com.google.maps.MapMoveEvent;
+      import com.google.maps.MapType;
+      import com.google.maps.controls.MapTypeControl;
+      import com.google.maps.controls.OverviewMapControl;
+      import com.google.maps.controls.OverviewMapControlOptions;
+      import com.google.maps.controls.PositionControl;
+      import com.google.maps.controls.ScaleControl;
+      import com.google.maps.controls.ZoomControl;
+      import com.google.maps.overlays.Marker;
+      import com.google.maps.overlays.MarkerOptions;
+      import com.google.maps.overlays.Polygon;
+      import com.google.maps.overlays.PolygonOptions;
+      import com.google.maps.overlays.Polyline;
+      import com.google.maps.overlays.PolylineOptions;
+      import com.google.maps.overlays.TileLayerOverlay;
+      import com.google.maps.services.Directions;
+      import com.google.maps.services.DirectionsEvent;
+      import com.google.maps.styles.FillStyle;
+      import com.google.maps.styles.StrokeStyle;
+      import com.sd.semantic.components.webmap.AttributeValueFilterTileWindow;
+      import com.sd.semantic.components.webmap.DataMarker;
+      import com.sd.semantic.components.webmap.DataPolygon;
+      import com.sd.semantic.components.webmap.DataPolyline;
+      import com.sd.semantic.core.Resultset;
+      import com.sd.semantic.core.Subject;
+      import com.sd.semantic.settings.WebMapSettings;
+      
+      import flash.events.GeolocationEvent;
+      import flash.events.MouseEvent;
+      import flash.events.TransformGestureEvent;
+      import flash.external.ExternalInterface;
+      import flash.sensors.Geolocation;
+      
+      import mx.collections.ArrayCollection;
+      import mx.controls.Alert;
+      import mx.controls.Image;
+      import mx.core.Application;
+      import mx.events.FlexEvent;
+      import mx.events.ResizeEvent;
+      import mx.managers.PopUpManager;
+      import mx.rpc.events.FaultEvent;
+      import mx.rpc.events.ResultEvent;
+      import mx.rpc.http.HTTPService;
+      
+      import com.sd.semantic.core.Schema;
+      
+      /** Core varibles shared amongst all semantic controls */
+      
+      /** 
+       * Specifies that this component is a semantic component. If a component in a Flex application is a semantic
+       * semantic component, this means that other semantic component can't behave differently depending of the "kind"
+       * (semantic or not) of components that are present in the layout. This variable is just to specify is a component
+       * is a semantic one or not.
+       */
+      public var semanticComponent:Boolean = true;
+      
+      /**
+       * Specifies that this control is required within a display cluster.
+       * This means that if we have a SemanticHBox that has 2 required semantic
+       * components and that these components have removed themselves from the display
+       * this means that the parent layout cluster (the smeantic hbox), will remove
+       * itself as well. If a semantic component is marked as not required (required=false)
+       * it means that it won't be considered by the semantic hbox. So, even if such a semantic
+       * component has data in it, its parent cluster can remove itself.
+       */
+      public var required:Boolean = true;
+      
+      /** Target record attributes to display in the component */
+      public var targetAttributes:Array = [];
+      
+      /** Target record types to display in the component */
+      public var targetTypes:Array = [];
+      
+      /** Specifies if the sControl's targetAttribute has been bound to a know semantic control. */
+      public var bound:Boolean = false;
+      
+      private var _semanticDataProvider:Resultset;
+      
+      /** Input records. This is a Resultset structure (see the structXML XML data structure) */
+      public function get semanticDataProvider():Resultset
+      {
+        return (_semanticDataProvider);
+      }
+      
+      public function set semanticDataProvider(value:Resultset):void
+      {
+        _semanticDataProvider = value;
+        
+        if(_initialized)
+        {
+        }
+      }
+      
+      /** Specifies what attribute(s) of a record have been bound to this semantic component */
+      public var boundAttributes:Array = [];
+      
+      /** Specifies if the component has already been initialized or not. */
+      private var _initialized:Boolean = false;
+      
+      /** Map settings */
+      private var settings:WebMapSettings;
+      
+      /** The Google Map Object */
+      private var map:Map;
+      
+      /** Titles of the datasets loaded by the workbench */
+      private var datasetsTitles:Array = [];
+      
+      /** Resultset of subjects generated by the Filtering component of the workbench */
+      public var filteringResultset:Resultset = null;     
+      
+      /** List of all filted datasets used to filters the records to display in the records selector panel */
+      private var filteredDatasets:Array = [];
+      
+      /** List of all filted types used to filters the records to display in the records selector panel */
+      private var filteredKinds:Array = [];
+      
+      /** List of all filted attributes used to filters the records to display in the records selector panel */
+      private var filteredAttributes:Array = new Array();      
+      
+      /** List of all datasets that can be used, for this session, as a filtering criteria */
+      private var allDatasets:Array = [];
+      
+      /** List of all types that can be used, for this session, as a filtering criteria */
+      private var allKinds:Array = [];
+      
+      /** List of all attributes that can be used, for this session, as a filtering criteria */
+      private var allAttributes:Array = [];
+      
+      /** List of all the currently displayed markers on the map */
+      private var markers:Array = [];
+      
+      /** List of all the currently displayed polygons on the map */
+      private var polygons:Array = [];
+      
+      /** List of all the currently displayed polylines on the map */
+      private var polylines:Array = [];
+      
+      /** List of all the defined attribute/value filters currently defined by the user */
+      private var attributeValueFilters:Array = [];
+      
+      /** The current resultset's display page */
+      private var currentResultsetPage = 0;
+      
+      /** The total number of results for the current search query */
+      private var nbResults = 0;
+      
+      /** Possible global filtering query to apply to the search queries */
+      private var query = "";
+      
+      /** Invalidate the map to redraw it */
+      public function invalidate():void
+      {
+      }
+      
+      private var _schema:Schema;
+      
+      /** 
+       * Schema used to create the nodes of the graph to be displayed in the relation browser. Each type
+       * will become a node, and each subClassOf relationship will become a sub-concept/super-concept 
+       * relationship between two nodes in the graph.
+       * 
+       * This is a irXML schema.
+       */ 
+      public function get schema():Schema
+      {
+        return (_schema);
+      }
+      
+      public function set schema(value:Schema):void
+      {
+        this._schema = value;
+      }      
+      
+      /** Initialize the map component */
+      public function init():void
+      {
+        if(_initialized == false)
+        {
+          if(_semanticDataProvider != null)
+          {
+            /**
+             * Load settings
+             * 
+             * Check if the application that embede this semantic component defined its 
+             * baseAppUrl. If it didn't, we simply use the default local location "./"
+             */
+            
+            /** Base URL of the flex component */
+            var baseUrl:String = "./";
+            
+            if(Application.application.hasOwnProperty("baseAppUrl"))
+            {
+              if(Application.application.baseAppUrl != "")
+              {
+                baseUrl = Application.application.baseAppUrl;
+              }
+            } 
+            else if(Application.application.parameters.baseAppUrl)
+            {
+              if(Application.application.parameters.baseAppUrl != "")
+              {
+                baseUrl = Application.application.parameters.baseAppUrl;
+              }
+            }
+            
+            /** URL Loader for the map settings file */
+            var settingsLoader:URLLoader = new URLLoader();
+            settingsLoader.load(new URLRequest(baseUrl + "settings/sWebMap.xml"));
+            settingsLoader.addEventListener(Event.COMPLETE, processSettingsHandler);
+            
+            /** Keep track of the attributes, from the record, that have been bound to this control. */
+            if(targetAttributes.length > 0)
+            {
+              for each(var tAttr in targetAttributes)
+              {
+                boundAttributes.push(tAttr);
+              }
+            }          
+          }
+          
+          _initialized = true;
+        }
+      } 
+      
+      /**
+       * Get, parse and process the map settings 
+       * 
+       * @param event URLLoader success/failure event
+       */
+      private function processSettingsHandler(event:Event):void
+      {
+        /** Check if there is any load/parsing error */
+        var isError:Boolean = false;
+        
+        try
+        {
+          /** Create the MapSettings class from the XML file */
+          settings = new WebMapSettings(new XML(event.target.data));
+        }
+        catch(error:Error)
+        {
+          Alert.show("Can't load settings file '/settings/sWebMap.xml'. The map tool won't be displayed." +
+            "(" + error.message + ")");
+          isError = true;
+        }
+        
+        if(!isError)
+        {
+          if(settings.error == true)
+          {
+            Alert.show(
+              "Required settings are missing in the settings file '/settings/sWebMap.xml'. The map tool won't be displayed.");
+            isError = true;
+          }
+        }
+        
+        /** If the setting file is properly loaded, we continue to process the map component */
+        if(!isError)
+        {
+          map = new Map();
+          
+          map.width = mapContainer.width;
+          map.height = mapContainer.height;
+          map.sensor = "false";
+          map.key = settings.googleMapAPIKey;
+          map.url = settings.googleMapAPIUrl;
+          map.addEventListener(MapEvent.MAP_READY, onMapReady);
+          map.addEventListener(MapMoveEvent.MOVE_END, onMapMoved);
+
+          mapContainer.addChild(map);
+          mapContainer.addEventListener(ResizeEvent.RESIZE, onMapResize);
+          
+          if(ExternalInterface.available)
+          {
+            if(settings.displayResultsHTML)
+            {
+              ExternalInterface.addCallback("gotoResultsPage", gotoResultsPage);
+            }
+
+            if(settings.displaySearchHTML)
+            {
+              ExternalInterface.addCallback("search", search);
+              ExternalInterface.call("displaySearch");
+            }
+            
+            if(settings.displayFiltersHTML)
+            {
+              ExternalInterface.addCallback("addDatasetFilter", addDatasetFilter);
+              ExternalInterface.addCallback("removeDatasetFilter", removeDatasetFilter);
+
+              ExternalInterface.addCallback("addTypeFilter", addTypeFilter);
+              ExternalInterface.addCallback("removeTypeFilter", removeTypeFilter);
+              
+              ExternalInterface.addCallback("addAttributeFilter", addAttributeFilter);
+              ExternalInterface.addCallback("removeAttributeFilter", removeAttributeFilter);
+              
+              ExternalInterface.addCallback("addAttributeValueFilterJS", addAttributeValueFilterJS);
+              ExternalInterface.addCallback("removeAttributeValueFilterJS", removeAttributeValueFilterJS);
+            }
+            
+            ExternalInterface.addCallback("recordOver", recordOver);
+            ExternalInterface.addCallback("recordOut", recordOut);
+            
+            /** Remove the filtering component if the user wants it in HTML */
+            if(!settings.displayFilters)
+            {
+              filtersContainer.parent.removeChild(filtersContainer);
+            }  
+          }
+        }
+        
+        this.removeEventListener(Event.COMPLETE, processSettingsHandler);
+      }
+      
+      /**
+       * Event that get trigged when the map's container is resized
+       * 
+       * @param event Event 
+       */      
+      private function onMapResize(event:ResizeEvent):void 
+      {
+        map.width = mapContainer.width;
+        map.height = mapContainer.height;      
+      }      
+      
+      /**
+       * Event that get trigged when the map view changed. 
+       * 
+       * @param event Event 
+       */      
+      private function onMapMoved(event:MapMoveEvent):void 
+      {   
+        filterRecords();
+      }   
+      
+      /** Fault handler for the Search web service endpoint */
+      private function searchFaultHandler(event:FaultEvent):void
+      {
+        Alert.show(event.fault.message.toString());
+      }
+      
+      /** Result handler for the Search web service endpoint */
+      private function searchResultHandler(event:ResultEvent):void
+      {
+        /** Check if there is any load/parsing error */
+        var isError:Boolean = false;
+        
+        try
+        {
+          filteringResultset = new Resultset(event.result);
+        }
+        catch(error:Error)
+        {
+          Alert.show("Error reading the resultset");
+          isError = true;
+        }
+        
+        if(!isError)
+        {   
+          /** Calculate the number of results for this resultset */
+          for each(var s:Subject in filteringResultset.subjects)
+          {
+            if(s.type == "http://purl.org/ontology/aggregate#Aggregate" &&
+              s.getPredicateValues("aggr_property")[0].uri == "http://rdfs.org/ns/void#Dataset")
+            {
+              nbResults += Number(s.getPredicateValues("aggr_count")[0].value); 
+            }
+          }
+          
+          /** Change the pagination control */
+          if(ExternalInterface.available && settings.displayResultsHTML)
+          {
+            ExternalInterface.call("displayResultsPagination", nbResults, currentResultsetPage, settings.resultsPerPage); 
+          }          
+          
+          /** display available datasets */
+          
+          /** 
+          * Check if we have a local copy of the names of the datasets defined on the target structWSF instance 
+          * This initiates the population of the flex filtering component.
+          */
+          if(ExternalInterface.available && (settings.displayFilters || settings.displayFiltersHTML ))
+          {
+            var so:SharedObject = SharedObject.getLocal("sd_WebMap");
+            
+            if(so.data.datasets)
+            {
+              datasetsTitles = so.data.datasets
+              displayDatasets();
+            }
+            else
+            {
+              getDatasetsTitles();
+            }
+          }
+          
+          /** Check if we display the results within the webpage. */
+          if(ExternalInterface.available && settings.displayFiltersHTML)
+          {
+            /** Aggregate all the results to display within the webpage */
+            var htmlSubjects:Array = [];
+            
+            for each(var s:Subject in filteringResultset.subjects)
+            {
+              if(s.type != "http://purl.org/ontology/aggregate#Aggregate")
+              {
+                htmlSubjects.push({
+                  uri: s.uri,
+                  type: s.type,
+                  prefLabel: s.getPrefLabel(),
+                  description: s.getDescription(),
+                  prefURL: s.getPrefURL(),
+                  dataset: "",
+                  img: "" 
+                });
+              }              
+            }
+            
+            ExternalInterface.call("displayResults", htmlSubjects);
+          }
+          
+          /** Hide all markers, and only shows the ones that have to be displayed */
+          for each(var m:Marker in markers)
+          {
+            /** Close all potentially opened info windows */
+            m.closeInfoWindow();
+            
+            /** Hide all markers */
+            m.hide();
+          }          
+          
+          /** Hide all polygons, and only shows the ones that have to be displayed */
+          for each(var p:Polygon in polygons)
+          {
+            /** Hide all polygons */
+            p.hide();
+          }          
+          
+          /** Hide all polylines, and only shows the ones that have to be displayed */
+          for each(var pl:Polyline in polylines)
+          {
+            /** Hide all markers */
+            pl.hide();
+          }          
+          
+          /** Show/add markers for the records in the filtered resultset */
+          for each(var subject:Subject in filteringResultset.subjects)
+          {
+            if(subject.type != "http://purl.org/ontology/aggregate#Aggregate")
+            {
+              /** Make sure this marker is not already displayed on the map */
+              var found:Boolean = false;
+              
+              for each(m in markers)
+              {
+                if(m.data.uri == subject.uri)
+                {
+                  found = true;
+                  m.show();
+                  break;
+                }
+              }
+              
+              if(!found)
+              {
+                /** Display Markers on the map */
+                var lat:Array = subject.getPredicateValues("http://www.w3.org/2003/01/geo/wgs84_pos#lat");
+                var long:Array = subject.getPredicateValues("http://www.w3.org/2003/01/geo/wgs84_pos#long");
+                
+                if(lat.length == 1 && long.length == 1)
+                {
+                  var iconUrl = "";
+                  
+                  if(this.schema.getType(subject.type).mapMarkerImageUrls[0] != undefined &&
+                    this.schema.getType(subject.type).mapMarkerImageUrls[0] != "")
+                  {
+                    iconUrl = this.schema.getType(subject.type).mapMarkerImageUrls[0];
+                  }
+                  
+                  if(iconUrl == "" && this.settings.defaultMarkerUrl != "")
+                  {
+                    iconUrl = this.settings.defaultMarkerUrl;
+                  }
+
+                  var markerOptions:MarkerOptions;
+                  
+                  if(iconUrl != "")
+                  {
+                    var icon:Image = new Image();
+                    icon.source = iconUrl;
+                    
+                    markerOptions = new MarkerOptions({ 
+                                                        fillStyle: { color: 0xCC0000 }, 
+                                                        icon: icon
+                                                      });
+                  }
+                  else
+                  {
+                    markerOptions = new MarkerOptions({ 
+                      fillStyle: { color: 0xCC0000 }
+                    });
+                  }
+                  
+                  var marker:DataMarker = new DataMarker(new LatLng(lat[0].value, long[0].value), 
+                                                         markerOptions);
+                  
+                  marker.data = subject;
+                  
+                  marker.addEventListener(MapMouseEvent.CLICK, onMarkerClick);
+                  
+                  map.addOverlay(marker);
+                  
+                  markers.push(marker);
+                }
+              }
+
+              /** Make sure this polygon is not already displayed on the map */
+              if(!found)
+              {
+                for each(var p:Polygon in polygons)
+                {
+                  if(p.data.uri == subject.uri)
+                  {
+                    found = true;
+                    p.show();
+                    break;
+                  }
+                }              
+              
+                if(!found)
+                {
+                  /** Display Polygons on the map */
+                  var polygonCoordinates:Array = subject.getPredicateValues("http://purl.org/ontology/sco#polygonCoordinates");
+                  
+                  if(polygonCoordinates.length == 1)
+                  {
+                    var rawPoints:Array = String(polygonCoordinates[0]["value"]).split(" ");
+                    
+                    var polygonPoints:Array = [];
+                    
+                    for each(var point:String in rawPoints)
+                    {
+                      var points:Array = point.split(",");
+                      
+                      polygonPoints.push(new LatLng(points[1], points[0]));
+                    }
+                    
+                    var polygon:DataPolygon = new DataPolygon(polygonPoints, new PolygonOptions({ 
+                      strokeStyle: new StrokeStyle({
+                        color: 0xCC0000,
+                        thickness: 1,
+                        alpha: 0.7}), 
+                      fillStyle: new FillStyle({
+                        color: 0xCC0000,
+                        alpha: 0.7})
+                    }));
+                    
+                    polygon.data = subject;
+                    
+                    //polygon.addEventListener(MapMouseEvent.CLICK, onPolygonClick);
+                    
+                    map.addOverlay(polygon);
+                    
+                    polygons.push(polygon);
+                  }   
+                }
+              }
+              
+              /** Make sure this polylines is not already displayed on the map */
+              if(!found)
+              {
+                for each(var pl:Polyline in polylines)
+                {
+                  if(pl.data.uri == subject.uri)
+                  {
+                    found = true;
+                    pl.show();
+                    break;
+                  }
+                }              
+                
+                if(!found)
+                {
+                  /** Display Polygons on the map */
+                  var polylinesCoordinates:Array = subject.getPredicateValues("http://purl.org/ontology/sco#polylineCoordinates");
+                  
+                  if(polylinesCoordinates.length == 1)
+                  {
+                    var rawPoints:Array = String(polylinesCoordinates[0]["value"]).split(" ");
+                    
+                    var polylinePoints:Array = [];
+                    
+                    for each(var point:String in rawPoints)
+                    {
+                      var points:Array = point.split(",");
+                      
+                      polylinePoints.push(new LatLng(points[1], points[0]));
+                    }
+                    
+                    var polyline:DataPolyline = new DataPolyline(polylinePoints, new PolylineOptions({ 
+                      strokeStyle: new StrokeStyle({
+                      color: 0xCC0000,
+                      thickness: 2,
+                      alpha: 0.7}), 
+                      fillStyle: new FillStyle({
+                      color: 0xCC0000,
+                      alpha: 0.7})
+                    }));
+                    
+                    polyline.data = subject;
+                    
+                    //polygon.addEventListener(MapMouseEvent.CLICK, onPolylineClick);
+                    
+                    map.addOverlay(polyline);
+                    
+                    polygons.push(polyline);
+                  }   
+                }
+              }              
+            }
+          }      
+        }
+        
+        
+//        /** Get the total number of records that matches this query */
+//        var aggregates = filteringResultset.getSubjectsByType("http://purl.org/ontology/aggregate#Aggregate");
+//        
+//        var totalResults:Number = 0;
+//        
+//        for each(var aggr:Subject in aggregates)
+//        {
+//          if(aggr.predicates["aggr_property"][0].uri == "http://rdfs.org/ns/void#Dataset")
+//          {
+//            totalResults = Number(aggr.predicates["aggr_count"][0].value);
+//          }
+//        }
+//        
+//        nbTotalItems.text = "(" + totalResults + " Sweet Tools)";
+      }  
+      
+      /** Get the titles of the datasets available to the workbench */
+      private function getDatasetsTitles():void
+      {
+        /**
+         * We get the name of all datasets define on this structWSF instance 
+         * from the DatasetRead web service endpoint 
+         */
+        
+        /**
+         * Note: There is currently a bug in the Flash player that remove all headers we can
+         *       set for a GET query. This means that only the default Accept header of the 
+         *       search are sent. This can cause issues depending on the search (none with
+         *       IE and FireFox.
+         *        
+         *       http://verveguy.blogspot.com/2008/07/truth-about-flex-httpservice.html
+         *       https://bugs.adobe.com/jira/browse/FP-209
+         */
+        
+        /** Web service querier */
+        var httpService:HTTPService = new HTTPService();
+        
+        var requestParameters:Object = {uri: "all"};
+        
+        httpService.url = settings.structWSFBaseURL + "dataset/read/";
+        httpService.method = "GET";
+        httpService.headers['Accept'] = 'application/xml';
+        httpService.showBusyCursor = true;
+        httpService.resultFormat = "e4x";
+        httpService.addEventListener(ResultEvent.RESULT, processDatasetsReadHandler);
+        httpService.addEventListener(FaultEvent.FAULT, processDatasetsReadFaultHandler);
+        
+        httpService.send(requestParameters);
+      }
+      
+      /** Handle errors returned by the DatasetRead web service endpoint */
+      private function processDatasetsReadFaultHandler(event:FaultEvent):void
+      {
+        /*      
+        if(event.message.rootCause.target.data)
+        {
+        var errorMsg:XML = new XML(event.message.rootCause.target.data);
+        
+        if(errorMsg.description)
+        {
+        Alert.show(errorMsg.debugInformation, errorMsg.description);
+        return;
+        }
+        else
+        {
+        Alert.show("Can't read dataset descriptions");
+        return;
+        }
+        }
+        else
+        {
+        Alert.show("Can't read dataset descriptions");
+        return;
+        }
+        */
+      }
+      
+      /** Handle the resultset returned by the DatasetRead web service endpoint */
+      private function processDatasetsReadHandler(event:ResultEvent):void
+      {
+        if(event.result is XML)
+        {
+          var resultset:Resultset = new Resultset(event.result);
+          
+          var datasets:Array = resultset.getSubjectsByType("void_Dataset");
+          
+          for each(var subject:Subject in datasets)
+          {
+            datasetsTitles[subject.uri] = subject.predicates["dcterms_title"][0].value;
+          }
+        }
+        else
+        {
+          return;
+        }
+        
+        var so:SharedObject = SharedObject.getLocal("sd_WebMap");
+        
+        so.data.datasets = datasetsTitles;
+        
+        so.flush();
+        
+        displayDatasets();
+      }
+      
+      /** Display the datasets in the data filtering panel of the workbench */
+      private function displayDatasets():void
+      {
+        var aggregates:Array = filteringResultset.getSubjectsByType("aggr_Aggregate");
+        var datasetsAggregates:Array =
+          filteringResultset.getSubjectsByPredicateObjectValue("aggr_property", "void_Dataset", aggregates);
+        var datasets:Array = [];
+        
+        /** re-initialize the counts to be display to 0. In the following steps, counts will be re-populated */
+//        if(allDatasets.length > 0)
+//        {
+//          for each(var dataset:Object in allDatasets)
+//          {
+//            dataset.nbRecords = 0;
+//            dataset.displayLabel = dataset.prefLabel + " (" + dataset.nbRecords + ")";
+//          }
+//        }
+        
+        for each(var datasetAggregate:Subject in datasetsAggregates)
+        {
+          var datasetURI:String = datasetAggregate.predicates["aggr_object"][0].uri;
+          var nbRecords:String = datasetAggregate.predicates["aggr_count"][0].value;
+          
+          if(!datasetsTitles[datasetURI])
+          {
+            /** 
+             * If the dataset title is not existing, it means that the titles come from the local cache
+             * and that a new dataset appeared on the structWSF instance.
+             *   
+             * This means that we have to re-fetch the dataset titles from the DatasetRead web service
+             */
+            
+            getDatasetsTitles();
+            
+            return;
+          }
+          
+//          if(allDatasets.length > 0)
+//          {
+//            for each(var dataset:Object in allDatasets)
+//            {
+//              if(dataset.uri == datasetURI)
+//              {
+//                dataset.nbRecords = nbRecords;
+//                dataset.displayLabel = dataset.prefLabel + " (" + nbRecords + ")";
+//              }
+//            }
+//          }
+//          else
+//          {
+            var checkboxSelected:Boolean = false;
+            
+            if(filteredDatasets.indexOf(datasetURI) != -1)
+            {
+              checkboxSelected = true;
+            }
+          
+            datasets.push({displayLabel: datasetsTitles[datasetURI] + " (" + nbRecords + ")",
+              prefLabel: datasetsTitles[datasetURI], nbRecords: nbRecords, uri:datasetURI, selected:checkboxSelected});
+//          }
+        }
+        
+        /**
+         * If the allDatasets array is empty, we consider that this the result of the first call to the search
+         * web service, and so that it lists all datasets, kinds and attributes available to the user
+         */
+//        if(allDatasets.length == 0)
+//        {
+        
+        if(settings.displayFilters)
+        {
+          allDatasets = datasets;
+          datasetFilterList.dataProvider = allDatasets;
+        }
+        
+        if(settings.displayFiltersHTML)
+        {    
+          ExternalInterface.call("displayFiltersDataset", datasets);
+        }
+        
+        
+//        }
+//        else
+//        {
+//          /** Update the data provider of the filtering lists */
+//          for(var i:String in datasetFilterList.dataProvider)
+//          {
+//            for each(var allDatasetsItem:Object in allDatasets)
+//            {
+//              if(datasetFilterList.dataProvider[i].uri == allDatasetsItem.uri)
+//              {
+//                datasetFilterList.dataProvider[i].nbRecords == allDatasetsItem.nbRecords;
+//                datasetFilterList.dataProvider[i].displayLabel == allDatasetsItem.displayLabel;
+//                break;
+//              }
+//            }
+//          }
+//          
+//          datasetFilterList.invalidateList();
+//        }
+        
+        displayKinds();
+      }     
+      
+      /** 
+       * Display the types (kinds) of records available from all datasets handled by the workbench,                       
+       * in the filtering panel 
+       */
+      private function displayKinds():void
+      {
+        /** 
+         * Aggregates returned by the Search web service endpoints. We calculate the number of records
+         * for each type from these aggregates.
+         */
+        var aggregates:Array = filteringResultset.getSubjectsByType("aggr_Aggregate");
+        
+        var typesAggregates:Array =
+          filteringResultset.getSubjectsByPredicateObjectValue("aggr_property", "rdf_type", aggregates);
+        
+        var types:Array = [];
+        
+        /** re-initialize the counts to be display to 0. In the following steps, counts will be re-populated */
+//        if(allKinds.length > 0)
+//        {
+//          for each(var t:Object in allKinds)
+//          {
+//            t.nbRecords = 0;
+//            t.displayLabel = t.prefLabel + " (" + t.nbRecords + ")";
+//          }
+//        }
+        
+        
+        for each(var typeAggregate:Subject in typesAggregates)
+        {
+          var typeURI:String = typeAggregate.predicates["aggr_object"][0].uri;
+          var nbRecords:String = typeAggregate.predicates["aggr_count"][0].value;
+          /*
+          var type:SchemaType = schema.getType(typeURI);
+          */
+          var type = null;
+          var prefLabel:String = "";
+          
+          
+          if(type == null)
+          {
+            /** no type defined in the schema for this type URI */
+            var end:int = 0;
+            var name:String = "";
+            
+            end = typeURI.lastIndexOf("#");
+            
+            if(end == -1)
+            {
+              end = typeURI.lastIndexOf("/");
+            }
+            
+            if(end > 0)
+            {
+              end += 1;
+              
+              prefLabel = typeURI.substr(end, (typeURI.length - end));
+            }
+          }
+          else
+          {
+            prefLabel = type.prefLabel;
+          }
+          
+//          if(allKinds.length > 0)
+//          {
+//            for each(var t:Object in allKinds)
+//            {
+//              if(t.uri == typeURI)
+//              {
+//                t.nbRecords = nbRecords;
+//                t.displayLabel = t.prefLabel + " (" + nbRecords + ")";
+//              }
+//            }
+//          }
+//          else
+//          {
+            var checkboxSelected:Boolean = false;
+            
+            if(filteredKinds.indexOf(typeURI) != -1)
+            {
+              checkboxSelected = true;
+            }
+            
+            types.push({displayLabel: prefLabel + " (" + nbRecords + ")", prefLabel: prefLabel, nbRecords: nbRecords,
+              uri:typeURI, selected:checkboxSelected});
+//          }
+        }
+        
+        /**
+         * If the allDatasets array is empty, we consider that this the result of the first call to the search
+         * web service, and so that it lists all datasets, kinds and attributes available to the user
+         */
+//        if(allKinds.length == 0)
+//        {
+          if(settings.displayFilters)
+          {
+            allKinds = types;
+            typeFilterList.dataProvider = allKinds;
+          }
+          
+          if(settings.displayFiltersHTML)
+          {    
+            ExternalInterface.call("displayFiltersType", types);
+          }
+          
+//        }
+//        else
+//        {
+//          /** Update the data provider of the filtering lists */
+//          for(var i:String in typeFilterList.dataProvider)
+//          {
+//            for each(var allKindsItem:Object in allKinds)
+//            {
+//              if(typeFilterList.dataProvider[i].uri == allKindsItem.uri)
+//              {
+//                typeFilterList.dataProvider[i].nbRecords == allKindsItem.nbRecords;
+//                typeFilterList.dataProvider[i].displayLabel == allKindsItem.displayLabel;
+//                break;
+//              }
+//            }
+//          }
+//          
+//          typeFilterList.invalidateList();
+//        }
+        
+        displayAttributes();
+      }      
+      
+      /** 
+       * Display the attributes of records available from all datasets handled by the workbench,                       
+       * in the filtering panel 
+       */
+      private function displayAttributes():void
+      {
+        var aggregates:Array = filteringResultset.getSubjectsByType("aggr_Aggregate");
+        var attributesAggregates:Array =
+          filteringResultset.getSubjectsByPredicateObjectValue("aggr_property", "rdf_Property", aggregates);
+        var attributes:Array = [];
+        
+        /** re-initialize the counts to be display to 0. In the following steps, counts will be re-populated */
+//        if(allAttributes.length > 0)
+//        {
+//          for each(var attr:Object in allAttributes)
+//          {
+//            attr.nbRecords = 0;
+//            attr.displayLabel = attr.prefLabel + " (" + attr.nbRecords + ")";
+//          }
+//        }
+        
+        for each(var attributeAggregate:Subject in attributesAggregates)
+        {
+          var attributeURI:String = attributeAggregate.predicates["aggr_object"][0].uri;
+          var nbRecords:String = attributeAggregate.predicates["aggr_count"][0].value;
+          
+          /*
+          var attribute:SchemaAttribute = schema.getAttribute(attributeURI);
+          */
+          
+          var attribute = null;
+          var prefLabel:String = "";
+          
+          if(attribute == null)
+          {
+            /** no type defined in the schema for this type URI */
+            var end:int = 0;
+            var name:String = "";
+            
+            end = attributeURI.lastIndexOf("#");
+            
+            if(end == -1)
+            {
+              end = attributeURI.lastIndexOf("/");
+            }
+            
+            if(end > 0)
+            {
+              end += 1;
+              
+              prefLabel = attributeURI.substr(end, (attributeURI.length - end));
+            }
+          }
+          else
+          {
+            prefLabel = attribute.prefLabel;
+          }
+          
+//          if(allAttributes.length > 0)
+//          {
+//            for each(var attr:Object in allAttributes)
+//            {
+//              if(attr.uri == attributeURI)
+//              {
+//                attr.nbRecords = nbRecords;
+//                attr.displayLabel = attr.prefLabel + " (" + nbRecords + ")";
+//              }
+//            }
+//          }
+//          else
+//          {
+            var checkboxSelected:Boolean = false;
+            
+            if(filteredAttributes.indexOf(attributeURI) != -1)
+            {
+              checkboxSelected = true;
+            }
+            
+            /** Check if a value restriction has been defined for this attribute */
+            var filteringValue:String = "";
+            for each(var attrValue:Object in attributeValueFilters)
+            {
+              if(attrValue.uri == attributeURI)
+              {
+                filteringValue = attrValue.value;
+              }
+            }
+            
+            if(filteringValue == "")
+            {
+              attributes.push({displayLabel: prefLabel + " (" + nbRecords + ")", prefLabel: prefLabel, nbRecords: nbRecords,
+                uri:attributeURI, selected:checkboxSelected});
+            }
+            else
+            {
+              attributes.push({displayLabel: prefLabel + " = \"" + filteringValue + "\" (" + nbRecords + ")", prefLabel: prefLabel, nbRecords: nbRecords,
+                uri:attributeURI, selected:checkboxSelected});
+            }
+//          }
+        }
+        
+        /** 
+        * If no attributes exists in the resultset, but that we have an attribute/value
+        * filter defined, we display at least that filter
+        */
+        if(attributesAggregates.length == 0 && attributeValueFilters.length > 0)
+        {
+          for each(var attrValue:Object in attributeValueFilters)
+          {
+            attributes.push({
+                displayLabel: attrValue.label + " = \"" + attrValue.value + "\" (" + attrValue.nbRecords + ")", 
+                prefLabel: attrValue.label, 
+                nbRecords: attrValue.nbRecords,
+                uri: attrValue.uri, 
+                selected: true
+            });
+          }
+        }
+        
+        /**
+         * If the allDatasets array is empty, we consider that this the result of the first call to the search
+         * web service, and so that it lists all datasets, kinds and attributes available to the user
+         */
+//        if(allAttributes.length == 0)
+//        {
+        if(settings.displayFilters)
+        {
+          allAttributes = attributes;
+          attributeFilterList.dataProvider = allAttributes;
+        }
+
+        if(settings.displayFiltersHTML)
+        {    
+          ExternalInterface.call("displayFiltersAttribute", attributes);
+        }        
+//        }
+//        else
+//        {
+//          /** Update the data provider of the filtering lists */
+//          for(var i:String in attributeFilterList.dataProvider)
+//          {
+//            for each(var allAttributesItem:Object in allAttributes)
+//            {
+//              if(attributeFilterList.dataProvider[i].uri == allAttributesItem.uri)
+//              {
+//                attributeFilterList.dataProvider[i].nbRecords == allAttributesItem.nbRecords;
+//                attributeFilterList.dataProvider[i].displayLabel == allAttributesItem.displayLabel;
+//                break;
+//              }
+//            }
+//          }
+//          
+//          attributeFilterList.invalidateList();
+//        }
+      }      
+      
+      /**
+       * Event that get trigged someone click on the marker 
+       * 
+       * @param event Event 
+       */      
+      private function onMarkerClick(event:MapMouseEvent):void 
+      {
+        var test = event.target.data;
+        
+        var displayContent:String = "<h2>" + event.target.data.getPrefLabel() + "</h2><br/>" +
+                                    "<h3>" + event.target.data.getDescription() + "</h3><br/>" +
+                                    "<a href=\"" + event.target.data.getPrefURL() + "\">Webpage</a></br>";
+        
+        event.target.openInfoWindow(new InfoWindowOptions({ contentHTML: displayContent }));
+
+      }      
+      
+      /**
+       * Event that get trigged when the google map is ready to be manipulated by the API. 
+       * 
+       * @param event Event 
+       */      
+      private function onMapReady(event:MapEvent):void 
+      {
+        /** Map type to use for this map instance */
+        var mapType;    
+        
+        switch(settings.mapType)
+        {
+          case "NORMAL_MAP_TYPE":
+            mapType = MapType.NORMAL_MAP_TYPE;
+            break;
+          case "SATELLITE_MAP_TYPE":
+            mapType = MapType.SATELLITE_MAP_TYPE;
+            break; 
+          case "HYBRID_MAP_TYPE":
+            mapType = MapType.HYBRID_MAP_TYPE;
+            break;
+          case "PHYSICAL_MAP_TYPE":
+            mapType = MapType.PHYSICAL_MAP_TYPE;
+            break;
+          case "DEFAULT_MAP_TYPES":
+            mapType = MapType.DEFAULT_MAP_TYPES;
+            break;
+        }
+        
+        this.map.setCenter(new LatLng(settings.defaultLat, settings.defaultLong), settings.defaultZoom, mapType);
+        
+        if(settings.enableZoomControl)
+        {
+          map.addControl(new ZoomControl());
+        }
+        
+        if(settings.enablePositionControl)
+        {
+          map.addControl(new PositionControl());
+        }
+        
+        if(settings.enableMapTypeControl)
+        {
+          map.addControl(new MapTypeControl());
+        }
+        
+        if(settings.enableOverviewMapControl)
+        {
+          map.addControl(new OverviewMapControl());
+        }
+        
+        if(settings.enableScaleControl)
+        {
+          map.addControl(new ScaleControl());
+        }
+        
+        /*
+        dir = new Directions();
+        dir.addEventListener(DirectionsEvent.DIRECTIONS_SUCCESS, onDirLoad);
+        dir.addEventListener(DirectionsEvent.DIRECTIONS_FAILURE, onDirFail);
+        dir.load("3136 rue de chambord, quebec, QC to grande allée, quebec, QC");     
+        */
+        
+     /*   
+        // Polyline overlay.
+        var polyline:Polyline = new Polyline([
+          new LatLng(46.8893, -71.1935),
+          new LatLng(46.8813, -71.1945),
+          new LatLng(46.8823, -71.1955),
+          new LatLng(46.8833, -71.1965),
+          new LatLng(46.8843, -71.1975),
+          new LatLng(46.8853, -71.1985),
+          new LatLng(46.8863, -71.1995),
+          new LatLng(46.8873, -71.1932),
+          new LatLng(46.8883, -71.1946),
+          new LatLng(46.8899, -71.1952),
+        ], new PolylineOptions({
+          strokeStyle: new StrokeStyle({
+            color: 0xFF0000,
+            thickness: 4,
+            alpha: 1})
+        }));
+        
+        map.addOverlay(polyline);
+      */
+      }      
+
+      private function onDirFail(event:DirectionsEvent):void 
+      {
+        // Process failure, perhaps by showing an alert
+      }
+      
+      private function onDirLoad(event:DirectionsEvent):void {
+        var dir:Directions = event.directions;
+        
+        map.clearOverlays();
+        map.addOverlay(dir.createPolyline());
+      }        
+      
+      /** Get the list of records, for all the selected criterias, from a Search web service endpoint */
+      private function filterRecords():void
+      {
+        var datasets:String = "";
+        var types:String = "";
+        var attributes:String = "";
+        
+        if(filteredDatasets.length > 0)
+        {
+          for each(var dataset:String in filteredDatasets)
+          {
+            datasets = datasets + dataset + ";";
+          }
+          
+          datasets = datasets.substr(0, datasets.length - 1);
+        }
+        else
+        {
+          datasets = "all";
+        }
+        
+        if(filteredKinds.length > 0)
+        {
+          for each(var type:String in filteredKinds)
+          {
+            types = types + type + ";";
+          }
+          
+          types = types.substr(0, types.length - 1);
+        }
+        else
+        {
+          types = "all";
+        }
+        
+        if(filteredAttributes.length > 0)
+        {
+          for each(var attribute:String in filteredAttributes)
+          {
+            /** Check if a filtering value has been defined for this attribute */
+            var filteringValue = "";
+            for each(var attrValue:Object in attributeValueFilters)
+            {
+              if(attrValue.uri == attribute)
+              {
+                filteringValue = "::" + escape(attrValue.value);
+                
+                break;
+              }
+            }
+            
+            attributes = attributes + escape(attribute) + filteringValue + ";";
+          }
+          
+          attributes = attributes.substr(0, attributes.length - 1);
+        }
+        else
+        {
+          attributes = "all";
+        }
+        
+        /** Get the coordinates of the squares of the current view map */
+        var bounds:LatLngBounds = map.getLatLngBounds();
+        var topLeft:LatLng = bounds.getNorthWest();
+        var bottomRight:LatLng = bounds.getSouthEast();
+        
+        /** Re-initialize the number of results */
+        nbResults = 0;
+        
+        /** Get all the features compromized in these bounds */
+        var requestParameters:Object = 
+          {
+            query: query,
+            datasets: datasets, 
+            types: types, 
+            attributes: attributes,             
+            items: settings.resultsPerPage,
+            page: currentResultsetPage * settings.resultsPerPage, 
+            inference: "off", 
+            include_aggregates:"true",
+            range_filter:topLeft.lat()+";"+topLeft.lng()+";"+bottomRight.lat()+";"+bottomRight.lng()
+          };        
+        
+        var httpService:HTTPService = new HTTPService();
+        
+        httpService.url = settings.structWSFBaseURL + "search/";
+        httpService.method = "POST";
+        httpService.headers['Accept'] = 'text/xml;q=1';
+        httpService.showBusyCursor = true;
+        httpService.resultFormat = "e4x";
+        httpService.addEventListener(ResultEvent.RESULT, searchResultHandler);
+        httpService.addEventListener(FaultEvent.FAULT, searchFaultHandler);
+        
+        httpService.send(requestParameters);
+      }
+      
+      public function addAttributeValueFilter(value:String, targetAttribute:String, targetCheckBoxList:CheckBoxList):void
+      {
+        /** Check if a value was already defined for this attribute */
+        for each(var attr:Object in attributeValueFilters)
+        {
+          if(targetAttribute == attr.uri)
+          {
+            attr.value = value;
+          }
+        }
+
+        /** Re-create the dataProvider to feed to the attributes list component */
+        var fixedBoxes:ArrayCollection = targetCheckBoxList.dataProvider;
+        var nbRecords:int = 0;
+        var label:String = "";
+        
+        for each(var item:Object in fixedBoxes)
+        {
+          if(item.uri == targetAttribute)
+          {
+            /** get the number of records from the label */
+            var end:int = String(item.displayLabel).lastIndexOf("(") + 1;
+            var length:int = String(item.displayLabel).lastIndexOf(")") - end;
+            nbRecords = String(item.displayLabel).substr(end, length);
+            
+            /** get the attribute label */
+            end = String(item.displayLabel).indexOf(" ");
+            label = String(item.displayLabel).substr(0, end);
+            
+            item.displayLabel = label + " = \"" + value + "\" (" + nbRecords + ")";
+          }
+        }
+        
+        targetCheckBoxList.dataProvider = fixedBoxes;
+        
+        attributeValueFilters.push({uri: targetAttribute, value: value, nbRecords: nbRecords, label: label});
+        
+        filterRecords();
+      }
+      
+      public function gotoResultsPage(page:Number):void
+      {
+        currentResultsetPage = page;
+        
+        filterRecords();
+      }
+      
+      public function search(text:String):void
+      {
+        query = text;
+        
+        filterRecords();        
+      }
+      
+      public function addDatasetFilter(uri:String):void
+      {
+        filteredDatasets.push(uri);
+        
+        reInitAfterFilter();
+        
+        filterRecords();
+      }
+      
+      public function removeDatasetFilter(uri:String):void
+      {
+        filteredDatasets.splice(filteredDatasets.indexOf(uri), 1);
+        
+        reInitAfterFilter();
+        
+        filterRecords();
+      }
+      
+      public function addTypeFilter(uri:String):void
+      {
+        filteredKinds.push(uri);
+        
+        reInitAfterFilter();
+        
+        filterRecords();
+      }
+      
+      public function removeTypeFilter(uri:String):void
+      {
+        filteredKinds.splice(filteredKinds.indexOf(uri), 1);
+        
+        reInitAfterFilter();
+        
+        filterRecords();
+      }
+      
+      public function addAttributeFilter(uri:String):void
+      {
+        filteredAttributes.push(uri);
+        
+        reInitAfterFilter();
+        
+        filterRecords();
+      }
+      
+      public function removeAttributeFilter(uri:String):void
+      {
+        filteredAttributes.splice(filteredAttributes.indexOf(uri), 1);
+        
+        reInitAfterFilter();
+        
+        filterRecords();
+      } 
+      
+      public function addAttributeValueFilterJS(uri:String, value:String, nbRecords:String, label:String):void
+      {
+        var attributeValue:Object = {uri: uri, value: value, nbRecords: nbRecords, label: label};
+        
+        /** Check if a value was already defined for this attribute */
+        var skip:Boolean = false;
+        
+        for each(var attr:Object in attributeValueFilters)
+        {
+          if(uri == attr.uri)
+          {
+            skip = true;
+          }
+        }        
+        
+        if(!skip)
+        {
+          this.filteredAttributes.push(attributeValue.uri);
+          
+          reInitAfterFilter();
+          
+          attributeValueFilters.push(attributeValue);
+          
+          filterRecords();
+        }
+      }
+      
+      public function removeAttributeValueFilterJS(uri:String):void
+      {
+        this.filteredAttributes.splice(this.filteredAttributes.indexOf(uri), 1);
+        
+        reInitAfterFilter();
+        
+        var nb:int = 0;
+        
+        for each(var attrValue:Object in attributeValueFilters)
+        {
+          if(attrValue.uri == uri)
+          {
+            break;
+          }
+          
+          nb++;
+        }
+        
+        
+        this.attributeValueFilters.splice(nb, 1);  
+        
+        filterRecords();
+      }
+      
+      private function reInitAfterFilter():void
+      {
+        /** When one of the filter change, we have to re-initialize these structured */
+        nbResults = 0;
+        currentResultsetPage = 0;
+      }
+      
+      public function recordOver(uri:String):void
+      {
+        for each(m in markers)
+        {
+          if(m.data.uri == uri)
+          {
+            m.setOptions(new MarkerOptions( { fillStyle: { color: 0x0099CC }} ));
+            return;
+          }
+        }    
+        
+        for each(var p:Polygon in polygons)
+        {
+          if(p.data.uri == uri)
+          {
+            p.setOptions(new PolygonOptions({ 
+              strokeStyle: new StrokeStyle({
+                color: 0x0099CC,
+                thickness: 1,
+                alpha: 0.7}), 
+              fillStyle: new FillStyle({
+                color: 0x0099CC,
+                alpha: 0.7})
+            }));
+            return;
+          }
+        }  
+        
+        for each(var pl:Polyline in polylines)
+        {
+          if(pl.data.uri == uri)
+          {
+            pl.setOptions(new PolylineOptions({ 
+              strokeStyle: new StrokeStyle({
+                color: 0x0099CC,
+                thickness: 2,
+                alpha: 0.7}), 
+              fillStyle: new FillStyle({
+                color: 0x0099CC,
+                alpha: 0.7})
+            }));
+            break;
+          }
+        }                 
+      }
+      
+      public function recordOut(uri:String):void
+      {
+        for each(m in markers)
+        {
+          if(m.data.uri == uri)
+          {
+            m.setOptions(new MarkerOptions( { fillStyle: { color: 0xCC0000 }} ));
+            return;
+          }
+        }   
+        
+        for each(var p:Polygon in polygons)
+        {
+          if(p.data.uri == uri)
+          {
+            p.setOptions(new PolygonOptions({ 
+              strokeStyle: new StrokeStyle({
+                color: 0xCC0000,
+                thickness: 1,
+                alpha: 0.7}), 
+              fillStyle: new FillStyle({
+                color: 0xCC0000,
+                alpha: 0.7})
+            }));
+              return;
+          }
+        }  
+        
+        for each(var pl:Polyline in polylines)
+        {
+          if(pl.data.uri == uri)
+          {
+            pl.setOptions(new PolylineOptions({ 
+              strokeStyle: new StrokeStyle({
+                color: 0xCC0000,
+                thickness: 2,
+                alpha: 0.7}), 
+              fillStyle: new FillStyle({
+                color: 0xCC0000,
+                alpha: 0.7})
+            }));
+            break;
+          }
+        }            
+      }      
+    ]]>
+  </mx:Script>
+  
+  <mx:HBox width="100%" height="100%">
+    <mx:Container id="mapContainer" width="100%" height="100%" />
+    
+    <mx:VDividedBox width="30%" height="100%" liveDragging="true" id="filtersContainer" visible="false" includeInLayout="false">
+      <mx:VBox width="100%" height="20%">
+        <mx:Label text="Sources" width="100%" textAlign="left" fontWeight="bold"/>
+        
+        <mx:Canvas width="100%" height="100%">
+          <toolbox:CheckBoxList id="datasetFilterList" 
+                                width="100%" 
+                                height="100%"
+                                labelField="displayLabel" 
+                                enabledField="enabled" 
+                                change="onDatasetFilterListChangeHandler(event);">
+            <mx:Script>
+              <![CDATA[
+                
+                private function onDatasetFilterListChangeHandler(event:Event):void
+                {
+                  if(this.filteredDatasets.indexOf(event.itemRenderer.data.uri) == -1)
+                  {
+                    this.filteredDatasets.push(event.itemRenderer.data.uri);
+                  }
+                  else
+                  {
+                    this.filteredDatasets.splice(this.filteredDatasets.indexOf(event.itemRenderer.data.uri), 1);
+                  }
+                  
+                  reInitAfterFilter();
+                  
+                  filterRecords();
+                }
+                
+              ]]>
+            </mx:Script>
+          </toolbox:CheckBoxList>
+        </mx:Canvas>
+      </mx:VBox>
+      
+      <mx:VBox width="100%" height="40%">
+        <mx:Label text="Kinds" width="100%" textAlign="left" fontWeight="bold"/>
+        
+        <mx:Canvas width="100%" height="100%">
+          <toolbox:CheckBoxList id="typeFilterList" width="100%" height="100%"
+                                labelField="displayLabel" enabledField="enabled" change="onTypeFilterListChangeHandler(event);">
+            <mx:Script>
+              <![CDATA[
+                
+                private function onTypeFilterListChangeHandler(event:Event):void
+                {
+                  if(this.filteredKinds.indexOf(event.itemRenderer.data.uri) == -1)
+                  {
+                    this.filteredKinds.push(event.itemRenderer.data.uri);
+                  }
+                  else
+                  {
+                    this.filteredKinds.splice(this.filteredKinds.indexOf(event.itemRenderer.data.uri), 1);
+                  }
+                  
+                  reInitAfterFilter();
+                  
+                  filterRecords();
+                }
+                
+              ]]>
+            </mx:Script>
+          </toolbox:CheckBoxList>
+        </mx:Canvas>
+      </mx:VBox>
+      
+      <mx:VBox width="100%" height="40%">
+        <mx:HBox width="100%">
+          <mx:Label text="Attributes / Values" width="85%" textAlign="left" fontWeight="bold"/>
+          <!--mx:Image id="loader1" source="@Embed(source='assets/imgs/text_signature.png')" 
+                    useHandCursor="true" buttonMode="true" toolTip="Filter by Attribute/Value"/--> 
+        </mx:HBox>
+        
+        <mx:Canvas width="100%" height="100%">
+          <toolbox:CheckBoxList id="attributeFilterList" width="100%" height="100%"
+                                labelField="displayLabel" enabledField="enabled" 
+                                change="onAttributeFilterListChangeHandler(event);">
+            <mx:Script>
+              <![CDATA[
+                
+                private function onAttributeFilterListChangeHandler(event:Event):void
+                {
+                  if(this.filteredAttributes.indexOf(event.itemRenderer.data.uri) == -1)
+                  {
+                    /** Checked */
+                    this.filteredAttributes.push(event.itemRenderer.data.uri);
+                    
+                    reInitAfterFilter();
+                    
+                    /** Show attribute/value filtering window */
+                    var filter:AttributeValueFilterTileWindow =
+                      AttributeValueFilterTileWindow(PopUpManager.createPopUp(this, AttributeValueFilterTileWindow, true));
+                    
+                    var listControl:CheckBoxList = event.currentTarget as CheckBoxList;
+                    
+                    filter.selectedAttributeIndex = listControl.selectedIndex;
+                    filter.targetListControl = listControl;
+                    filter.targetComponent = this;                    
+                  }
+                  else
+                  {
+                    /** Unchecked */
+                    var listControl:CheckBoxList = event.currentTarget as CheckBoxList;
+                    var nb:int = 0;
+                    
+                    for each(var attrValue:Object in attributeValueFilters)
+                    {
+                      if(attrValue.uri == listControl.dataProvider[event.rowIndex].uri)
+                      {
+                        break;
+                      }
+                      
+                      nb++;
+                    }
+                    
+                    
+                    this.attributeValueFilters.splice(nb, 1);                    
+                    
+                    this.filteredAttributes.splice(this.filteredAttributes.indexOf(event.itemRenderer.data.uri), 1);
+                    
+                    reInitAfterFilter();
+                    
+                    filterRecords();
+                  }
+                }
+                
+              ]]>
+            </mx:Script>
+          </toolbox:CheckBoxList>
+        </mx:Canvas>
+      </mx:VBox>
+    </mx:VDividedBox>    
+  </mx:HBox>
+  
+</mx:Canvas>

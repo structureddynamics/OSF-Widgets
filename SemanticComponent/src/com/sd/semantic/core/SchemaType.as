@@ -30,9 +30,15 @@ package com.sd.semantic.core
     
     /** Display control(s) used to display information about the type */
     public var displayControls:Array = [];
-
+    
+    /** URL of an icon to use to display records of that type on a map */
+    public var mapMarkerImageUrls:Array = [];
+    
+    /** URI of the a relation browser skin's node type to use to skin a node of that type. */
+    public var relationBrowserNodeTypes:Array = [];
+    
     /** Namespace references used to resolve references to the type */
-    private var namespaces:Namespaces = new Namespaces();
+    private var namespaces:Namespaces;
 
     /**
      * Constructor
@@ -40,8 +46,17 @@ package com.sd.semantic.core
      * @param type Description of the type in XML
      * 
      */
-    public function SchemaType(type:XML)
+    public function SchemaType(type:XML, ns:Namespaces = null)
     {
+      if(ns == null)
+      {
+        this.namespaces = new Namespaces();
+      }
+      else
+      {
+        this.namespaces = ns;
+      }      
+      
       uri = type.localName();
 
       /** Parse prefLabel */
@@ -103,11 +118,23 @@ package com.sd.semantic.core
       {
         superTypes.push(namespaces.getVariable(subTypeOf.toString()));
       }
-
+      
       /** Parse displayControls */
       for each(var displayControl:XML in type.elements("displayControl"))
       {
         displayControls.push(namespaces.getVariable(displayControl.toString()));
+      }
+      
+      /** Parse displayControls */
+      for each(var mapMarkerImageUrl:XML in type.elements("mapMarkerImageUrl"))
+      {
+        mapMarkerImageUrls.push(mapMarkerImageUrl.toString());
+      }
+      
+      /** Parse relationBrowserNodeTypes */
+      for each(var relationBrowserNodeType:XML in type.elements("relationBrowserNodeType"))
+      {
+        relationBrowserNodeTypes.push(namespaces.getVariable(relationBrowserNodeType.toString()));
       }
     }
   }

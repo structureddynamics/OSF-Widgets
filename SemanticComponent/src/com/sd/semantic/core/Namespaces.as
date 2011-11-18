@@ -35,9 +35,12 @@ package com.sd.semantic.core
       namespaces["http://umbel.org/umbel#"] = "umbel_";
       namespaces["http://purl.org/ontology/aggregate#"] = "aggr_";
       namespaces["http://www.w3.org/2004/02/skos/core#"] = "skos_";
+      namespaces["http://www.w3.org/2008/05/skos#"] = "skos2008_";
       namespaces["http://rdfs.org/ns/void#"] = "void_";
       namespaces["http://purl.org/ontology/muni#"] = "muni_";
       namespaces["http://purl.org/ontology/sco#"] = "sco_";
+      namespaces["http://www.w3.org/2003/01/geo/wgs84_pos#"] = "wgs84pos_";
+      namespaces["http://purl.org/ontology/npi#"] = "npi_";
     }
 
     /**

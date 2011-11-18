@@ -133,12 +133,12 @@ package com.sd.semantic.core
      * to refer to an instance record, they want a description of this instance record.  
      */
     public var description:String = "";
-
+    
     /**
      * Lists all the semantic component controls that can be used to display the value(s) of this attribute. 
      */
     public var displayControls:Array = [];
-
+    
     /**
     * The value of the orderingValue attribute is used to order the SchemaAttribute a a set of
     * SchemaAttributes. This set of SchemaAttributes is normally created from the set composed
@@ -164,14 +164,23 @@ package com.sd.semantic.core
     public var comparableWith:Array = [];
 
     /** Namespaces structure used to resolve attributes and types identifiers */
-    private var namespaces:Namespaces = new Namespaces();
+    private var namespaces:Namespaces = null;
 
     /**
      * Parse the irXML portion of a schema describing the attribute 
      * @param attribute irXML XML portion of the schema describing the attribute.
      */
-    public function SchemaAttribute(attribute:XML)
+    public function SchemaAttribute(attribute:XML, ns:Namespaces = null)
     {
+      if(ns == null)
+      {
+        this.namespaces = new Namespaces();
+      }
+      else
+      {
+        this.namespaces = ns;
+      }
+      
       uri = attribute.localName();
 
       /** Parse minValues */
