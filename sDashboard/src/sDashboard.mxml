@@ -1,0 +1,980 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" backgroundAlpha="0">
+    
+  <!---
+  The sDashboard semantic component is used to display pre-defined sessions of semantic
+  components loaded with a pre-defined set of target records, attributes and schenmas.
+  
+  The semanict dashboard instances are created (saved) using the Workbench application.
+  
+  @author Frederick Giasson, Structured Dynamics LLC.
+  -->
+  
+  <mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml" creationComplete="init()"
+    width="100%" height="100%" styleName="sDashboard"
+    paddingLeft="0" paddingRight="0" paddingBottom="0" paddingTop="0">
+    <mx:Script>
+      <![CDATA[
+  
+      import com.esria.samples.dashboard.events.LayoutChangeEvent;
+      import com.esria.samples.dashboard.managers.PodLayoutManager;
+      import com.esria.samples.dashboard.managers.StateManager;
+      import com.esria.samples.dashboard.view.FormContent;
+      import com.esria.samples.dashboard.view.ListContent;
+      import com.esria.samples.dashboard.view.Pod;
+      import com.esria.samples.dashboard.view.PodContentBase;
+      import com.sd.semantic.core.*;
+      import com.sd.semantic.events.SemanticComponentItemEvent;
+      import com.sd.semantic.events.SemanticComponentLoadEvent;
+      
+      import mx.containers.Canvas;
+      import mx.controls.Alert;
+      import mx.core.Application;
+      import mx.events.DragEvent;
+      import mx.events.FlexEvent;
+      import mx.events.IndexChangedEvent;
+      import mx.events.ItemClickEvent;
+      import mx.events.ModuleEvent;
+      import mx.events.ResizeEvent;
+      import mx.events.StyleEvent;
+      import mx.modules.IModuleInfo;
+      import mx.modules.ModuleManager;
+      import mx.rpc.events.FaultEvent;
+      import mx.rpc.events.ResultEvent;
+      import mx.rpc.http.HTTPService;
+      import mx.utils.UIDUtil;
+      
+      import org.sunlightlabs.ClearMaps.FeatureEvent;
+    
+      
+      public var info:IModuleInfo;		        
+        
+      /** Core varibles shared amongst all semantic controls */
+  
+      /** 
+       * Specifies that this component is a semantic component. If a component in a Flex application is a semantic
+       * semantic component, this means that other semantic component can't behave differently depending of the "kind"
+       * (semantic or not) of components that are present in the layout. This variable is just to specify is a component
+       * is a semantic one or not.
+       */
+      public var semanticComponent:Boolean = true;
+  
+      /**
+       * Specifies that this control is required within a display cluster.
+       * This means that if we have a SemanticHBox that has 2 required semantic
+       * components and that these components have removed themselves from the display
+       * this means that the parent layout cluster (the smeantic hbox), will remove
+       * itself as well. If a semantic component is marked as not required (required=false)
+       * it means that it won't be considered by the semantic hbox. So, even if such a semantic
+       * component has data in it, its parent cluster can remove itself.
+       */
+      public var required:Boolean = false;
+  
+      /** Target record attributes to display in the component */
+      public var targetAttributes:Array = [];
+  
+      /** Target record types to display in the component */
+      public var targetTypes:Array = [];
+      
+      /** Target records to display in the component */
+      public var targetRecords:Array = [];
+      
+      /** Specifies if the sControl's targetAttribute has been bound to a know semantic control. */
+      public var bound:Boolean = false;
+  
+      /** Base URL of the flex component */
+      public var baseUrl:String = "./";
+      
+      /** Base URL of the flex component */
+      private var settingsUrl:String = "./settings/";             
+        
+      private var _semanticDataProvider:Resultset;
+
+      /** Save the loaders, for all the sControl module loaders, into an array to manage their creation */
+      private var loaders:Array = [];   
+        
+      /** Index used to know what loader we have to start once another loaded finished */
+      private var loaderIndex:Number = 0;
+      
+      /** 
+      * Keep the list of the loaders that have already been loaded. This is used because the same ready event
+      * event is sometime fired more than once for the same loader
+      */
+      private var loadedLoaders:Array = [];
+        
+      /** 
+      * Input records. This is a Resultset structure (see the structXML XML data structure). 
+      * If the target record is defined with an attribute "dashboardSessionFileUri", the Dashboard
+      * component will try to load the related session file
+      */
+      public function get semanticDataProvider():Resultset
+      {
+        return (_semanticDataProvider);
+      }
+  
+      public function set semanticDataProvider(value:Resultset):void
+      {
+        _semanticDataProvider = value;
+  
+        if(!_initialized)
+        {
+          init();
+        }
+        
+        /** 
+        * When the semanticDataProvider is modifed, we try to find a dashboardSessionFileUri
+        * attribute, for the target record, where we could find a session file to load.
+        */
+        
+        /** Perform a break within a nested loop */
+        var doBreak:Boolean = false;
+        
+        for each(var recordURI in targetRecords)
+        {
+          var subject:Subject = value.getSubjectByURI(recordURI);
+          
+          if(subject)
+          {
+            var sessionURIs:Array = subject.getPredicateValues("sco_dashboardSessionFileUri");
+            
+            for each(var sessionURI:Object in sessionURIs)
+            {
+              var httpService:HTTPService = new HTTPService();
+              
+              var requestParameters:Object = {};
+              
+              httpService.url = sessionURI["value"];
+              httpService.method = "GET";
+              httpService.headers['Accept'] = 'text/xml';
+              httpService.showBusyCursor = true;
+              httpService.resultFormat = "e4x";
+              httpService.addEventListener(ResultEvent.RESULT, sessionsLoadResultsetHandler);
+              httpService.addEventListener(FaultEvent.FAULT, sessionsLoadResultsetFaultHandler);
+              
+              httpService.send(requestParameters);        
+              
+              
+              /** We break once we found one reference to a dashbaord session file */
+              doBreak = true;
+              break;
+            }
+          }
+          
+          if(doBreak)
+          {
+            break;
+          }
+        }
+      }
+  
+      /** Faulty Sessions List event handler */
+      private function sessionsLoadResultsetFaultHandler(event:FaultEvent):void
+      {
+        Alert.show("Sessions cannot be read from the server. Connection error.", "Connection Error");
+  
+        this.removeEventListener(ResultEvent.RESULT, sessionsLoadResultsetFaultHandler);
+      }       
+      
+      /** Sessions list event handler */
+      private function sessionsLoadResultsetHandler(event:ResultEvent):void
+      { 
+        /** Load the session in the Dashboard */
+        loadSession(event.result); 
+  
+        this.removeEventListener(ResultEvent.RESULT, sessionsLoadResultsetHandler);
+      }     
+        
+      private var _schema:Schema;
+  
+      /** Conceptual structure used by the component */
+      public function get schema():Schema
+      {
+        return (_schema);
+      }
+  
+      public function set schema(value:Schema):void
+      {
+        this._schema = value;
+      }
+  
+      /** Specifies what attribute(s) of a record have been bound to this semantic component */
+      public var boundAttributes:Array = [];
+  
+      /** Specifies if the component has already been initialized or not. */
+      private var _initialized:Boolean = false;
+  
+      /** Array of PodLayoutManagers */
+      public var podLayoutManagers:Array = new Array();
+  
+      /** 
+      * Stores PodLayoutManagers keyed off of a Pod.
+      * Used for podLayoutManager calls after pods have been created for the first time.
+      * Also, used for look-ups when saving pod content ViewStack changes. 
+      */
+      private var podHash:Object = new Object();
+        
+      /** Tab currently selected */
+      private var selectedTab:int = 0; 
+  
+      private function init():void
+      {
+        if(_initialized == false)
+        {
+          if(_semanticDataProvider != null)
+          {
+            /**
+             * Load settings
+             * 
+             * Check if the application that embede this semantic component defined its 
+             * baseAppUrl. If it didn't, we simply use the default local location "./"
+             */
+  
+            /** Base URL of the flex component */
+            
+            if(Application.application.hasOwnProperty("baseAppUrl"))
+            {
+              if(Application.application.baseAppUrl != "")
+              {
+                baseUrl = Application.application.baseAppUrl;
+              }
+            } 
+            else if(Application.application.parameters.baseAppUrl)
+            {
+              if(Application.application.parameters.baseAppUrl != "")
+              {
+                baseUrl = Application.application.parameters.baseAppUrl;
+              }
+            }
+            
+            if(Application.application.hasOwnProperty("settingsFolder"))
+            {
+              if(Application.application.settingsFolder != "")
+              {
+                settingsUrl = baseUrl + Application.application.settingsFolder;
+              }
+            }        
+  
+            /** Keep track of the attributes, from the record, that have been bound to this control. */
+            if(targetAttributes.length > 0)
+            {
+              for each(var tAttr in targetAttributes)
+              {
+                boundAttributes.push(tAttr);
+              }
+            }
+          }
+  
+          _initialized = true;
+        }
+      }
+  
+      private function onItemClickTabBar(e:ItemClickEvent):void
+      {
+        if(e.index == -1)
+        {
+          return;
+        }
+        
+        selectedTab = e.index;
+                
+        /** Save the view index. */
+        StateManager.setViewIndex(selectedTab); 
+  
+        viewStack.selectedIndex = selectedTab;
+  
+        var podLayoutManager:PodLayoutManager = podLayoutManagers[selectedTab];
+        
+        if(podLayoutManager != null)
+        {
+          podLayoutManager.updateLayout(false, this);
+        }      
+      }
+        
+      public function addTab(title:String):void
+      {
+        /** The canvas of the tab */
+        var canvas:Canvas = new Canvas();
+        
+        /** 
+         * PodLayoutManager handles resize and should prevent the need for
+         * scroll bars so turn them off so they aren't visible during resizes.
+         */
+        canvas.horizontalScrollPolicy = "off";
+        canvas.verticalScrollPolicy = "off";
+        canvas.label = title;
+        canvas.percentWidth = 100;
+        canvas.percentHeight = 100;
+        viewStack.addChild(canvas);
+  
+  
+        var manager:PodLayoutManager = new PodLayoutManager();
+        manager.container = canvas;
+        manager.id = podLayoutManagers.length + 1;
+        manager.addEventListener(LayoutChangeEvent.UPDATE, StateManager.setPodLayout);
+        
+        podLayoutManagers.push(manager);
+        
+        var index:Number = StateManager.getViewIndex();
+        
+        /**
+        * Make sure the index is not out of range.
+        * This can happen if a tab view was saved but then tabs were subsequently removed from the XML.
+        */
+        index = Math.min(tabBar.numChildren - 1, index);
+        onItemClickTabBar(new ItemClickEvent(ItemClickEvent.ITEM_CLICK, false, false, null, index));
+        tabBar.selectedIndex = index;      
+      }
+        
+      public function removeTab(title:String):void
+      {
+        var i:int = 0;
+        
+        for each(var manager:PodLayoutManager in podLayoutManagers)
+        {
+          if(manager.container.label == title)
+          {
+            /** Remove the tab from the layout */
+            manager.container.parent.removeChild(manager.container);
+            
+            /** Remove the tab from the podLayoutManagers */
+            podLayoutManagers.splice(i, 1);
+          }
+          
+          i++;
+        }      
+      }
+   
+      public function removePod(pod:Pod):void
+      {
+        /** Remove the pod from the manager's items list */
+        var updatedManager:PodLayoutManager;
+        for each(var manager:PodLayoutManager in podLayoutManagers)
+        {
+          var i:int = 0;
+          var deleted:Boolean = false;
+          for each(var managerPod:Pod in manager.items)
+          {
+            if(managerPod.id == pod.id)
+            {
+              manager.items.splice(i, 1);
+              deleted = true;
+              updatedManager = manager;
+              break;
+            }
+            
+            i++;
+          }
+          
+          if(deleted)
+          {
+            break;
+          }
+        }
+        
+        /** remove the pod from the layout */
+        pod.parent.removeChild(pod);
+        
+        /** remove potential null items */
+        updatedManager.removeNullItems();
+        
+        /** update the layout after deletion of pods (to reorder them) */
+        updatedManager.updateLayout(false);    
+      }
+        
+      public function addPod(id:String, title:String, content:Object, minimized:Boolean = false, 
+                                                                      contextMenu:ContextMenu = null):void
+      {
+        var manager:PodLayoutManager = podLayoutManagers[selectedTab];
+        
+        /** Add the new pod in the currently selected tab */
+        var pod:Pod = new Pod();
+        
+        pod.id = id;
+        pod.title = title;
+        pod.addChild(content);
+        
+        var index:Number;
+        
+        if(StateManager.isPodMinimized(selectedTab, id) || minimized == true)
+        {
+          index = StateManager.getMinimizedPodIndex(selectedTab, id);
+          manager.addMinimizedItemAt(pod, index);
+        }
+        else
+        {
+          index = StateManager.getPodIndex(selectedTab, id);
+          
+          // If the index hasn't been saved move the pod to the last position.
+          if(index == -1)
+          {
+            index = manager.items.length;
+          }        
+          
+          manager.addItemAt(pod, index, StateManager.isPodMaximized(selectedTab, id));
+        }
+        
+        pod.addEventListener(IndexChangedEvent.CHANGE, onChangePodView);      
+        
+        pod.addEventListener(FlexEvent.UPDATE_COMPLETE, onCreationCompletePod);
+        
+        pod.addEventListener(FeatureEvent.FEATURE_OVER, mapFeatureOverHandler);
+        pod.addEventListener(FeatureEvent.FEATURE_OUT, mapFeatureOut);
+        
+        pod.addEventListener(SemanticComponentItemEvent.ITEM_OVER, chartFeatureOverHandler);
+        pod.addEventListener(SemanticComponentItemEvent.ITEM_OUT, chartFeatureOutHandler);   
+        
+        /** Add a custom contetual menual to this pod. */
+        if(contextMenu != null)
+        {
+          pod.contextMenu = contextMenu;
+        }
+      }
+        
+      /** 
+       * Select other features of other widgets/indicators that are related to the 
+       * indicator feature being mouse overed 
+       */
+      private function chartFeatureOverHandler(event:SemanticComponentItemEvent):void
+      {
+        for each(var pod:Object in this.podLayoutManagers[selectedTab].items)
+        {         
+          for each(var semanticControl:Object in pod.getChildren())
+          {         
+            var componentName:String = flash.utils.getQualifiedClassName(semanticControl);           
+            
+            if(componentName == "sControl")
+            {
+              var children:Array = semanticControl.getChildren();
+              
+              for each(var child:Object in children)
+              {
+                if(child.hasOwnProperty("getChildren"))
+                {
+                  var sControlComponent:Object = child.getChildren()[0];
+                  
+                  if(sControlComponent.hasOwnProperty("selectRecord"))
+                  {
+                    sControlComponent.selectRecord(event.selectedObject);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      /** 
+       * Unselect other features of other widgets/indicators that are related to the 
+       * indicator feature being mouse overed 
+       */
+      private function chartFeatureOutHandler(event:SemanticComponentItemEvent):void
+      {
+        for each(var pod:Object in this.podLayoutManagers[selectedTab].items)
+        {         
+          for each(var semanticControl:Object in pod.getChildren())
+          {         
+            var componentName:String = flash.utils.getQualifiedClassName(semanticControl);           
+            
+            if(componentName == "sControl")
+            {
+              var children:Array = semanticControl.getChildren();
+              
+              for each(var child:Object in children)
+              {
+                if(child.hasOwnProperty("getChildren"))
+                {
+                  var sControlComponent:Object = child.getChildren()[0]; 
+                  
+                  if(sControlComponent.hasOwnProperty("unselectRecords"))
+                  {
+                    sControlComponent.unselectRecords();
+                  }
+                }
+              }
+            }
+          }
+        }
+      }   
+        
+      /** Select other features of other widgets/indicators that are related to the map feature being mouse overed */
+      private function mapFeatureOverHandler(event:FeatureEvent):void
+      {
+        for each(var pod:Object in this.podLayoutManagers[selectedTab].items)
+        {         
+          for each(var semanticControl:Object in pod.getChildren())
+          {         
+            var componentName:String = flash.utils.getQualifiedClassName(semanticControl);           
+            
+            if(componentName == "sControl")
+//          if(semanticControl is sControl)
+            {
+              var children:Array = semanticControl.getChildren();
+              
+              for each(var child:Object in children)
+              {
+                if(child.hasOwnProperty("selectRecord"))
+                {
+                  var record:Object = {uri: event.feature.recordBaseUri
+                    + String(event.feature.data.exturi).replace(/(\t|\n|\s{2,})/g, '')};
+                  child.selectRecord(record);
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      /** Unselect other features of other widgets/indicators that are related to the map feature being mouse overed */
+      private function mapFeatureOut(event:FeatureEvent):void
+      {
+        for each(var pod:Object in this.podLayoutManagers[selectedTab].items)
+        {         
+          for each(var semanticControl:Object in pod.getChildren())
+          {         
+            var componentName:String = flash.utils.getQualifiedClassName(semanticControl);           
+            
+            if(componentName == "sControl")
+//          if(semanticControl is sControl)
+            {
+              var children:Array = semanticControl.getChildren();
+              
+              for each(var child:Object in children)
+              {
+                if(child.hasOwnProperty("unselectRecords"))
+                {
+                  child.unselectRecords();
+                }
+              }
+            }
+          }
+        }
+      }
+        
+      // Adds the pods to a view.
+      private function addPods(manager:PodLayoutManager):void
+      {
+        /** Loop through the pod nodes for each view node. */
+        var podXMLList:XMLList = podDataDictionary[manager];
+        var podLen:Number = podXMLList.length();
+        var unsavedPodCount:Number = 0;
+  
+        for(var j:Number = 0; j < podLen; j++)
+        {
+          // Figure out which type of pod content to use.
+          var podContent:PodContentBase = null;
+  
+          if(podXMLList[j].@type == "chart")
+          {
+            podContent = new ChartContent();
+          }
+          else if(podXMLList[j].@type == "form")
+          {
+            podContent = new FormContent();
+          }
+          else if(podXMLList[j].@type == "list")
+          {
+            podContent = new ListContent();
+          }
+          else if(podXMLList[j].@type == "pieChart")
+          {
+            podContent = new PieChartContent();
+          }
+  
+          if(podContent != null)
+          {
+            var viewId:String = manager.id;
+            var podId:String = podXMLList[j].@id;
+  
+            // Get the saved value for the pod content viewStack.
+            if(StateManager.getPodViewIndex(viewId, podId) != -1)
+            {
+              podXMLList[j].@selectedViewIndex = StateManager.getPodViewIndex(viewId, podId);
+            }
+  
+            podContent.properties = podXMLList[j];
+            var pod:Pod = new Pod();
+            pod.id = podId;
+            pod.title = podXMLList[j].@title;
+            pod.addChild(podContent);
+            var index:Number;
+  
+            if(StateManager.isPodMinimized(viewId, podId))
+            {
+              index = StateManager.getMinimizedPodIndex(viewId, podId);
+              manager.addMinimizedItemAt(pod, index);
+            }
+            else
+            {
+              index = StateManager.getPodIndex(viewId, podId);
+  
+              // If the index hasn't been saved move the pod to the last position.
+              if(index == -1)
+              {
+                index = podLen + unsavedPodCount;
+                unsavedPodCount += 1;
+              }
+  
+              manager.addItemAt(pod, index, StateManager.isPodMaximized(viewId, podId));
+            }
+  
+            pod.addEventListener(IndexChangedEvent.CHANGE, onChangePodView);
+  
+            podHash[pod] = manager;
+          }
+        }
+  
+        // Delete the saved data.
+        delete podDataDictionary[manager];
+  
+        // Listen for the last pod to complete so the layout from the ContainerWindowManager is done correctly.
+        pod.addEventListener(FlexEvent.UPDATE_COMPLETE, onCreationCompletePod);
+      }
+  
+      // Pod has been created so update the respective PodLayoutManager.
+      private function onCreationCompletePod(e:FlexEvent):void
+      {
+        e.currentTarget.removeEventListener(FlexEvent.UPDATE_COMPLETE, onCreationCompletePod);
+        var manager:PodLayoutManager = podLayoutManagers[selectedTab];
+        manager.removeNullItems();
+        manager.updateLayout(false);
+      }
+  
+      // Saves the pod content ViewStack state.
+      private function onChangePodView(e:IndexChangedEvent):void
+      {
+        var pod:Pod = Pod(e.currentTarget);
+        var viewId:String = PodLayoutManager(podHash[pod]).id;
+        StateManager.setPodViewIndex(viewId, pod.id, e.newIndex);
+      }
+        
+      private function reset():void
+      {
+        var managerNames:Array = [];
+        
+        for each(var manager:PodLayoutManager in podLayoutManagers)
+        {
+          managerNames.push(manager.container.label);
+        }      
+        
+        for each(var managerName:String in managerNames)
+        {
+          removeTab(managerName);
+        }      
+        
+        podLayoutManagers = [];
+        selectedTab = 0;
+        podHash = {};
+        StateManager.reset();
+      }
+        
+      public function loadSession(session:XML, customContextMenu:ContextMenu = null):void
+      {
+        /** Reset the dashboard */
+        reset();
+        
+        /** Re-populate the dashboard */
+        var tabIterator:int = 0;
+        var theSelectedTab:int = 0;
+        for each(var tab:XML in session.tabs.tab)
+        {
+          /** Create the tab */
+          addTab(tab.title.toString());
+          
+          if(tab.selected.toString() == "true")
+          {
+            /** Select the tab if it was tagged as the selected tab */
+            selectedTab = tabIterator;            
+          }
+          
+          /** Save the view index. */
+          StateManager.setViewIndex(tabIterator); 
+          
+          viewStack.selectedIndex = tabIterator;
+    
+          tabBar.selectedIndex = tabIterator;
+
+          for each(var pod:XML in tab.pods.pod)
+          {
+            /** Generate the resultset to feed to this component */
+            var resultset:Resultset = new Resultset(pod.control.resultset[0]);
+            
+            /**
+            * Adding the UID in the URL of the module to load fix a problem with the framework version 3.4.
+            * Since we are loading the same module multiple times, it will throw a "SWF is not a loadable module"
+            * error. This error is not thrown when we proceed that way with the URL.
+            */
+            var info:IModuleInfo = ModuleManager.getModule(baseUrl + "sControl.swf?uid="+UIDUtil.createUID());
+            info.data = {
+              resultset: resultset, 
+              pod: pod, 
+              session: session, 
+              uid: UIDUtil.createUID(),
+              selectedTab: tabIterator
+            };
+            
+            info.addEventListener(ModuleEvent.READY, modControlReadyHandler);           
+            info.addEventListener(ModuleEvent.PROGRESS, modControlProgressHandler);           
+            info.addEventListener(ModuleEvent.ERROR, modControlErrorHandler);
+            
+            // Load the module into memory. Calling load() makes the
+            // IFlexModuleFactory available. You can then get an
+            // instance of the class using the factory's create()
+            // method.
+            info.load();   
+            
+            /** Keep a reference, in memory to the loader */
+            loaders.push(info);
+            
+            continue;
+            
+            
+            /** Create the indicator widget */
+//            var semanticControl:sControl = new sControl();
+//            
+//            /** Initialize the semantic control */
+//            semanticControl.id = pod.control.@id.toString();
+//            semanticControl.percentWidth = 100;
+//            semanticControl.percentHeight = 100;
+            
+            /** Enable drag-and-drop on the component */
+   //         semanticControl.addEventListener(DragEvent.DRAG_ENTER, dragAcceptHandler);
+   //         semanticControl.addEventListener(DragEvent.DRAG_DROP, dragDropHandler);                                
+/*  
+            var targetAttributes:Array = [];
+            
+            for each(var targetAttribute:XML in pod.control.targetAttributes.targetAttribute)
+            {
+              targetAttributes.push(targetAttribute.toString());
+            }          
+  
+            var targetTypes:Array = [];
+            
+            for each(var targetType:XML in pod.control.targetType.targetAttribute)
+            {
+              targetTypes.push(targetType.toString());
+            }          
+  
+            semanticControl.targetAttributes = targetAttributes;
+            semanticControl.targetTypes = targetTypes;
+            semanticControl.semanticDataProvider = null;   
+            semanticControl.schema = new Schema();
+            
+            for each(var s:XML in session.schemas.schema)
+            {
+              semanticControl.schema.appendSchema(s);
+            }
+            
+            
+            // Merge it with the schema(s) specified for this PCA instance 
+            if(this.schema)
+            {
+              semanticControl.schema.appendSchema(this.schema.schema);
+            }
+            
+            var minimized:Boolean = false;
+            
+            if(pod.minimized.toString() == "true")
+            {
+              minimized = true;
+            }
+            
+            addPod(pod.@id.toString(), pod.title.toString(), semanticControl, minimized);
+            
+            semanticControl.semanticDataProvider = resultset;
+            
+            // Select the propert control 
+            
+            var selectedComponentName:String = pod.control.selectedComponent.toString();
+            
+            if(selectedComponentName.indexOf("::") != -1)
+            {
+              selectedComponentName = selectedComponentName.substring(selectedComponentName.indexOf("::") + 2);
+            }
+            
+            semanticControl.selectControl = selectedComponentName;*/
+          }
+          
+          //podLayoutManagers[tabIterator].updateLayout();
+          
+          tabIterator++;
+        }
+        
+        /** Save the view index. */
+        StateManager.setViewIndex(theSelectedTab); 
+        
+        viewStack.selectedIndex = theSelectedTab;
+        
+        tabBar.selectedIndex = theSelectedTab;     
+      }
+        
+      private function modControlErrorHandler(e:ModuleEvent):void 
+      {
+        Alert.show("Module not available: "+e.errorText);
+      }
+      
+      private function modControlProgressHandler(e:ModuleEvent):void 
+      {
+        dispatchEvent(new SemanticComponentLoadEvent("progress", {
+          label: "Loading semantic control...",
+          progress: 5
+        }));  
+      }      
+      
+      private function modControlReadyHandler(e:ModuleEvent):void 
+      {
+        if(loadedLoaders.indexOf(e.module.data.uid) != -1)
+        {
+          /** If the component is already loaded, we skip this call */
+          return;
+        }
+        else
+        {
+          /** Otherwise, we keep a reference of it to tag it as loaded */
+          loadedLoaders.push(e.module.data.uid);
+        }
+        
+        loaderIndex++;
+        
+        var semanticControl:DisplayObject = e.module.factory.create() as DisplayObject;
+        
+        //var resultset:Resultset = new Resultset(XML(inputData));
+        
+        /** Initialize the semantic control */
+        semanticControl.id = e.module.data.pod.control.@id.toString();
+        semanticControl.percentWidth = 100;
+        semanticControl.percentHeight = 100;
+        
+        /** Enable drag-and-drop on the component if the dashboard lives in a Workbench instance. */
+        var componentName:String = flash.utils.getQualifiedClassName(this.parent.document);   
+        
+        if(componentName == "Workbench")
+        {
+          semanticControl.addEventListener(DragEvent.DRAG_ENTER, this.parent.document.dragAcceptHandler);
+          semanticControl.addEventListener(DragEvent.DRAG_DROP, this.parent.document.dragDropHandler);
+        }
+        
+        var targetAttributes:Array = [];
+        
+        for each(var targetAttribute:XML in e.module.data.pod.control.targetAttributes.targetAttribute)
+        {
+          targetAttributes.push(targetAttribute.toString());
+        }          
+        
+        var targetTypes:Array = [];
+        
+        for each(var targetType:XML in e.module.data.pod.control.targetTypes.targetType)
+        {
+          targetTypes.push(targetType.toString());
+        }          
+        
+        semanticControl.targetAttributes = targetAttributes;
+        semanticControl.targetTypes = targetTypes;
+        semanticControl.semanticDataProvider = null;   
+        semanticControl.schema = new Schema();
+        
+        for each(var s:XML in e.module.data.session.schemas.schema)
+        {
+          semanticControl.schema.appendSchema(s);
+        } 
+        
+        /** Show/hide the controls switcher component */
+        if(e.module.data.pod.showControlSwitcher.length() > 0)
+        {
+          if(e.module.data.pod.showControlSwitcher.toString().toLowerCase() == "false")
+          {
+            semanticControl.toggleSwitcherDisplayVisibility(false);
+          }
+          else
+          {
+            semanticControl.toggleSwitcherDisplayVisibility(true);
+          }  
+        }
+        
+        /** Merge it with the schema(s) specified for this PCA instance */
+        if(this.schema)
+        {
+          semanticControl.schema.appendSchema(this.schema.schema);
+        }
+        
+        var minimized:Boolean = false;
+        
+        if(e.module.data.pod.minimized.toString() == "true")
+        {
+          minimized = true;
+        }
+        
+        selectedTab = e.module.data.selectedTab;                
+        
+        if(componentName == "Workbench")
+        {
+          /** If the parent component is the Workbench, then we have to create the custom contextual menus */
+          var menuItemRenameTitle:ContextMenuItem = new ContextMenuItem("Rename title...");
+          
+          menuItemRenameTitle.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, this.parent.document.renamePodTitle);
+          
+          var customContextMenu:ContextMenu = new ContextMenu();
+          
+          /** Hide the default Flash menu items */
+          customContextMenu.hideBuiltInItems();
+          customContextMenu.customItems.push(menuItemRenameTitle);
+          
+          addPod(e.module.data.pod.@id.toString(), e.module.data.pod.title.toString(), semanticControl, minimized,
+                 customContextMenu);
+        } 
+        else
+        {
+          addPod(e.module.data.pod.@id.toString(), e.module.data.pod.title.toString(), semanticControl, minimized);
+        }
+        
+        
+        semanticControl.semanticDataProvider = e.module.data.resultset;
+        
+        /** Select the propert control */
+        
+        var selectedComponentName:String = e.module.data.pod.control.selectedComponent.toString();
+        
+        if(selectedComponentName.indexOf("::") != -1)
+        {
+          selectedComponentName = selectedComponentName.substring(selectedComponentName.indexOf("::") + 2);
+        }
+        
+        semanticControl.selectControl = selectedComponentName;    
+        
+        /** Fix the scale for some of the components */
+        if((selectedComponentName == "sBarChart" ||
+            selectedComponentName == "sLinearChart") &&
+           e.module.data.pod.control.vScale.length() > 0)
+        {
+          if(!semanticControl.initializer[selectedComponentName])
+          {
+            semanticControl.initializer[selectedComponentName] = {};
+          }
+          
+          semanticControl.initializer[selectedComponentName]["vScaleMinValue"] = e.module.data.pod.control.vScale.@min.toString();
+          semanticControl.initializer[selectedComponentName]["vScaleMaxValue"] = e.module.data.pod.control.vScale.@max.toString();
+          
+          if(selectedComponentName == "sLinearChart")
+          {
+            semanticControl.initializer[selectedComponentName]["vAxisLabel"] = e.module.data.pod.control.vAxisLabel.toString();
+          }
+        }             
+        
+        if(loaderIndex < loaders.length)
+        {
+          /** Load the next module in the queue */
+          loaders[loaderIndex].load();
+        }
+        
+        /** Force update of the Dashboard layout when a Pod finished to be loaded with its semantic component. */
+        podLayoutManagers[selectedTab].updateLayout(false, this);
+      }        
+  
+      ]]>
+    </mx:Script>
+  
+    <mx:TabBar id="tabBar" styleName="sDashboardTabBar" itemClick="onItemClickTabBar(event)" height="23"
+       textAlign="center" dataProvider="viewStack"/>
+  
+    <mx:ViewStack id="viewStack" styleName="sDashboardViewStack" paddingTop="0" width="100%" height="100%"/>
+  </mx:VBox>
+</mx:Module>

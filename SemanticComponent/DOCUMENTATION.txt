@@ -1,3 +1,0 @@
-The documentation for the code is accessible at this URL:
-
-http://openstructs.org/doc/code/semanticcomponent/index.html

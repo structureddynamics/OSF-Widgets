@@ -1,0 +1,624 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<title>Untitled Document</title>
+</head>
+
+<body>
+
+
+<p>The <b>AS3 coding standard</b> shares the same baseline as the PHP coding standard, but has some new rules that are specific to the AS3 programming language. The AS3 related portions of this standard document mainly come from the <a href="http://opensource.adobe.com/wiki/display/flexsdk/Coding+Conventions#CodingConventions-Literals|Flex" class="external text" title="http://opensource.adobe.com/wiki/display/flexsdk/Coding+Conventions#CodingConventions-Literals|Flex" rel="nofollow">SDK coding conventions and best practices</a> document. 
+</p><p><i>Note that not all rules come from it since some of them were conflicting with the general coding standards of Structured Dynamics opensource projects.</i>
+</p>
+<table id="toc" class="toc" summary="Contents"><tr><td><div id="toctitle"><h2>Contents</h2></div>
+<ul>
+<li class="toclevel-1"><a href="#Language_Usage"><span class="tocnumber">1</span> <span class="toctext">Language Usage</span></a>
+
+<ul>
+<li class="toclevel-2"><a href="#Encoding"><span class="tocnumber">1.1</span> <span class="toctext">Encoding</span></a></li>
+<li class="toclevel-2"><a href="#Indenting_and_Whitespace"><span class="tocnumber">1.2</span> <span class="toctext">Indenting and Whitespace</span></a></li>
+<li class="toclevel-2"><a href="#Operators"><span class="tocnumber">1.3</span> <span class="toctext">Operators</span></a></li>
+<li class="toclevel-2"><a href="#Statements"><span class="tocnumber">1.4</span> <span class="toctext">Statements</span></a></li>
+
+<li class="toclevel-2"><a href="#String_Concatenations"><span class="tocnumber">1.5</span> <span class="toctext">String Concatenations</span></a></li>
+<li class="toclevel-2"><a href="#Hexadecimal_Values"><span class="tocnumber">1.6</span> <span class="toctext">Hexadecimal Values</span></a></li>
+<li class="toclevel-2"><a href="#Indexes"><span class="tocnumber">1.7</span> <span class="toctext">Indexes</span></a></li>
+<li class="toclevel-2"><a href="#String_literals"><span class="tocnumber">1.8</span> <span class="toctext">String literals</span></a></li>
+<li class="toclevel-2"><a href="#Array_literals"><span class="tocnumber">1.9</span> <span class="toctext">Array literals</span></a></li>
+
+<li class="toclevel-2"><a href="#Object_literals"><span class="tocnumber">1.10</span> <span class="toctext">Object literals</span></a></li>
+<li class="toclevel-2"><a href="#RegExp_literals"><span class="tocnumber">1.11</span> <span class="toctext">RegExp literals</span></a></li>
+<li class="toclevel-2"><a href="#Class_literals"><span class="tocnumber">1.12</span> <span class="toctext">Class literals</span></a></li>
+<li class="toclevel-2"><a href="#New_Operator"><span class="tocnumber">1.13</span> <span class="toctext">New Operator</span></a></li>
+<li class="toclevel-2"><a href="#Control_Structures"><span class="tocnumber">1.14</span> <span class="toctext">Control Structures</span></a></li>
+
+<li class="toclevel-2"><a href="#Function_Declarations"><span class="tocnumber">1.15</span> <span class="toctext">Function Declarations</span></a></li>
+<li class="toclevel-2"><a href="#Variable.2FMember_Declaration"><span class="tocnumber">1.16</span> <span class="toctext">Variable/Member Declaration</span></a></li>
+<li class="toclevel-2"><a href="#Comments"><span class="tocnumber">1.17</span> <span class="toctext">Comments</span></a>
+<ul>
+<li class="toclevel-3"><a href="#ActionScript_3_.28AS3.29_Comments"><span class="tocnumber">1.17.1</span> <span class="toctext">ActionScript 3 (AS3) Comments</span></a>
+
+<ul>
+<li class="toclevel-4"><a href="#Comments_of_the_developer.28s.29"><span class="tocnumber">1.17.1.1</span> <span class="toctext">Comments of the developer(s)</span></a>
+<ul>
+<li class="toclevel-5"><a href="#Getter.2FSetter_properties"><span class="tocnumber">1.17.1.1.1</span> <span class="toctext">Getter/Setter properties</span></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toclevel-3"><a href="#MXML_Comments"><span class="tocnumber">1.17.2</span> <span class="toctext">MXML Comments</span></a>
+
+<ul>
+<li class="toclevel-4"><a href="#Comments_of_the_developer.28s.29_2"><span class="tocnumber">1.17.2.1</span> <span class="toctext">Comments of the developer(s)</span></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toclevel-2"><a href="#Special_ASDoc_tag"><span class="tocnumber">1.18</span> <span class="toctext">Special ASDoc tag</span></a>
+<ul>
+<li class="toclevel-3"><a href="#.40todo"><span class="tocnumber">1.18.1</span> <span class="toctext">@todo</span></a></li>
+
+<li class="toclevel-3"><a href="#.40patch"><span class="tocnumber">1.18.2</span> <span class="toctext">@patch</span></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#Naming"><span class="tocnumber">2</span> <span class="toctext">Naming</span></a>
+<ul>
+<li class="toclevel-2"><a href="#Abbreviations"><span class="tocnumber">2.1</span> <span class="toctext">Abbreviations</span></a></li>
+
+<li class="toclevel-2"><a href="#Acronyms"><span class="tocnumber">2.2</span> <span class="toctext">Acronyms</span></a></li>
+<li class="toclevel-2"><a href="#Word_boundaries"><span class="tocnumber">2.3</span> <span class="toctext">Word boundaries</span></a></li>
+<li class="toclevel-2"><a href="#Class_names"><span class="tocnumber">2.4</span> <span class="toctext">Class names</span></a></li>
+<li class="toclevel-2"><a href="#Event_names"><span class="tocnumber">2.5</span> <span class="toctext">Event names</span></a></li>
+<li class="toclevel-2"><a href="#Constant_names"><span class="tocnumber">2.6</span> <span class="toctext">Constant names</span></a></li>
+
+<li class="toclevel-2"><a href="#Property_.28variable_and_getter.2Fsetter.29_names"><span class="tocnumber">2.7</span> <span class="toctext">Property (variable and getter/setter) names</span></a></li>
+<li class="toclevel-2"><a href="#Storage_variable_names"><span class="tocnumber">2.8</span> <span class="toctext">Storage variable names</span></a></li>
+<li class="toclevel-2"><a href="#Method_names"><span class="tocnumber">2.9</span> <span class="toctext">Method names</span></a></li>
+<li class="toclevel-2"><a href="#Event_handler_names"><span class="tocnumber">2.10</span> <span class="toctext">Event handler names</span></a></li>
+<li class="toclevel-2"><a href="#Argument_names"><span class="tocnumber">2.11</span> <span class="toctext">Argument names</span></a></li>
+
+</ul>
+</li>
+</ul>
+</td></tr></table><script type="text/javascript"> if (window.showTocToggle) { var tocShowText = "show"; var tocHideText = "hide"; showTocToggle(); } </script>
+<a name="Language_Usage" id="Language_Usage"></a><h1><span class="mw-headline"> Language Usage </span></h1>
+<a name="Encoding" id="Encoding"></a><h2><span class="editsection"></span><span class="mw-headline">Encoding </span></h2>
+
+<p>All the AS3 and MXML files should be encoded in UTF-8
+</p>
+<a name="Indenting_and_Whitespace" id="Indenting_and_Whitespace"></a><h2><span class="editsection"></span><span class="mw-headline">Indenting and Whitespace </span></h2>
+<p>Use an indent of 2 spaces, with no tabs.
+</p><p>Lines should have no trailing whitespace at the end.
+</p><p>Files should be formatted with \n as the line ending (Unix line endings), not \r\n (Windows line endings).
+</p><p>The width of a code page has to be 120 characters wide.
+</p>
+<a name="Operators" id="Operators"></a><h2><span class="editsection"></span><span class="mw-headline">Operators </span></h2>
+
+<p>All binary operators (operators that come between two values), such as +, -, =,&nbsp;!=, ==, &gt;, etc. should have a space before and after the operator, for readability. For example, an assignment should be formatted as foo = bar; rather than foo=bar;. Unary operators (operators that operate on only one value), such as ++, should not have a space between the operator and the variable or number they are operating on.
+</p>
+<a name="Statements" id="Statements"></a><h2><span class="editsection"></span><span class="mw-headline">Statements </span></h2>
+<p>Terminate each statement with a semicolon. Do not use the optional-semicolon feature of ActionScript 3.
+</p><p>Do this:
+</p>
+<pre>
+  a = 1;
+  b = 2;
+  c = 3;
+
+</pre>
+<p>Not this:
+</p>
+<pre>
+  a = 1
+  b = 2
+  c = 3
+</pre>
+<a name="String_Concatenations" id="String_Concatenations"></a><h2><span class="editsection"></span><span class="mw-headline">String Concatenations </span></h2>
+<p>Always use a space between the plus sign and the concatenated parts to improve readability.
+</p>
+<pre>
+
+ foo = bar + &quot;test&quot;;
+ foo = &quot;test&quot; + bar;
+ foo = bar() + &quot;test&quot;;
+</pre>
+<p><br />
+</p>
+<a name="Hexadecimal_Values" id="Hexadecimal_Values"></a><h2><span class="editsection"></span><span class="mw-headline">Hexadecimal Values </span></h2>
+
+<p>Use a lowercase x and uppercase A-Z in hexadecimal numbers.
+</p><p>Do this:
+</p>
+<pre>
+0xFEDCBA
+</pre>
+<p>Not this:
+</p>
+<pre>
+0Xfedcba  
+</pre>
+<p>Always write an RGB color as a six-digit hexadecimal number.
+</p><p>Do this:
+</p>
+<pre>
+private const BLACK:uint = 0x000000;
+</pre>
+
+<p>Not this:
+</p>
+<pre>
+private const BLACK:uint = 0;  
+</pre>
+<a name="Indexes" id="Indexes"></a><h2><span class="editsection"></span><span class="mw-headline">Indexes </span></h2>
+<p>When dealing with indices, use the value -1 to mean “no index”.
+</p>
+<a name="String_literals" id="String_literals"></a><h2><span class="editsection"></span><span class="mw-headline">String literals </span></h2>
+
+<p>Use quotation marks (double quotes), not apostrophes (single quotes), to delimit strings, even if that string contains a quotation mark as a character.
+</p><p>Do this:
+</p>
+<pre>
+&quot;What's up, \&quot;Big Boy\&quot;?&quot;
+</pre>
+<p>Not this:
+</p>
+<pre>
+'What\'s up, &quot;Big Boy&quot;?'
+</pre>
+<p>Use \u, not \U, for unicode escape sequences.
+
+</p>
+<a name="Array_literals" id="Array_literals"></a><h2><span class="mw-headline">Array literals</span></h2>
+<p>Use Array literals rather than new Array().
+</p><p>Do this:
+</p>
+<pre>
+[]
+</pre>
+<p>Not this:
+</p>
+<pre>
+new Array()
+
+</pre>
+<p>And this:
+</p>
+<pre>
+[ 1, 2, 3 ]
+</pre>
+<p>Not this:
+</p>
+<pre>
+new Array(1, 2, 3)
+</pre>
+<p>Use the Array constructor only to allocate an array of a prespecified size, as in new Array(3), which means [ undefined, undefined, undefined ], not [ 3 ].
+</p>
+<a name="Object_literals" id="Object_literals"></a><h2><span class="editsection"></span><span class="mw-headline">Object literals </span></h2>
+
+<p>Use Object literals rather than new Object().
+</p><p>Do this:
+</p>
+<pre>
+{}
+</pre>
+<p><br />
+Not this:
+</p>
+<pre>
+new Object()
+</pre>
+<p>And this:
+</p>
+<pre>
+o = { a: 1, b: 2, c: 3 };
+</pre>
+
+<p>Not this:
+</p>
+<pre>
+o = new Object();
+o.a = 1;         
+o.b = 2;         
+o.c = 3;
+</pre>
+<p>Or this:
+</p>
+<pre>
+o = {};
+o.a = 1;         
+o.b = 2;         
+o.c = 3;
+</pre>
+<a name="RegExp_literals" id="RegExp_literals"></a><h2><span class="editsection"></span><span class="mw-headline">RegExp literals </span></h2>
+
+<p>Use the literal notation rather than constructing a RegExp instance from a String.
+</p><p>Do this:
+</p>
+<pre>
+var pattern:RegExp = /\d+/g;
+</pre>
+<p>Not this:
+</p>
+<pre>
+var pattern:RegExp = new RegExp(&quot;\\d+&quot;, &quot;g&quot;);
+</pre>
+<p>XML and XMLList literals
+</p><p>Use the literal notation rather than constructing an XML instance from a String.
+
+</p><p>Do this:
+</p>
+<pre>
+var node:XML = &lt;name first=&quot;Jane&quot; last=&quot;Doe&quot;/&gt;;
+</pre>
+<p>Not this:
+</p>
+<pre>
+var node:XML = new XML(&quot;&lt;name first=\&quot;Jane\&quot; last=\&quot;Doe\&quot;/&gt;&quot;);
+
+</pre>
+<p>Use double-quotes rather than single-quotes around XML attribute values:
+</p><p>Do this:
+</p>
+<pre>
+var node:XML = &lt;name first=&quot;Jane&quot; last=&quot;Doe&quot;/&gt;;
+</pre>
+<p>Not this:
+</p>
+<pre>
+
+var node:XML = &lt;name first='Jane' last='Doe'/&gt;;
+</pre>
+<a name="Class_literals" id="Class_literals"></a><h2><span class="editsection"></span><span class="mw-headline">Class literals </span></h2>
+<p>Use a fully-qualified class literal only if necessary to disambiguate between two imported classes with the same unqualified name.
+</p><p>Do this:
+</p>
+<pre>
+import mx.controls.Button;
+...
+var b:Button = new Button();
+</pre>
+
+<p>Not this:
+</p>
+<pre>
+import mx.controls.Button;
+...
+var b:Button = new mx.controls.Button();
+</pre>
+<p>But here a fully-qualified name is required and therefore qppropriate:
+</p>
+<pre>
+import mx.controls.Button;
+import my.controls.Button;
+...
+var b:Button = new mx.controls.Button();
+</pre>
+<a name="New_Operator" id="New_Operator"></a><h2><span class="editsection"></span><span class="mw-headline">New Operator </span></h2>
+
+<p>Use parentheses after the class reference, even if the constructor takes no arguments.
+</p><p>Do this:
+</p>
+<pre>
+var b:Button = new Button();
+</pre>
+<p>Not this:
+</p>
+<pre>
+var b:Button = new Button;
+</pre>
+<a name="Control_Structures" id="Control_Structures"></a><h2><span class="editsection"></span><span class="mw-headline">Control Structures </span></h2>
+
+<p>Control structures include if, for, while, switch, etc. Here is a sample if statement, since it is the most complicated of them:
+</p>
+<pre>
+if(condition1 || condition2) 
+{
+  action1;
+}
+elseif(condition3 &amp;&amp; condition4) 
+{
+  action2;
+}
+else 
+{
+  defaultaction;
+}
+</pre>
+<p>No space between the control structure's name and the open parenthesis. One line per open/close bracket.
+</p><p>You have to always use curly braces even in situations where they are technically optional. Having them increases readability and decreases the likelihood of logic errors being introduced when new lines are added.
+</p><p>For switch statements:
+</p><p>Do this:
+</p>
+<pre>
+switch (condition) 
+{
+  case 1:
+  {
+    action1;
+  }  
+  break;
+
+  case 2:
+  {
+    action2;
+  }
+  break;
+
+  default:
+  {
+    defaultaction;
+  }
+  break;
+}
+</pre>
+<p><br />
+Not this:
+
+</p>
+<pre>
+switch (condition) 
+{
+  case 1:
+    action1;
+  break;
+
+  case 2:
+  {
+    action2;
+  }
+  break;
+
+  default:
+    defaultaction;
+    break;
+}
+</pre>
+<a name="Function_Declarations" id="Function_Declarations"></a><h2><span class="editsection"></span><span class="mw-headline">Function Declarations </span></h2>
+<p>ASDoc doesn't create documentation from private function. However, ASDoc should always be written for all kind of functions:
+</p>
+<ul><li> Private
+</li><li> Protected
+
+</li><li> Public
+</li></ul>
+<p>ASDoc is used for both inline code documentation and publishable code documentation. It is the reason why even private function have to be documented with ASDoc comments.
+</p>
+<a name="Variable.2FMember_Declaration" id="Variable.2FMember_Declaration"></a><h2><span class="editsection"></span><span class="mw-headline">Variable/Member Declaration </span></h2>
+<p>Write a type annotation for every constant, variable, function argument, and function return value, even if the annotation is simply&nbsp;:* to indicate “no type”.
+</p><p>Do this:
+</p>
+<pre>
+
+  var value:*;
+</pre>
+<p>Not this:
+</p>
+<pre>
+  var value;
+</pre>
+<p>Use the narrowest type that is appropriate. For example, a loop index should be a int, not a Number, and certainly not an Object or *. As another example, a mouseDownHandler should declare its argument as event:MouseEvent, not event:Event.
+</p><p>Use int for integers, even if they can't be negative. Use uint only for RGB colors, bit masks, and other non-numeric values.
+</p><p>Use * only if the value can be undefined. You should generally use Object rather than *, with null being the “object doesn't exist” value.
+</p><p>If you declare something to be of type Array, add a comment of the form /* of ElementType */ immediately after Array indicate the type of the array elements. A future version of the language is likely to have typed arrays.
+</p><p>Do this:
+</p>
+<pre>
+var a:Array /* of String */ = [];
+
+</pre>
+<p>Not this:
+</p>
+<pre>
+var a:Array = [];
+</pre>
+<p>And this:
+</p>
+<pre>
+function f(a:Array /* of Number */):Array /* of Object */
+{
+    ...
+}
+</pre>
+<p>Not this:
+</p>
+<pre>
+function f(a:Array):Array
+</pre>
+<p><br />
+
+All members that are declared have to be initialized. If the member shouldn't be initialized with any specific value, then we have to initialize them with "empty" values, by example:
+</p><p>An empty string:
+</p>
+<pre>
+  public var foo:String = &quot;&quot;;
+</pre>
+<p>An empty integer:
+</p>
+<pre>
+  public var foo:int = 0;
+</pre>
+<p>An boolean value should always be initialized to false:
+</p>
+<pre>
+
+  public var foo:Boolean = false;
+</pre>
+<p>An non-existing class instantiation:
+</p>
+<pre>
+  public var foo:Object = {};
+</pre>
+<p>A empty class instantiation: 
+</p>
+<pre>
+  public var foo:Array = [];
+</pre>
+<p><br />
+All declared variables have to be commented with ASDoc:
+
+</p>
+<pre>
+  /** This variable is used for... */
+  var foo:String = &quot;&quot;;
+</pre>
+<p>This is particularly useful since Flash Builder 4 is not using them (even if no documentation is generated by ASDoc for these comments) within the IDE.
+</p>
+<a name="Comments" id="Comments"></a><h2><span class="editsection"></span><span class="mw-headline">Comments </span></h2>
+<a name="ActionScript_3_.28AS3.29_Comments" id="ActionScript_3_.28AS3.29_Comments"></a><h3><span class="editsection"></span><span class="mw-headline">ActionScript 3 (AS3) Comments </span></h3>
+
+<a name="Comments_of_the_developer.28s.29" id="Comments_of_the_developer.28s.29"></a><h4><span class="editsection"></span><span class="mw-headline">Comments of the developer(s) </span></h4>
+<p>All comments by the developer should be using the ASDoc comment type:
+</p>
+<pre>
+  /** */
+</pre>
+<p>Notice the 2 starts in the comment above. These are ASDoc comments for AS3 code.
+</p><p>If the comment takes more than two lines, it should be written with one star at the beginning of each new line:
+</p>
+
+<pre>
+  /** 
+  * Comment...
+  * Comment continued...
+  */
+</pre>
+<p>If the comment only takes one line, it should be written on one line:
+</p>
+<pre>
+  /** Comment... */
+</pre>
+<a name="Getter.2FSetter_properties" id="Getter.2FSetter_properties"></a><h5><span class="editsection"></span><span class="mw-headline">Getter/Setter properties </span></h5>
+
+<p>Only document the first function of a get/set function pair for a property.
+</p>
+<a name="MXML_Comments" id="MXML_Comments"></a><h3><span class="editsection"></span><span class="mw-headline">MXML Comments </span></h3>
+<a name="Comments_of_the_developer.28s.29_2" id="Comments_of_the_developer.28s.29_2"></a><h4><span class="editsection"></span><span class="mw-headline">Comments of the developer(s) </span></h4>
+<p>All comments by the developer should be using the ASDoc comment type:
+
+</p>
+<pre>
+  &lt;!--- --&gt;
+</pre>
+<p>Notice the 3 dashes in the comment above. These are ASDoc comments for MXML code.
+</p><p>If the comment takes more than two lines, it should be written on multiple lines:
+</p>
+<pre>
+  &lt;!--- 
+    Comment...
+    Comment continued...
+  --&gt;
+</pre>
+<p>If the comment only takes one line, it should be written on one line:
+</p>
+<pre>
+
+  &lt;!--- Comment... --&gt;
+</pre>
+<a name="Special_ASDoc_tag" id="Special_ASDoc_tag"></a><h2><span class="editsection"></span><span class="mw-headline">Special ASDoc tag </span></h2>
+<p>Event if not supported by ASDoc, these tags have to be used if needed.
+</p>
+<a name=".40todo" id=".40todo"></a><h3><span class="editsection"></span><span class="mw-headline">@todo </span></h3>
+
+<ul><li> The @todo tag is used to specify a task to be completed in the code.
+<ul><li> @todo [description]
+</li></ul>
+</li></ul>
+<a name=".40patch" id=".40patch"></a><h3><span class="editsection"></span><span class="mw-headline">@patch </span></h3>
+<ul><li> The @patch tag is used to specify that someone had to fix/enhance something that is part of another library
+<ul><li> @patch [author name, organization] -- [date]
+
+</li></ul>
+</li></ul>
+<a name="Naming" id="Naming"></a><h1><span class="editsection"></span><span class="mw-headline">Naming </span></h1>
+<p>Choosing good names for variables, functions and classes is critical to creating code that is easy to use and easy to understand. You should always take the time to think about whether you have chosen the right name for something.
+</p><p>Properly name and comment things is one of the most critical task of open source projects. At all time, developers should care about this critical task.
+</p>
+<a name="Abbreviations" id="Abbreviations"></a><h2><span class="editsection"></span><span class="mw-headline">Abbreviations </span></h2>
+
+<p>Avoid them as a general rule. For example, calculateOptimalValue() is a better method name than calcOptVal().
+</p>
+<a name="Acronyms" id="Acronyms"></a><h2><span class="editsection"></span><span class="mw-headline">Acronyms </span></h2>
+<p>An acronym is always all-uppercase.
+</p><p>do:
+</p>
+<pre>
+  var recordURI:String = &quot;&quot;;
+</pre>
+
+<p>Not:
+</p>
+<pre>
+  var recordUri:String = &quot;&quot;;
+</pre>
+<a name="Word_boundaries" id="Word_boundaries"></a><h2><span class="editsection"></span><span class="mw-headline">Word boundaries </span></h2>
+<p>When an identifier contains multiple words, we use two ways of indicating word boundaries: intercaps (as in LayoutManager or measuredWidth) and underscores (as in object_proxy). See the rules below for which method to use.
+</p>
+<a name="Class_names" id="Class_names"></a><h2><span class="editsection"></span><span class="mw-headline">Class names </span></h2>
+
+<p>Start them with an uppercase letter and use intercaps for subsequent words: Foo, FooBar, etc.
+</p>
+<a name="Event_names" id="Event_names"></a><h2><span class="editsection"></span><span class="mw-headline">Event names </span></h2>
+<p>Start them with a lowercase letter and use intercaps for subsequent words: "move", "creationComplete".
+Style names
+</p><p>Start them with a lowercase letter and use intercaps for subsequent words: color, fontSize.
+</p>
+<a name="Constant_names" id="Constant_names"></a><h2><span class="editsection"></span><span class="mw-headline">Constant names </span></h2>
+
+<p>Use all uppercase letters with underscores between words: OFF, DEFAULT_WIDTH.
+</p><p>The words in the identifier must match the words in the constant value if it is a String:
+</p>
+<pre>
+public static const FOO_BAR:String = &quot;fooBar&quot;;
+</pre>
+<a name="Property_.28variable_and_getter.2Fsetter.29_names" id="Property_.28variable_and_getter.2Fsetter.29_names"></a><h2><span class="editsection"></span><span class="mw-headline">Property (variable and getter/setter) names </span></h2>
+<p>Start them with a lowercase letter and use intercaps for subsequent words: i, width, numChildren.
+</p>
+
+<a name="Storage_variable_names" id="Storage_variable_names"></a><h2><span class="editsection"></span><span class="mw-headline">Storage variable names </span></h2>
+<p>Give the storage variable for the getter/setter foo the name _foo.
+</p>
+<a name="Method_names" id="Method_names"></a><h2><span class="editsection"></span><span class="mw-headline">Method names </span></h2>
+<p>Start them with a lowercase letter and use intercaps for subsequent words: measure(), updateDisplayList().
+
+</p><p>Method names should always be verbs.
+</p>
+<a name="Event_handler_names" id="Event_handler_names"></a><h2><span class="editsection"></span><span class="mw-headline">Event handler names </span></h2>
+<p>Event handlers should be named by concatenating “Handler” to the type of the event: mouseDownHandler().
+</p><p>If the handler is for events dispatched by a subcomponent (i.e., not this), prefix the handler name with the subcomponent name and an underscore: textInput_focusInHandler().
+</p>
+<a name="Argument_names" id="Argument_names"></a><h2><span class="editsection"></span><span class="mw-headline">Argument names </span></h2>
+
+<p>Use value for the argument of every setter:
+</p><p>Do this:
+</p>
+<pre>
+public function set label(value:String):void
+</pre>
+<p>Not this:
+</p>
+<pre>
+public function set label(lab:String):void
+</pre>
+<p>Or this:
+</p>
+<pre>
+public function set label(labelValue:String):void
+</pre>
+<p>Or this:
+
+</p>
+<pre>
+public function set label(val:String):void
+</pre>
+<p>Use event (not e, evt, or eventObj) for the argument of every event handler:
+</p>
+<pre>
+protected function mouseDownHandler(event:Event):void
+</pre>
+
+
+</body>
+</html>

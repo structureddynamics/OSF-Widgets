@@ -1,1 +1,0 @@
-Check out the structSearch demo example for an example of the usage of the sGenericBox semantic control.

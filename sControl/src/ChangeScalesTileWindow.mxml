@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Tile window that ask the user to provide a new name of the new pod to rename in the Dashboard. -->
+
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml" title="Rename Window" x="200" y="200">
+  
+  <mx:Script>
+    <![CDATA[       
+      import mx.managers.PopUpManager;
+      
+      /** Target pod for which we want to change its name. */
+      public var targetChart:Object;
+      
+      /** Event handler for the OK button. */
+      private function changeScale():void 
+      {
+        /** Rename the Pod */
+        this.targetChart.setVerticalScale(minVScale.text, maxVScale.text);
+        
+        /** Remove this tile window */
+        PopUpManager.removePopUp(this);
+      }
+    ]]>
+  </mx:Script>
+  
+  <mx:HBox>
+    <mx:Label text="Minimum Vertical Scale: "/>
+    <mx:TextInput id="minVScale" width="100%"/>
+    <mx:Label text="Maximum Vertical Scale: "/>
+    <mx:TextInput id="maxVScale" width="100%"/>
+  </mx:HBox>
+  
+  <mx:HBox width="100%" horizontalAlign="center">
+    <mx:Button label="Change Scale" click="changeScale();"/>
+    <mx:Button label="Cancel" click="PopUpManager.removePopUp(this);"/>
+  </mx:HBox>
+  
+</mx:TitleWindow> 
