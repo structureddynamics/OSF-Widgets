@@ -415,14 +415,14 @@ package com.sd.semantic.core
           {
             /** Literal value */
             var pred:String = predicate.substr(0, predicate.indexOf("_")) + ":" + predicate.substr(predicate.indexOf("_") + 1);
-            json += '{"'+pred+'": "'+value.value+'"},';
+            json += '{"'+pred+'": "'+escapeJsonString(value.value)+'"},';
           }
           
           if(value.uri != "")
           {
             /** object value */
             var pred:String = predicate.substr(0, predicate.indexOf("_")) + ":" + predicate.substr(predicate.indexOf("_") + 1);
-            json += '{"'+pred+'": {"uri": "'+value.uri+'"}},';
+            json += '{"'+pred+'": {"uri": "'+escapeJsonString(value.uri)+'"}},';
           }
         }
       }
@@ -438,6 +438,97 @@ package com.sd.semantic.core
       json += "}";
       
       return(json);
+    } 
+    
+    /**
+     * Escapes a string accoding to the JSON specification.
+     *
+     * @param str The string to be escaped
+     * @return The string with escaped special characters
+     * according to the JSON specification
+     * 
+     * @see https://github.com/mikechambers/as3corelib/blob/master/src/com/adobe/serialization/json/JSONEncoder.as
+     */    
+    private function escapeJsonString( str:String ):String
+    {
+      if(str == null)
+      { 
+        return("");
+      }
+      
+      // create a string to store the string's jsonstring value
+      var s:String = "";
+      // current character in the string we're processing
+      var ch:String;
+      // store the length in a local variable to reduce lookups
+      var len:Number = str.length;
+      
+      // loop over all of the characters in the string
+      for ( var i:int = 0; i < len; i++ )
+      {
+        // examine the character to determine if we have to escape it
+        ch = str.charAt( i );
+        switch ( ch )
+        {
+          case '"': // quotation mark
+            s += "\\\"";
+            break;
+          
+          //case '/': // solidus
+          // s += "\\/";
+          // break;
+          
+          case '\\': // reverse solidus
+            s += "\\\\";
+            break;
+          
+          case '\b': // bell
+            s += "\\b";
+            break;
+          
+          case '\f': // form feed
+            s += "\\f";
+            break;
+          
+          case '\n': // newline
+            s += "\\n";
+            break;
+          
+          case '\r': // carriage return
+            s += "\\r";
+            break;
+          
+          case '\t': // horizontal tab
+            s += "\\t";
+            break;
+          
+          default: // everything else
+            
+            // check for a control character and escape as unicode
+            if ( ch < ' ' )
+            {
+              // get the hex digit(s) of the character (either 1 or 2 digits)
+              var hexCode:String = ch.charCodeAt( 0 ).toString( 16 );
+              
+              // ensure that there are 4 digits by adjusting
+              // the # of zeros accordingly.
+              var zeroPad:String = hexCode.length == 2 ? "00" : "000";
+              
+              // create the unicode escape sequence with 4 hex digits
+              s += "\\u" + zeroPad + hexCode;
+            }
+            else
+            {
+              
+              // no need to do any special encoding, just pass-through
+              s += ch;
+              
+            }
+        } // end switch
+        
+      } // end for loop
+      
+      return(s);
     }    
   }
 }
