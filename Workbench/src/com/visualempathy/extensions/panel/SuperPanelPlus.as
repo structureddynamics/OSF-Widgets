@@ -38,13 +38,13 @@ package com.visualempathy.extensions.panel {
         [Bindable] public var resizeEnabled:Boolean = false;
         [Bindable] public var dragEnabled:Boolean    = false;
         
-        [Embed(source="/themes/Brownie/images/resizeCursor.png")]
+        [Embed(source="/images/resizeCursor.png")]
         private static var resizeCursor:Class;
         
         private var    pTitleBar:UIComponent;
         private var oW:Number;
         private var oH:Number;
-        private var oX:Number;
+        private var oX:Number; 
         private var oY:Number;
         private var oAlpha:Number            = 1;
         private var menuButton:Button        = new Button();

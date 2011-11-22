@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Tile window that ask the user to provide a new name of the new pod to rename in the Dashboard. -->
+
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml" title="Rename Window" x="200" y="200">
+  
+  <mx:Script>
+    <![CDATA[       
+      import mx.managers.PopUpManager;
+      
+      /** Target pod for which we want to change its name. */
+      public var targetChart:Object;
+      
+      /** Event handler for the OK button. */
+      private function changeLabel():void 
+      {
+        /** Rename the Pod */
+        this.targetChart.setVerticalAxisLabel(axisLabel.text);
+        
+        /** Remove this tile window */
+        PopUpManager.removePopUp(this);
+      }
+    ]]>
+  </mx:Script>
+  
+  <mx:HBox>
+    <mx:Label text="Label for the vertical axis: "/>
+    <mx:TextInput id="axisLabel" width="100%"/>
+  </mx:HBox>
+  
+  <mx:HBox>
+    <mx:Button label="Change" click="changeLabel();"/>
+    <mx:Button label="Cancel" click="PopUpManager.removePopUp(this);"/>
+  </mx:HBox>  
+  
+</mx:TitleWindow> 

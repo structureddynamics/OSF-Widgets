@@ -1,0 +1,19 @@
+===============================================================
+== Notice of Attribution for the Apache License, Version 2.0 ==
+===============================================================
+
+Semantic Components.
+Copyright 2008-2011. Structured Dynamics LLC.
+
+Semantic Components is one of the contributing components to the
+Open Semantic Framework (OSF); see http://openstructs.org.
+Additional technical documentation for Semantic Components and its
+related OSF components is available at
+http://techwiki.openstructs.org.
+
+This product includes software developed by
+Structured Dynamics LLC (http://structureddynamics.com/).
+
+OSF also has hooks to other open source products; for a listing and license
+terms of these, see:
+http://techwiki.openstructs.org/index.php/Open_Source_Software_Licenses. 

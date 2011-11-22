@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Tile window that ask the user to provide a new name of the new pod to rename in the Dashboard. -->
+
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml" title="Rename Window" x="200" y="200">
+  
+  <mx:Script>
+    <![CDATA[       
+      import com.esria.samples.dashboard.view.Pod;
+      import mx.managers.PopUpManager;
+      
+      public var existingWindowName:String = "";
+      
+      /** Target pod for which we want to change its name. */
+      public var targetPod:Pod;
+      
+      /** Event handler for the OK button. */
+      private function renameWindow():void 
+      {
+        /** Rename the Pod */
+        this.targetPod.setTitle(windowName.text);
+        
+        /** Remove this tile window */
+        PopUpManager.removePopUp(this);
+      }
+    ]]>
+  </mx:Script>
+  
+  <mx:HBox>
+    <mx:Label text="New name of the window: "/>
+    <mx:TextInput id="windowName" width="100%"/>
+  </mx:HBox>
+  
+  <mx:HBox>
+    <mx:Button label="Rename" click="renameWindow();"/>
+    <mx:Button label="Cancel" click="PopUpManager.removePopUp(this);"/>
+  </mx:HBox>
+  
+</mx:TitleWindow> 

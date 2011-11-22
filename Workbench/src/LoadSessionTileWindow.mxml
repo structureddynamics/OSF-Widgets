@@ -12,6 +12,12 @@
       import mx.rpc.http.HTTPService;      
       import mx.rpc.events.FaultEvent;
       import mx.rpc.events.ResultEvent;
+      import mx.controls.Alert;      
+      import mx.collections.*;
+      
+      [Bindable] private var sessions:ArrayCollection = new ArrayCollection();
+      
+      private var filterText:String = "";
       
       /**
        * Initialize the tile window
@@ -30,7 +36,7 @@
         httpService.addEventListener(ResultEvent.RESULT, sessionsLoadResultsetHandler);
         httpService.addEventListener(FaultEvent.FAULT, sessionsLoadResultsetFaultHandler);
         
-        httpService.send(requestParameters);        
+        httpService.send(requestParameters);     
       }
       
       /** Faulty Sessions List event handler */
@@ -42,24 +48,87 @@
       /** Sessions list event handler */
       private function sessionsLoadResultsetHandler(event:ResultEvent):void
       {
-        sessionsList.dataProvider = event.result.session;
+        for each(var session:XML in event.result.session)
+        {
+          var label:String = "";
+          var file:String = "";
+          
+          if(session.@label)
+          {
+            label = XMLList(session.@label).toString();
+          }
+          
+          if(session.@file)
+          {
+            file = XMLList(session.@file).toString();
+          }
+          
+          var sessionItem:Object = {};
+          
+          sessionItem.label = label;
+          sessionItem.file = file;
+          
+          this.sessions.addItem(sessionItem);
+          
+        }        
+        
+        /** Sort by session label */        
+        var sort:Sort = new Sort();
+        sort.fields = [new SortField("label")];
+        this.sessions.sort = sort;
+        this.sessions.refresh();
+        
+        this.sessions.filterFunction = filterSessions;        
+      }      
+      
+      private function setFilter():void 
+      {
+        this.filterText = filter.text;
+        this.sessions.refresh();
+      }      
+      
+      private function filterSessions(item:Object):Boolean 
+      {
+        if (item.label.toLowerCase().indexOf(this.filterText) >= 0) 
+        {
+          return true;    
+        }
+        else 
+        {
+          return false;
+        }
       }      
       
       /** Event handler for the OK button. */
       private function loadSession():void 
       {
         /** Load session */
-        this.parent.document.loadDashboardSession(sessionsList.dataProvider[sessionsList.selectedIndex].@file.toString());
+        this.parent.document.loadDashboardSession(sessionsList.dataProvider[sessionsList.selectedIndex].file);
         
         /** Remove this tile window */
         PopUpManager.removePopUp(this);
       }
       
+      private function sessionLabel(data:Object):String 
+      {
+        return(data.label);
+      }      
+      
     ]]>
   </mx:Script>
   
   <mx:HBox width="100%">
-    <mx:List id="sessionsList" width="100%" labelField="@label"></mx:List>
+    
+    <mx:Form width="100%">
+      <mx:FormHeading label="Select a session to load" />
+      <mx:FormItem label="Search" direction="horizontal" width="100%">
+        <mx:TextInput id="filter" change="setFilter()" width="100%" />
+      </mx:FormItem>                                
+      <mx:FormItem label="Sessions" width="100%">
+        <mx:List id="sessionsList" dataProvider="{sessions}" width="100%" labelFunction="sessionLabel"></mx:List>
+        <!--mx:List dataProvider="{locations}" rowCount="10" width="300" labelFunction="locationPostcode" /-->
+      </mx:FormItem>
+    </mx:Form>    
   </mx:HBox>
 
   <mx:HBox horizontalAlign="center" width="100%" >

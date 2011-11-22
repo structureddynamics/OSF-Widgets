@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Tile window that ask the user define a filtering value for the clicked attribute -->
+
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml" title="Attribute / Value Filtering" x="20" y="20" width="470" 
+                height="208">
+  
+  <mx:Script>
+    <![CDATA[       
+      import com.flextoolbox.controls.CheckBoxList;
+      import com.sd.semantic.components.sWebMap;
+      
+      import mx.managers.PopUpManager;
+      
+      public var selectedAttributeIndex:String = "";
+      public var targetListControl:CheckBoxList;
+      public var targetComponent:sWebMap;
+
+      /** Event handler for the OK button. */
+      private function addFilter():void 
+      {
+        targetComponent.addAttributeValueFilter(fvalue.text, 
+                                                targetListControl.dataProvider[selectedAttributeIndex].uri,
+                                                targetListControl);
+        
+        /** Remove this tile window */
+        PopUpManager.removePopUp(this);
+      }
+      
+    ]]>
+  </mx:Script>
+  
+  <mx:VBox width="100%">
+    
+    <mx:Text text="You can filter the entities that get displayed on the map by defining some filtering values that will be applied to the attribute you just clicked on the filtering panel." width="424" height="60"/>
+    
+    <mx:HBox>
+      <mx:Text text="Value:"  fontWeight="bold"/>
+      <mx:TextInput id="fvalue" width="377"/>  
+    </mx:HBox>
+    
+  </mx:VBox>
+  
+  <mx:HBox horizontalAlign="center" width="100%" >
+    <mx:Button label="Add Filter" click="addFilter();"/>
+    <mx:Button label="Cancel" click="PopUpManager.removePopUp(this);"/>
+  </mx:HBox>
+  
+</mx:TitleWindow> 
