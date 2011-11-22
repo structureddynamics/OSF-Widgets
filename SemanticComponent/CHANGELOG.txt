@@ -1,3 +1,0 @@
-You can access the changelog from the community page available at this address:
-
-http://community.openstructs.org/source-code/change-logs/semantic-component/

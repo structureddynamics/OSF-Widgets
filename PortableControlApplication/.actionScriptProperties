@@ -1,25 +1,14 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<actionScriptProperties mainApplicationPath="PortableControlApplication.mxml" projectUUID="760e6165-4db2-44a2-8b7c-367d7508431c" version="6">
-  <compiler additionalCompilerArguments="-locale en_US" autoRSLOrdering="true" copyDependentFiles="true" flexSDK="Flex 3.5" fteInMXComponents="false" generateAccessible="false" htmlExpressInstall="true" htmlGenerate="true" htmlHistoryManagement="true" htmlPlayerVersionCheck="true" includeNetmonSwc="false" outputFolderPath="bin-debug" sourceFolderPath="src" strict="false" targetPlayerVersion="10.0.0" useApolloConfig="false" useDebugRSLSwfs="true" verifyDigests="true" warn="true">
+<actionScriptProperties analytics="false" mainApplicationPath="PortableControlApplication.mxml" projectUUID="b8645b35-0367-4fe5-971d-25b00e29a859" version="10">
+  <compiler additionalCompilerArguments="-locale en_US" autoRSLOrdering="false" copyDependentFiles="true" flexSDK="Flex 3.6" fteInMXComponents="false" generateAccessible="false" htmlExpressInstall="true" htmlGenerate="false" htmlHistoryManagement="true" htmlPlayerVersionCheck="true" includeNetmonSwc="false" outputFolderPath="bin-debug" removeUnusedRSL="true" sourceFolderPath="src" strict="false" targetPlayerVersion="10.0.0" useApolloConfig="false" useDebugRSLSwfs="false" verifyDigests="true" warn="true">
     <compilerSourcePath>
-      <compilerSourcePathEntry kind="1" linkType="1" path="${DOCUMENTS}/SemanticComponent/src/"/>
+      <compilerSourcePathEntry kind="1" linkType="1" path="${DOCUMENTS}/sCore/src/"/>
     </compilerSourcePath>
-    <libraryPath defaultLinkType="1">
+    <libraryPath defaultLinkType="3">
       <libraryPathEntry kind="4" path="">
-        <modifiedEntries>
-          <libraryPathEntry index="3" kind="3" linkType="4" path="${PROJECT_FRAMEWORKS}/libs/framework.swc" useDefaultLinkType="true">
-            <crossDomainRsls>
-              <crossDomainRslEntry autoExtract="true" policyFileUrl="http://fpdownload.adobe.com/pub/swz/crossdomain.xml" rslUrl="http://fpdownload.adobe.com/pub/swz/flex/4.0.0.14159/framework_4.0.0.14159.swz"/>
-              <crossDomainRslEntry autoExtract="true" policyFileUrl="" rslUrl="framework_4.0.0.14159.swz"/>
-            </crossDomainRsls>
-          </libraryPathEntry>
-          <libraryPathEntry index="6" kind="3" linkType="4" path="${PROJECT_FRAMEWORKS}/libs/rpc.swc" useDefaultLinkType="true">
-            <crossDomainRsls>
-              <crossDomainRslEntry autoExtract="true" policyFileUrl="http://fpdownload.adobe.com/pub/swz/crossdomain.xml" rslUrl="http://fpdownload.adobe.com/pub/swz/flex/4.0.0.14159/rpc_4.0.0.14159.swz"/>
-              <crossDomainRslEntry autoExtract="true" policyFileUrl="" rslUrl="rpc_4.0.0.14159.swz"/>
-            </crossDomainRsls>
-          </libraryPathEntry>
-        </modifiedEntries>
+        <excludedEntries>
+          <libraryPathEntry kind="3" linkType="1" path="${PROJECT_FRAMEWORKS}/libs/flex.swc" useDefaultLinkType="false"/>
+        </excludedEntries>
       </libraryPathEntry>
       <libraryPathEntry kind="1" linkType="1" path="libs"/>
     </libraryPath>
@@ -29,7 +18,6 @@
     <application path="PortableControlApplication.mxml"/>
   </applications>
   <modules/>
-  <buildCSSFiles>
-    <buildCSSFileEntry destPath="bin-debug" sourcePath="src/brownieTheme.css"/>
-  </buildCSSFiles>
+  <buildCSSFiles/>
+  <flashCatalyst validateFlashCatalystCompatibility="false"/>
 </actionScriptProperties>

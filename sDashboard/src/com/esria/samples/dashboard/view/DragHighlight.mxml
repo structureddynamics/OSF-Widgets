@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	Displays a box drop indicator when a user drags a pod.
+-->
+<mx:Box xmlns:mx="http://www.adobe.com/2006/mxml" />

@@ -2,22 +2,34 @@
 <mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:axiis="http://www.axiis.org/2009"
   xmlns:degrafa="http://www.degrafa.com/2007" xmlns:charts="org.axiis.charts.*"
   xmlns:geometry="com.degrafa.geometry.*" xmlns:components="com.sd.semantic.components.*" layout="absolute"
-  creationComplete="init()">
+  creationComplete="init()"  backgroundAlpha="0">
    
   <mx:Script>
     <![CDATA[
- 
-    import mx.controls.Alert; 
-    import mx.events.StyleEvent;
-    import flash.xml.XMLDocument;
-    import flash.utils.getQualifiedClassName;
-    import org.sunlightlabs.ClearMaps.FeatureEvent;
-    import com.sd.semantic.core.*;
-    import com.sd.semantic.components.sControl;
-    import com.sd.semantic.events.SchemaLoadedEvent;
-    import com.sd.semantic.settings.GeneralSettings;
-    import mx.core.Application;
-
+		
+  	import com.sd.semantic.core.Namespaces;
+  	import com.sd.semantic.core.Resultset;
+  	import com.sd.semantic.core.Schema;
+  	import com.sd.semantic.events.*;
+  	import com.sd.semantic.settings.GeneralSettings;
+  	
+  	import mx.controls.Alert;
+  	import mx.core.Application;
+  	import mx.events.ModuleEvent;
+  	import mx.events.StyleEvent;
+  	import mx.modules.IModuleInfo;
+  	import mx.modules.ModuleManager;
+    import flash.external.ExternalInterface;   
+  		
+  	public var info:IModuleInfo;		
+  		
+    /** 
+    * Used to make the PCA aware of the definition of this event.
+    * @see http://stackoverflow.com/questions/5401472/i-cant-dispatch-custom-event-from-one-module-to-another-as-it-gives-typeerror-e
+    */
+    public var dummySemanticComponentItemEvent:SemanticComponentItemEvent;      
+      
+		
     /**
     * The purpose of this application is to select the proper semantic component to use
     * for a given datasource (a single record or a set of records).
@@ -44,7 +56,13 @@
 
     /** Specifies a specific URL where component settings files can be found */
     [Bindable]public var baseAppUrl:String = "";
-
+    
+    /** 
+    * Specifies a folder path where the settings file for this instance can be found
+    * at the baseAppUrl. 
+    */
+    [Bindable]public var settingsFolder:String = "settings/";
+      
     /** Direct input data if size is smaller than 65k bytes. Used for input data case #1 */
     [Bindable]public var inputData:String = "";
 
@@ -93,8 +111,7 @@
     /** Number of schemas loaded, at a given time, for this application */
     private var schemaLoaded:int;
 
-    private var generalSettings:GeneralSettings;
-
+    private var generalSettings:GeneralSettings; 
 
     /**
     * Initialization function ran once the application's creation is complete. It aggregates all the information
@@ -103,12 +120,25 @@
     */
     private function init():void
     {
+      this.schema.addEventListener(SemanticComponentLoadEvent.START, applicationLoadHandle);
+      this.schema.addEventListener(SemanticComponentLoadEvent.PROGRESS, applicationLoadHandle);
+      this.schema.addEventListener(SemanticComponentLoadEvent.COMPLETED, applicationLoadHandle);
+      
+      this.addEventListener(SemanticComponentLoadEvent.START, applicationLoadHandle);
+      this.addEventListener(SemanticComponentLoadEvent.PROGRESS, applicationLoadHandle);
+      this.addEventListener(SemanticComponentLoadEvent.COMPLETED, applicationLoadHandle);
+      
       /** Get all input flash variables */
       if(Application.application.parameters.baseAppUrl)
       {
         baseAppUrl = Application.application.parameters.baseAppUrl;
       }
-
+      
+      if(Application.application.parameters.settingsFolder)
+      {
+        settingsFolder = Application.application.parameters.settingsFolder;
+      }
+      
       if(Application.application.parameters.inputData)
       {
         inputData = Application.application.parameters.inputData;
@@ -148,7 +178,12 @@
       {
         inputMethod = Application.application.parameters.inputMethod;
       }
-
+      
+      dispatchEvent(new SemanticComponentLoadEvent("start", {
+        label: "Initializing general settings... 5%",
+        progress: 5
+      }));
+      
       /**
       * Initialize the ontological structure used to describe records manipulated by
       * this semantic component application
@@ -172,7 +207,69 @@
         }
       }
     }
+    
+    private var progressCounter:int = 0;  
+      
+    private function applicationLoadHandle(event:SemanticComponentLoadEvent):void
+    {  
+      if(generalSettings != undefined)
+      {
+        if(generalSettings.displayProgressBar && !generalSettings.displayProgressBarInHTML)
+        {
+          if(event.type == "start")
+          {
+            //customLoadProgressBar.visible = true;
+            customLoadProgressBar.setProgress(event.params.progress, 100);
+            customLoadProgressBar.label = event.params.label;        
+          }  
+    
+          if(event.type == "progress")
+          {
+            progressCounter++;
+            customLoadProgressBar.setProgress((progressCounter * 4 > 100 ? 99 : progressCounter * 4), 100);
+            customLoadProgressBar.label = event.params.label;        
+          }       
+          
+          if(event.type == "completed" && customLoadProgressBar.parent != null)
+          {
+            customLoadProgressBar.parent.removeChild(customLoadProgressBar);        
+          }
+        }
+        
+        if(generalSettings.displayProgressBar && generalSettings.displayProgressBarInHTML)
+        {
+          if(ExternalInterface.available)
+          {
+            if(event.type == "start")
+            {
+              ExternalInterface.call("sc_load_start");
+            }  
+            
+            if(event.type == "progress")
+            {
+              progressCounter++;
+              
+              ExternalInterface.call("sc_load_progress", {
+                percentage: (progressCounter * 4 > 100 ? 99 : progressCounter * 4), 
+                msg: event.params.label
+              });
+            }       
+            
+            if(event.type == "completed" && customLoadProgressBar.parent != null)
+            {
+              ExternalInterface.call("sc_load_end");
+            }                    
+          }        
+        }
+      }
+    }
 
+    /** Base URL of the flex component */
+    var baseUrl:String = "./";
+    
+    /** Base URL of the flex component */
+    var settingsUrl:String = "./settings/";        
+      
     /** Event handler used to manage what schemas as been downloaded */
     private function schemaLoadedHandler(event:SchemaLoadedEvent):void
     {
@@ -186,20 +283,28 @@
 
           /** The next step, once we have the schema loaded, is to load the settings */
 
-          /**  
+          /**   
           * Check if the application that embede this semantic component defined its 
           * baseAppUrl. If it didn't, we simply use the default local location "./".
           */
-          var baseUrl:String = "./";
-
           if(Application.application.baseAppUrl && Application.application.baseAppUrl != "")
           {
             baseUrl = Application.application.baseAppUrl;
           }
-
+          
+          if(Application.application.settingsFolder && Application.application.settingsFolder != "")
+          {
+            settingsUrl = baseUrl + settingsFolder;
+          }
+          
+          dispatchEvent(new SemanticComponentLoadEvent("progress", {
+            label: "Downloading General settings...",
+            progress: 5
+          }));          
+          
           /** Load the general settings */
           var settingsLoader:URLLoader = new URLLoader();
-          settingsLoader.load(new URLRequest(baseUrl + "settings/General.xml"));
+          settingsLoader.load(new URLRequest(settingsUrl + "General.xml"));
           settingsLoader.addEventListener(Event.COMPLETE, processGeneralSettingsHandler);
         }
       }
@@ -208,6 +313,12 @@
     /** Map the settings file(s) to the setting classe(s) */
     private function processGeneralSettingsHandler(event:Event):void
     {
+      dispatchEvent(new SemanticComponentLoadEvent("progress", {
+        label: "Loading General settings...",
+        progress: 5
+      }));          
+      
+      
       var isError:Boolean = false;
 
       try
@@ -234,16 +345,23 @@
 
       if(!isError)
       {
-        /** The third phase is to load the theme related to this application */
-        var baseUrl:String = "./";
-
-        if(Application.application.baseAppUrl && Application.application.baseAppUrl != "")
+        if(generalSettings.displayProgressBar && !generalSettings.displayProgressBarInHTML)
         {
-          baseUrl = Application.application.baseAppUrl;
+          customLoadProgressBar.visible = true;
         }
-
+        
+        dispatchEvent(new SemanticComponentLoadEvent("progress", {
+          label: "General settings loaded...",
+          progress: 5
+        }));          
+        
         if(generalSettings.theme != "")
         {
+          dispatchEvent(new SemanticComponentLoadEvent("progress", {
+            label: "Downloading theme...",
+            progress: 5
+          }));          
+          
           var styleManager:IEventDispatcher = StyleManager.loadStyleDeclarations(baseUrl + generalSettings.theme, true);
           styleManager.addEventListener(StyleEvent.COMPLETE, themeLoadedHandler);
           styleManager.addEventListener(StyleEvent.ERROR, themeLoadedHandler);
@@ -261,6 +379,11 @@
     */
     private function themeLoadedHandler(event:StyleEvent):void
     {
+      dispatchEvent(new SemanticComponentLoadEvent("progress", {
+        label: "Theme loaded...",
+        progress: 5
+      }));  
+      
       /**
       * If we have a theme to try to load, we try to load it first, then to run the main application.
       * We don't care if the SWF theme has been properly loaded or not, in worse we we will simply
@@ -273,6 +396,38 @@
     /** Main process of the application. It creates the sControl that it will embed and display to the user */
     private function run():void
     {
+      dispatchEvent(new SemanticComponentLoadEvent("progress", {
+        label: "Downloading semantic control...",
+        progress: 5
+      }));  
+
+  	  info = ModuleManager.getModule(baseUrl + "sControl.swf");
+      info.addEventListener(ModuleEvent.READY, modControlReadyHandler);           
+      info.addEventListener(ModuleEvent.PROGRESS, modControlProgressHandler);           
+  	  info.addEventListener(ModuleEvent.ERROR, modControlErrorHandler);
+  		
+  	  // Load the module into memory. Calling load() makes the
+  	  // IFlexModuleFactory available. You can then get an
+  	  // instance of the class using the factory's create()
+  	  // method.
+  	  info.load();
+  	}
+  
+  	private function modControlErrorHandler(e:ModuleEvent):void 
+  	{
+      Alert.show("Module not available: "+e.errorText);
+  	}
+		
+    private function modControlProgressHandler(e:ModuleEvent):void 
+    {
+      dispatchEvent(new SemanticComponentLoadEvent("progress", {
+        label: "Loading semantic control...",
+        progress: 5
+      }));  
+    }      
+		
+  	private function modControlReadyHandler(e:ModuleEvent):void 
+  	{
       /**
       * Initialize the data structure used by this semantic component application
       *
@@ -309,7 +464,7 @@
         for each(var attr:String in inputTargetAttributes.split(";"))
         {
           /** normalize attribute ID */
-          targetAttributes.push(namespaces.getVariable(attr));
+          targetAttributes.push(schema.namespaces.getVariable(attr));
         }
       }
 
@@ -319,17 +474,17 @@
         for each(var type:String in inputTargetTypes.split(";"))
         {
           /** normalize type ID */
-          targetTypes.push(namespaces.getVariable(type));
+          targetTypes.push(schema.namespaces.getVariable(type));
         }
       }
 
       /** get target records */ 
       targetRecords = inputTargetRecords.split(";"); 
 
-      var semanticControl:sControl = new sControl();
-      var resultset:Resultset = new Resultset(XML(inputData));
-
-      /** Initialize the semantic control */
+  	  var semanticControl:DisplayObject = info.factory.create() as DisplayObject;
+  	  
+  	  var resultset:Resultset = new Resultset(XML(inputData));
+	  
       semanticControl.percentWidth = 100;
       semanticControl.percentHeight = 100;
       semanticControl.targetAttributes = targetAttributes;
@@ -337,27 +492,60 @@
       semanticControl.targetRecords = targetRecords;
       semanticControl.semanticDataProvider = resultset;
       semanticControl.schema = schema;
-
-      this.addEventListener(FeatureEvent.FEATURE_SELECTED, mapFeatureSelectedHandler);
-
-      this.addChild(semanticControl);
+  
+      semanticControl.addEventListener(SemanticComponentLoadEvent.START, applicationLoadHandle);
+      semanticControl.addEventListener(SemanticComponentLoadEvent.PROGRESS, applicationLoadHandle);
+      semanticControl.addEventListener(SemanticComponentLoadEvent.COMPLETED, applicationLoadHandle);      
+      
+//    this.addEventListener(FeatureEvent.FEATURE_SELECTED, mapFeatureSelectedHandler);
+  
+      this.addChild(semanticControl);	  
+      
+      dispatchEvent(new SemanticComponentLoadEvent("progress", {
+        label: "Semantic control loaded...",
+        progress: 5
+      }));        
+	  
+//      var semanticControl:sControl = new sControl();
+//      var resultset:Resultset = new Resultset(XML(inputData));
+//
+//      /** Initialize the semantic control */
+//      semanticControl.percentWidth = 100;
+//      semanticControl.percentHeight = 100;
+//      semanticControl.targetAttributes = targetAttributes;
+//      semanticControl.targetTypes = targetTypes;
+//      semanticControl.targetRecords = targetRecords;
+//      semanticControl.semanticDataProvider = resultset;
+//      semanticControl.schema = schema;
+//
+//      this.addEventListener(FeatureEvent.FEATURE_SELECTED, mapFeatureSelectedHandler);
+//
+//      this.addChild(semanticControl);
     }
 
     /**
     * Handle possible sMap click events. If a map feature is clicked, we open the records URI into the browser.
     */
-    private function mapFeatureSelectedHandler(event:FeatureEvent):void
-    {
-      if(event.feature.data.exturi && String(event.feature.data.exturi).replace(/(\t|\n|\s{2,})/g, '') != "" && event.feature.recordBaseUrl != "")
-      {
-        var request:URLRequest =
-          new URLRequest(event.feature.recordBaseUrl + String(event.feature.data.exturi).replace(/(\t|\n|\s{2,})/g, ''));
-        request.requestHeaders = new Array(new URLRequestHeader("Accept", "text/html;q=1"));
-
-        navigateToURL(request, '_self');
-      }
-    }
+	
+//    private function mapFeatureSelectedHandler(event:FeatureEvent):void
+//    {
+//      if(event.feature.data.exturi && String(event.feature.data.exturi).replace(/(\t|\n|\s{2,})/g, '') != "" && event.feature.recordBaseUrl != "")
+//      {
+//        var request:URLRequest =
+//          new URLRequest(event.feature.recordBaseUrl + String(event.feature.data.exturi).replace(/(\t|\n|\s{2,})/g, ''));
+//        request.requestHeaders = new Array(new URLRequestHeader("Accept", "text/html;q=1"));
+//
+//        navigateToURL(request, '_self');
+//      }
+//    }
+	
 
     ]]>
   </mx:Script>
+  
+  <mx:ProgressBar id="customLoadProgressBar" minimum="0" maximum="100" mode="manual"
+                  label="" labelPlacement="bottom" 
+                  visible="false">
+  </mx:ProgressBar>  
+  
 </mx:Application>

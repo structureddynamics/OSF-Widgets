@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+ Displays a form and DataGrid using a ViewStack.
+ The form and DataGrid use the same dataProvider and provide
+ alternative ways to navigate through a set of data.
+-->
+<PodContentBase
+	xmlns="com.esria.samples.dashboard.view.*"
+	xmlns:mx="http://www.adobe.com/2006/mxml"
+	width="100%" height="100%">
+	<mx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import mx.events.ListEvent;
+			import mx.formatters.DateFormatter;
+			import mx.rpc.events.ResultEvent;
+			
+			[Bindable]
+			private var dataFields:ArrayCollection;
+			
+			[Bindable]
+			private var dataProvider:ArrayCollection;
+			
+			[Bindable]
+			private var selectedViewIndex:Number = 0;
+			
+			[Bindable]
+			private var _selectedIndex:Number = -1;
+			
+			[Bindable]
+			private var addingRecord:Boolean;
+			
+			private var dateFormatter:DateFormatter;
+			
+			private const NEW:String = "New";
+			private const ADD:String = "Add";
+			
+			override protected function onResultHttpService(e:ResultEvent):void
+			{
+				dateFormatter = new DateFormatter();
+				dateFormatter.formatString = "MM/DD/YY";
+				
+				var a:Array = xmlListToObjectArray(e.result.item);
+				dataProvider = new ArrayCollection(a);
+				
+				// Get the values from properties XML.
+				a = properties.@dataFields.toString().split(",");
+				dataFields = new ArrayCollection(a);
+				
+				var labels:Array = properties.@labels.toString().split(",");
+				field0Label.text = labels[0];
+				field1Label.text = labels[1];
+				field2Label.text = labels[2];
+				
+				selectedIndex = 0;
+				
+				if (properties.@selectedViewIndex.toString() != null&&
+					Number(properties.@selectedViewIndex) < (viewStack.numChildren - 1)) // Make sure the index is in range.
+					selectedViewIndex = Number(properties.@selectedViewIndex);
+			}
+			
+			private function set selectedIndex(n:Number):void
+			{
+				addingRecord = false;
+				
+				// Make sure we are within range of dataProvider.
+				if (n < 0)
+					n = dataProvider.length - 1;
+				else if (n > (dataProvider.length - 1))
+					n = 0;
+
+				var item:Object = dataProvider.getItemAt(n);
+				field0Input.text = item[dataFields[0]];
+				field1Input.selectedDate = item[dataFields[1]];
+				field2Input.text = item[dataFields[2]];
+				
+				_selectedIndex = n;
+				
+				indexInput.text = String(n + 1);
+			}
+			
+			private function get selectedIndex():Number
+			{
+				return _selectedIndex;
+			}
+			
+			private function onClickDeleteButton():void
+			{
+				dataProvider.removeItemAt(_selectedIndex);
+				
+				if (dataProvider.length > 0)
+					selectedIndex = _selectedIndex;
+			}
+			
+			private function saveData():void
+			{
+				var selectedItem:Object = dataProvider.getItemAt(_selectedIndex);
+				selectedItem[dataFields[0]] = field0Input.text;
+				selectedItem[dataFields[1]] = field1Input.selectedDate;
+				selectedItem[dataFields[2]] = field2Input.text;
+			}
+			
+			private function onClickNewButton(e:MouseEvent):void
+			{
+				if (addingRecord)	// Add the new record to dataProvider
+				{
+					// Generic object since the data field names are dictated by the xml.
+					var o:Object = new Object();
+					o[dataFields[0]] = field0Input.text;
+					o[dataFields[1]] = field1Input.selectedDate;
+					o[dataFields[2]] = field2Input.text;
+					dataProvider.addItem(o);
+					selectedIndex = dataProvider.length - 1;
+					addingRecord = false;
+				}
+				else				// Clear out the fields for input.
+				{
+					field0Input.text = field1Input.text = field2Input.text = indexInput.text = "";
+					addingRecord = true;
+				}
+			}
+			
+			private function formatDate(item:Object, column:DataGridColumn):String
+			{
+				return dateFormatter.format(item[column.dataField]);
+			}
+			
+			private function onChangeComboBox(e:ListEvent):void
+			{
+				saveData();
+				
+				var index:Number = ComboBox(e.target).selectedIndex
+				selectedViewIndex = index;
+				dispatchViewStackChange(index);
+			}
+		]]>
+	</mx:Script>
+	<mx:HBox
+		width="100%"
+		horizontalAlign="right">
+		<mx:ComboBox
+			dataProvider="['Form', 'Grid']"
+			selectedIndex="{selectedViewIndex}"
+			change="onChangeComboBox(event)"/>
+	</mx:HBox>
+	<mx:ViewStack
+		id="viewStack"
+		selectedIndex="{selectedViewIndex}"
+		width="100%" height="100%">
+		<!-- Form View-->
+		<mx:VBox
+			width="100%" height="100%">
+			<mx:HBox
+				width="100%">
+				<mx:Label
+					id="field0Label"
+					width="80"
+					textAlign="right" />
+				<mx:TextInput
+					id="field0Input"
+					width="100%" />
+			</mx:HBox>
+			<mx:HBox
+				width="100%">
+				<mx:Label
+					id="field1Label"
+					width="80"
+					textAlign="right" />
+				<mx:DateField
+					id="field1Input"/>
+			</mx:HBox>
+			<mx:HBox
+				width="100%" height="100%">
+				<mx:Label
+					id="field2Label"
+					width="80"
+					textAlign="right" />
+				<mx:TextArea
+					id="field2Input"
+					width="100%" height="100%" />
+			</mx:HBox>
+			<!-- Navigation control bar.
+				 Set paddingRight to be newButton.width so the controls are centered.-->
+			<mx:HBox
+				width="100%"
+				verticalAlign="middle"
+				horizontalGap="0">
+				<mx:Button
+					id="newButton"
+					width="55"
+					label="{addingRecord ? ADD : NEW}"
+					click="onClickNewButton(event)"/>
+				<mx:Spacer
+					width="100%" />
+				<mx:Button
+					width="9" height="12"
+					enabled="{dataProvider.length > 0}"
+					styleName="leftArrowButton"
+					click="saveData();selectedIndex-=1;"/>
+				<mx:Label
+					text="Record" />
+				<mx:TextInput
+					id="indexInput"
+					restrict="0-9"
+					enabled="{dataProvider.length > 0}"
+					enter="saveData();selectedIndex=Number(TextInput(event.currentTarget).text)-1;"
+					width="30" />
+				<mx:Label
+					text="of {dataProvider.length}" />
+				<mx:Button
+					width="9" height="12"
+					enabled="{dataProvider.length > 0}"
+					styleName="rightArrowButton"
+					click="saveData();selectedIndex+=1;"/>
+				<mx:Spacer
+					width="100%" />
+				<mx:Button
+					id="deleteButton"
+					enabled="{!addingRecord &amp;&amp; dataProvider.length > 0}"
+					label="Delete"
+					width="65"
+					click="onClickDeleteButton()" />
+			</mx:HBox>
+		</mx:VBox>
+		<mx:Canvas>
+			<mx:DataGrid
+				width="100%" height="100%"
+				dataProvider="{dataProvider}"
+				selectedIndex="{_selectedIndex}"
+				itemClick="selectedIndex=DataGrid(event.currentTarget).selectedIndex;"
+				itemDoubleClick="selectedViewIndex=0;">
+				<mx:columns>
+					<mx:DataGridColumn
+						headerText="{field0Label.text}"
+						dataField="{dataFields.getItemAt(0)}"/>
+					<mx:DataGridColumn
+						rendererIsEditor="true"
+						labelFunction="formatDate"
+						headerText="{field1Label.text}"
+						dataField="{dataFields.getItemAt(1)}"/>
+					<mx:DataGridColumn
+						headerText="{field2Label.text}"
+						dataField="{dataFields.getItemAt(2)}"/>
+				</mx:columns>
+			</mx:DataGrid>
+		</mx:Canvas>
+	</mx:ViewStack>
+</PodContentBase>

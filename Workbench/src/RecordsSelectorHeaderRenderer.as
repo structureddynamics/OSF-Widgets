@@ -9,8 +9,8 @@ package
   
   import events.IndicatorEvent;
   
-  import flash.events.Event;
-  import flash.events.MouseEvent;
+  import flash.events.*;
+  import flash.ui.*;
   
   import mx.controls.CheckBox;
   import mx.controls.DataGrid;
@@ -64,7 +64,7 @@ package
       }
       
       /** If this indicator is already selected, we have to re-check it in the refresh of the datagrid */
-      if(this.document.selectedIndicators.indexOf(_data.indicatorAttribute.uri) != -1)
+      if(_data.indicatorAttribute && this.document.selectedIndicators.indexOf(_data.indicatorAttribute.uri) != -1)
       {
         selected = true;
       }     
@@ -128,7 +128,20 @@ package
           semanticControl.addEventListener(DragEvent.DRAG_ENTER, this.document.dragAcceptHandler);
           semanticControl.addEventListener(DragEvent.DRAG_DROP, this.document.dragDropHandler);           
           
-          this.document.dashboard.addPod(panelId, event.target.data.dataField + " indicator", semanticControl);  
+          /** Define a new contextual menu to use for this pod. We use it to rename the title of the pod */
+          var menuItemRenameTitle:ContextMenuItem = new ContextMenuItem("Rename title...");
+          
+          menuItemRenameTitle.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, this.document.renamePodTitle);
+          
+          var customContextMenu:ContextMenu = new ContextMenu();
+          
+          /** Hide the default Flash menu items */
+          customContextMenu.hideBuiltInItems();
+          customContextMenu.customItems.push(menuItemRenameTitle);
+          
+          /** Add the new pod to the Dashboar */          
+          this.document.dashboard.addPod(panelId, event.target.data.dataField + " indicator", semanticControl, 
+                                         false, customContextMenu);  
 
           /** Initialize the indicator tool with the selected data */
           var records:Array = new Array();
