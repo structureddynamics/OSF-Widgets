@@ -1818,13 +1818,13 @@
 								{
 									if(attrValue.uri == attribute)
 									{
-										filteringValue = "::" + escape(attrValue.value);
+										filteringValue = "::" + attrValue.value;
 										
 										break;
 									}
 								}
 								
-								attributes = attributes + escape(attribute) + filteringValue + ";";
+								attributes = attributes + attribute + filteringValue + ";";
 							}
 							
 							attributes = attributes.substr(0, attributes.length - 1);
