@@ -614,7 +614,7 @@
 										markerImageUrl: markerImageUrl,
 										polygonColor: polygonColor,
 										polylineColor: polylineColor,
-                    resultset: s.getJsonSerialization()
+                    resultset: escape(s.getJsonSerialization())
 									});
 								}              
 							}
