@@ -614,7 +614,7 @@
 										markerImageUrl: markerImageUrl,
 										polygonColor: polygonColor,
 										polylineColor: polylineColor,
-                    resultset: s.getJsonSerialization()
+                    resultset: escape(s.getJsonSerialization())
 									});
 								}              
 							}
@@ -711,13 +711,15 @@
 											markerOptions = new MarkerOptions({ 
 												fillStyle: { color: 0xCC0000 }, 
 												icon: icon,
-                        iconOffset: new Point(-16, -37)
+                        iconOffset: new Point(-16, -37),
+                        tooltip: subject.getPrefLabel(generalSettings.prefLabelAttributes)
 											});
 										}
 										else
 										{
 											markerOptions = new MarkerOptions({ 
-												fillStyle: { color: 0xCC0000 }
+												fillStyle: { color: 0xCC0000 },
+                        tooltip: subject.getPrefLabel(generalSettings.prefLabelAttributes)
 											});
 										}
 										
@@ -772,7 +774,8 @@
 													alpha: 0.7}), 
 												fillStyle: new FillStyle({
 													color: 0xCC0000,
-													alpha: 0.05})
+													alpha: 0.05}),
+                        tooltip: subject.getPrefLabel(generalSettings.prefLabelAttributes)
 											}));               
 											
 											polygon.data = subject;
