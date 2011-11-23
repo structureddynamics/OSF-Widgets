@@ -1,0 +1,1309 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!---
+The bar char is a component that displays record (numeric) attributes on a bar chart. 
+It is used to display the values of different attributes of a record description so 
+that users can easily compare the values of these comparable attributes.
+
+Each bar on the graph is the value of a single attribute describing the target record 
+description. 
+
+@author Frederick Giasson, Structured Dynamics LLC.
+-->
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" backgroundAlpha="0">
+  <mx:Box xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%"
+          styleName="sControl" clipContent="true">
+    <mx:Script>
+      <![CDATA[
+        import com.sd.semantic.core.Resultset;
+        import com.sd.semantic.core.Schema;
+        import com.sd.semantic.core.SchemaAttribute;
+        import com.sd.semantic.core.SchemaType;
+        import com.sd.semantic.core.Subject;
+        import com.sd.semantic.events.SemanticComponentLoadEvent;
+        
+        import flash.utils.getQualifiedClassName;
+        
+        import mx.controls.Alert;
+        import mx.controls.ComboBox;
+        import mx.core.Application;
+        import mx.events.ModuleEvent;
+        import mx.managers.PopUpManager;
+        import mx.modules.IModuleInfo;
+        import mx.modules.ModuleManager;
+        import mx.utils.UIDUtil;
+    		  
+    		public var info:IModuleInfo;		  
+        
+        /** Core varibles shared amongst all semantic controls */
+        
+        /** 
+         * Specifies that this component is a semantic component. If a component in a Flex application is a semantic
+         * semantic component, this means that other semantic component can't behave differently depending of the "kind"
+         * (semantic or not) of components that are present in the layout. This variable is just to specify is a component
+         * is a semantic one or not.
+         */
+        public var semanticComponent:Boolean = true;
+        
+        /**
+         * Specifies that this control is required within a display cluster.
+         * This means that if we have a SemanticHBox that has 2 required semantic
+         * components and that these components have removed themselves from the display
+         * this means that the parent layout cluster (the smeantic hbox), will remove
+         * itself as well. If a semantic component is marked as not required (required=false)
+         * it means that it won't be considered by the semantic hbox. So, even if such a semantic
+         * component has data in it, its parent cluster can remove itself.
+         */
+        public var required:Boolean = true;
+        
+        /**
+         * The recordBox attribute specifies if the HBox contains all the controls
+         * to display information about a complete record. This mainly used
+         * to manage the "GenericBox" generic content attribute display control.
+         */
+        public var recordBox:Boolean = false;
+        
+        /** Target record attributes to display in the component */
+        public var targetAttributes:Array = [];
+        
+        /** Target record types to display in the component */
+        public var targetTypes:Array = [];
+        
+        /** Target records to display in the component */
+        public var targetRecords:Array = [];
+        
+        /** Specifies if the sControl's targetAttribute has been bound to a know semantic control. */
+        public var bound:Boolean = false;
+        
+        /** Specifies if the control as already been initialized. */
+        private var isInitialized:Boolean = false;
+        
+        private var _semanticDataProvider:Resultset;
+         
+        /** Input records. This is a Resultset structure (see the structXML XML data structure) */
+        public function get semanticDataProvider():Resultset
+        {
+          return (_semanticDataProvider);
+        }      
+        
+        /** Other variables */
+        
+        /** Schema structure used to select the proper component for the input records, target attributes and types. */
+        public var schema:Schema;
+        
+        private var viewSwitcher:ComboBox = new ComboBox();  
+                
+        /** Displays the control switcher combo-box when more than one control can be selected */
+        public var displayControlSwitcher:Boolean = false;        
+        
+        /** 
+        * This object holds data that should be used by some of the semantic component at initialization time.
+        * The sControl component has no idea of what the content of this object will be, but the other components
+        * that gets invoked by the sControl will know. This is used, for example, by the sBarChart and the
+        * sLinearChart to initiliaze the scales when they are part of a Dashboard.
+        */
+        public var initializer:Object = {};
+        
+        /** 
+         * All controls that can be used to display information about a record or a set of records.
+         * Each of these control can be seen as a different view to look at the data describing a
+         * record or a group of records.
+         */
+        private var displayControls:Array = new Array();        
+        
+        public function set semanticDataProvider(value:Resultset):void
+        {
+          _semanticDataProvider = value;
+          
+          /** Make sure it has been initialized a first time*/
+          if(isInitialized)
+          {
+            /**
+             *  If the semanticDataProvider of the sControl changes, we have to
+             *  reflect these changes to the children control(s) as well!
+             */
+            
+            /** Children components of the sControl */
+            var targetChild:Object = null;
+            
+            if(this.getChildren().length > 0 && this.getChildren()[0].hasOwnProperty("getChildren"))
+            {
+              var children:Array = this.getChildren()[0].getChildren();
+              
+              for each(var child:Object in children)
+              {
+                var componentName:String = flash.utils.getQualifiedClassName(child);           
+                
+                if(componentName == "sRelationBrowser" ||
+                   componentName == "sStory" ||
+                   componentName == "sDashboard" ||
+                   componentName == "sMap" ||
+                   componentName == "sWebMap" ||
+                   componentName == "sBarChart" ||
+                   componentName == "sLinearChart" ||
+                   componentName == "sText" ||
+                   componentName == "sImage")
+                {
+                  targetChild = child;
+                  break;
+                }
+              }
+            }
+            
+            if(targetChild == null && this.getChildren().length > 0)
+            {
+              var children:Array = this.getChildren();
+              
+              for each(var child:Object in children)
+              {
+                var componentName:String = flash.utils.getQualifiedClassName(child);           
+                
+                if(componentName == "sRelationBrowser" ||
+                  componentName == "sStory" ||
+                  componentName == "sDashboard" ||
+                  componentName == "sMap" ||
+                  componentName == "sWebMap" ||
+                  componentName == "sBarChart" ||
+                  componentName == "sLinearChart" ||
+                  componentName == "sText" ||
+                  componentName == "sImage")
+                {
+                  targetChild = child;
+                  break;
+                }
+              }
+            }            
+            
+            if(targetChild != null)
+            {
+              var componentName:String = flash.utils.getQualifiedClassName(child);           
+              
+              if(componentName == "sRelationBrowser")
+              {
+                child.semanticDataProvider = _semanticDataProvider;
+                child.targetAttributes = targetAttributes;
+                child.targetTypes = targetTypes;
+                child.schema = schema;
+              }
+     
+              if(componentName == "sStory")
+              {
+                child.semanticDataProvider = _semanticDataProvider;
+                child.targetAttributes = targetAttributes;
+                child.targetTypes = targetTypes;
+                child.schema = schema;
+              }
+              
+              if(componentName == "sDashboard")
+              {
+                child.semanticDataProvider = _semanticDataProvider;
+                child.targetAttributes = targetAttributes;
+                child.targetTypes = targetTypes;
+                child.targetRecords = targetRecords;
+                child.schema = schema;
+              }
+              
+              if(componentName == "sMap")
+              {
+                child.semanticDataProvider = _semanticDataProvider;
+                child.targetAttributes = targetAttributes;
+                child.targetTypes = targetTypes;
+              }
+              
+              if(componentName == "sWebMap")
+              {
+                child.semanticDataProvider = _semanticDataProvider;
+                child.targetAttributes = targetAttributes;
+                child.targetTypes = targetTypes;
+                child.schema = schema;
+              }
+              
+              if(componentName == "sBarChart")
+              {
+                child.semanticDataProvider = _semanticDataProvider;
+                child.targetAttributes = targetAttributes;
+                child.targetTypes = targetTypes;
+                child.schema = schema;
+              }
+    
+              if(componentName == "sLinearChart")
+              {
+                child.semanticDataProvider = _semanticDataProvider;
+                child.targetAttributes = targetAttributes;
+                child.targetTypes = targetTypes;
+                child.schema = schema;
+              }
+    
+              if(componentName == "sText")
+              {
+                child.text = _semanticDataProvider[targetAttributes[0]];
+              }
+    
+              if(componentName == "sImage")
+              {
+                child.semanticSource = "[[" + targetAttributes[0] + "]]";
+                child.semanticDataProvider = _semanticDataProvider;
+              }
+            }
+          }
+        }
+        
+        /**
+         * Initialization function ran once the application's creation is complete. It selects the proper semantic
+         * component(s) to embed in the sControl canvas.
+         * 
+         * Because of the life cycle of the Flex components, we don't have access to the properties when we call
+         * createChildren(). It is for that reason that we have to do this initialization at the level of the
+         * commitProperties() function.
+         * 
+         * This is because we are not using Flex they way they intend us to use it. Normally, we know what
+         * component we want to create. Here, the component we want to create is based on schema and targetAttributes
+         * properties that will "initialize" the component, and that will have a major impact on the 
+         * child component(s) created by the sControl component.
+         */
+        override protected function commitProperties():void
+        {
+          /** Call the createChildren() method of the superclass. */
+          super.commitProperties();
+          
+          if(isInitialized == false)
+          {
+            if(schema)
+            {
+              /** Check if the attributes are annotated with some displayControl attribute */
+              for each(var tAttribute:String in targetAttributes)
+              {
+                var targetAttribute:SchemaAttribute = schema.getAttribute(tAttribute);
+                
+                if(targetAttribute != null)
+                {
+                  for each(var control:String in targetAttribute.displayControls)
+                  {
+                    if(displayControls.indexOf(control) == -1)
+                    {
+                      displayControls.push(control);
+                    }
+                  }
+                }
+              }
+              
+              /** Check if the types are annotated with some displayControl attribute */
+              for each(var tType:String in targetTypes)
+              {
+                var targetType:SchemaType = schema.getType(tType);
+                
+                if(targetType != null)
+                {
+                  for each(var control:String in targetType.displayControls)
+                  {
+                    if(displayControls.indexOf(control) == -1)
+                    {
+                      displayControls.push(control);
+                    }
+                  }
+                }
+              }
+              
+              /**
+              * In this section, we check for some common patterns to try to assign some display
+              * components to the records even if they are not annotated with any displayControl
+              * information
+              */
+              
+              /** Add possible sLinearChar associations */
+              
+              /** Check if the attributes are annotated with some comparableWith attribute */
+              for each(var tAttribute:String in targetAttributes)
+              {
+                var targetAttribute:SchemaAttribute = schema.getAttribute(tAttribute);
+                
+                if(targetAttribute != null)
+                {
+                  for each(var control:String in targetAttribute.comparableWith)
+                  {
+                    if(displayControls.indexOf("sLinearChart") == -1)
+                    {
+                      displayControls.push("sLinearChart");
+                    }
+                  }
+                }
+              }  
+              
+              /** Check if the attributes are annotated with some unitType attribute */
+              for each(var tAttribute:String in targetAttributes)
+              {
+                var targetAttribute:SchemaAttribute = schema.getAttribute(tAttribute);
+                
+                if(targetAttribute != null)
+                {
+                  if(targetAttribute.unitType != "" && 
+                     displayControls.indexOf("sLinearChart") == -1)
+                  {
+                    displayControls.push("sLinearChart");
+                  }
+                }
+              }               
+              
+//              /**
+//              * Check the target attributes, and try to figure-out if some of them share the
+//              * same parent attribute with other attributes that are used to define records
+//              * of the resultset. If they do, they we consider them comparable since they
+//              * should define the same domain information.
+//              */
+//              var parents:Array = [];
+//              var doBreak:Boolean = false;
+//              
+//              /** Check within the target attributes */
+//              for each(var tAttribute:String in targetAttributes)
+//              {
+//                targetAttribute = schema.getAttribute(tAttribute);
+//                
+//                if(targetAttribute != null)
+//                {
+//                  for each(var sp:String in targetAttribute.superProperties)
+//                  {
+//                    if(parents.indexOf(sp) != -1)
+//                    {
+//                      /**
+//                      * We found that two different attributes were sharing the same super attribute,
+//                      * this means that they are comparable, so we add the sLinearChart to the possible
+//                      * controls to use.
+//                      */
+//                      
+//                      doBreak = true;
+//                      displayControls.push("sLinearChart");
+//                      break;
+//                    }
+//                  }
+//                  
+//                  if(doBreak)
+//                  {
+//                    break;
+//                  }
+//                  else
+//                  {
+//                    parents = parents.concat(targetAttribute.superProperties);
+//                  }
+//                }
+//              }
+//              
+//              /** Check for all attributes describing all records of the resultset */
+//              if(!doBreak)
+//              {
+//                for each(var subject:Subject in this.semanticDataProvider.subjects)
+//                {
+//                  for(var attribute:String in subject.predicates)
+//                  {
+//                    targetAttribute = schema.getAttribute(attribute);
+//                    
+//                    if(targetAttribute == null)
+//                    {
+//                      continue;
+//                    }
+//                    
+//                    for each(sp in targetAttribute.superProperties)
+//                    {
+//                      if(parents.indexOf(sp) != -1)
+//                      {
+//                        /**
+//                         * We found that two different attributes were sharing the same super attribute,
+//                         * this means that they are comparable, so we add the sLinearChart to the possible
+//                         * controls to use.
+//                         */
+//                        
+//                        doBreak = true;
+//                        displayControls.push("sLinearChart");
+//                        break;
+//                      }
+//                    }
+//                    
+//                    if(doBreak)
+//                    {
+//                      break;
+//                    }
+//                    else
+//                    {
+//                      parents = parents.concat(targetAttribute.superProperties);
+//                    }                    
+//                  }
+//                  
+//                  if(doBreak)
+//                  {
+//                    break;
+//                  }                  
+//                }
+//              }              
+            }
+            
+            /** 
+             * Array of objects pointing to created controls
+             * 
+             * Objects are of the type: {prefLabel: ..., control: ..., controlName: ...}
+             */
+            var switchableControls:Array = new Array();
+            
+            for each(var displayControl:String in displayControls)
+            {
+              switch(displayControl)
+              {
+                case "sRelationBrowser":
+                {
+                  if(bound == false)
+                  {
+                    this.createControl(displayControl);
+                    switchableControls.push({prefLabel: "Relation Browser view", control: this.getChildAt(0),
+                      controlName:displayControl});
+                  }
+                  else
+                  {
+                    switchableControls.push({prefLabel: "Relation Browser view", control: null, controlName:displayControl});
+                  }
+                  
+                  bound = true;
+                }
+                  break;
+                
+                case "sStory":
+                {
+                  if(bound == false)
+                  {
+                    this.createControl(displayControl);
+                    switchableControls.push({prefLabel: "Story view", control: this.getChildAt(0),
+                      controlName:displayControl});
+                  } 
+                  else
+                  {
+                    switchableControls.push({prefLabel: "Story view", control: null, controlName:displayControl});
+                  }
+                  
+                  bound = true;
+                }
+                  break;
+                
+                case "sDashboard":
+                {
+                  if(bound == false)
+                  {
+                    this.createControl(displayControl);
+                    switchableControls.push({prefLabel: "Dashboard", control: this.getChildAt(0),
+                      controlName:displayControl});
+                  } 
+                  else
+                  {
+                    switchableControls.push({prefLabel: "Dashboard", control: null, controlName:displayControl});
+                  }
+                  
+                  bound = true;
+                }
+                  break;
+                
+                case "sMap":
+                {
+                  if(bound == false)
+                  {
+                    this.createControl(displayControl);
+                    switchableControls.push({prefLabel: "Map view", control: this.getChildAt(0), controlName:displayControl});
+                  }
+                  else
+                  {
+                    switchableControls.push({prefLabel: "Map view", control: null, controlName:displayControl});
+                  }
+                  
+                  bound = true;
+                }
+                  break;
+                
+                case "sWebMap":
+                {
+                  if(bound == false)
+                  {
+                    this.createControl(displayControl);
+                    switchableControls.push({prefLabel: "Web Map view", control: this.getChildAt(0), controlName:displayControl});
+                  }
+                  else
+                  {
+                    switchableControls.push({prefLabel: "Web Map view", control: null, controlName:displayControl});
+                  }
+                  
+                  bound = true;
+                }
+                  break;
+                
+                case "sBarChart":
+                {
+                  if(bound == false)
+                  {
+                    this.createControl(displayControl);
+                    switchableControls.push({prefLabel: "Bar Chart view", control: this.getChildAt(0),
+                      controlName:displayControl});
+                  }
+                  else
+                  {
+                    switchableControls.push({prefLabel: "Bar Chart view", control: null, controlName:displayControl});
+                  }
+                  
+                  bound = true;
+                }
+                  break;
+                case "sLinearChart":
+                {
+                  if(bound == false)
+                  {
+                    this.createControl(displayControl);
+                    switchableControls.push({prefLabel: "Linear Chart view", control: this.getChildAt(0),
+                      controlName:displayControl});
+                  }
+                  else
+                  {
+                    switchableControls.push({prefLabel: "Linear Chart view", control: null, controlName:displayControl});
+                  }
+                  
+                  bound = true;
+                }
+                  break;
+                
+                case "sImage":
+                {
+                  if(bound == false)
+                  {
+                    this.createControl(displayControl);
+                    switchableControls.push({prefLabel: "Image view", control: this.getChildAt(0),
+                      controlName:displayControl});
+                  }
+                  else
+                  {
+                    switchableControls.push({prefLabel: "Image view", control: null, controlName:displayControl});
+                  }
+                  
+                  bound = true;
+                }
+                  break;
+              }
+            }
+            
+            /**
+             * If we have multiple controls for that target sControl, lets create a combobox
+             * that will enable users to switch between views.
+             */
+            
+            if(displayControls.length > 1)
+            {
+              /** 
+               * Switch from a control to another if a target sControl has more than one displayControl associated
+               * to it.
+               */
+              viewSwitcher.height = 15;
+              viewSwitcher.width = 150;
+              viewSwitcher.x = 5;
+              viewSwitcher.y = this.y - 20;
+              
+              if(displayControlSwitcher)
+              {
+                viewSwitcher.visible = true;
+                viewSwitcher.includeInLayout = true;
+              }
+              else
+              {
+                viewSwitcher.visible = false;
+                viewSwitcher.includeInLayout = false;
+              }
+              
+              viewSwitcher.dataProvider = switchableControls;
+              viewSwitcher.labelField = "prefLabel";
+              
+              viewSwitcher.addEventListener(Event.CHANGE, switchView);
+              
+              /** make the first control visible in the sControl */
+              
+              if(selectControl == "")
+              {
+                switchableControls[0].control.visible = true;
+              }
+              else
+              {
+                var selectItem:int = 0;
+                
+                for each(var ctrl:Object in switchableControls)
+                {
+                  if(ctrl.controlName == selectControl && selectItem > 0)
+                  {
+                    /** Delete the visible control */
+                    if(switchableControls[0].control != null)
+                    {
+                      switchableControls[0].control.removeAllChildren();
+                      //switchableControls[0].control.parent.removeChild(switchableControls[0].control);
+                      //switchableControls[0].control = null;
+                    }
+                    
+                    /** Create the new control */
+                    if(this.getChildren().length > 0)
+                    {
+                      this.createControl(selectControl);
+                      switchableControls[selectItem].control = this.getChildAt(0);
+                      
+                      viewSwitcher.selectedIndex = selectItem;
+                    }
+                    
+                    break;
+                  }
+                  
+                  selectItem++;
+                }
+              }
+              
+              this.addChild(viewSwitcher);
+            }
+            
+            if(!bound)
+            {
+              if(_semanticDataProvider != null && targetAttributes.length > 0)
+              {
+                /** If no displayControl is defined, we simply display the value as text. */
+                
+                this.createControl("sText");
+              }
+            }
+            
+            isInitialized = true;
+          }
+        }
+        
+        /**
+         * Create and embed a semantic control in the sControl canvas.
+         * 
+         * @param control kind of semantic control to be created
+         */
+        private function createControl(control:String):void
+        {
+        	/** The third phase is to load the theme related to this application */
+        	var baseUrl:String = "./";
+        	
+        	if(Application.application.baseAppUrl && Application.application.baseAppUrl != "")
+        	{
+        		baseUrl = Application.application.baseAppUrl;
+        	}		
+			
+          switch(control)
+          {
+              case "sRelationBrowser":
+              {
+                dispatchEvent(new SemanticComponentLoadEvent("progress", {
+                  label: "Downloading relation browser control...",
+                  progress: 5
+                }));  
+                
+                info = ModuleManager.getModule(baseUrl + "sRelationBrowser.swf?uid="+UIDUtil.createUID());
+                info.addEventListener(ModuleEvent.READY, modRelationBrowserReadyHandler);
+                info.addEventListener(ModuleEvent.PROGRESS, modRelationBrowserProgressHandler);
+                
+                info.load();
+                
+                /** Set the main styleName of the semantic component to this parent sControl */
+                if(StyleManager.getStyleDeclaration(".sRelationBrowser"))
+                {
+                  this.styleName = "sRelationBrowser";
+                }                 
+              }
+              break;
+              case "sStory":
+              {
+                dispatchEvent(new SemanticComponentLoadEvent("progress", {
+                  label: "Downloading story viewer control...",
+                  progress: 5
+                }));  
+                
+                info = ModuleManager.getModule(baseUrl + "sStory.swf?uid="+UIDUtil.createUID());
+                info.addEventListener(ModuleEvent.READY, modStoryReadyHandler);
+                info.addEventListener(ModuleEvent.PROGRESS, modStoryProgressHandler);
+                
+                info.load();                
+                
+                /** Set the main styleName of the semantic component to this parent sControl */
+                if(StyleManager.getStyleDeclaration(".sStory"))
+                {
+                  this.styleName = "sStory";
+                }
+              }
+              break;
+              case "sDashboard":
+              {
+                dispatchEvent(new SemanticComponentLoadEvent("progress", {
+                  label: "Downloading dashboard control...",
+                  progress: 5
+                }));  
+                
+                info = ModuleManager.getModule(baseUrl + "sDashboard.swf?uid="+UIDUtil.createUID());
+                info.addEventListener(ModuleEvent.READY, modDashboardReady);
+                
+                info.load();
+                
+                /** Set the main styleName of the semantic component to this parent sControl */
+                if(StyleManager.getStyleDeclaration(".sDashboard"))
+                {
+                  this.styleName = "sDashboard";
+                }                
+              }
+              break;
+              case "sMap":
+              {
+                dispatchEvent(new SemanticComponentLoadEvent("progress", {
+                  label: "Downloading map control...",
+                  progress: 5
+                }));  
+                
+                info = ModuleManager.getModule(baseUrl + "sMap.swf?uid="+UIDUtil.createUID());
+                info.addEventListener(ModuleEvent.READY, modMapReady);
+                
+                info.load();
+                
+                /** Set the main styleName of the semantic component to this parent sControl */
+                if(StyleManager.getStyleDeclaration(".sMap"))
+                {
+                  this.styleName = "sMap";
+                }
+              }
+              break;
+              case "sWebMap":
+              {
+                dispatchEvent(new SemanticComponentLoadEvent("progress", {
+                  label: "Downloading web-map control...",
+                  progress: 5
+                }));  
+                
+        			  info = ModuleManager.getModule(baseUrl + "sWebMap.swf?uid="+UIDUtil.createUID());
+        			  info.addEventListener(ModuleEvent.READY, modWebMapReady);
+                
+        			  info.load();
+                
+                /** Set the main styleName of the semantic component to this parent sControl */
+                if(StyleManager.getStyleDeclaration(".sWebMap"))
+                {
+                  this.styleName = "sWebMap";
+                }
+              }
+              break;
+              case "sBarChart":
+              {
+                dispatchEvent(new SemanticComponentLoadEvent("progress", {
+                  label: "Downloading bar chart control...",
+                  progress: 5
+                }));  
+                
+                info = ModuleManager.getModule(baseUrl + "sBarChart.swf?uid="+UIDUtil.createUID());
+                info.addEventListener(ModuleEvent.READY, modBarChartReady);
+                
+                info.load();          
+      
+                /** Set the main styleName of the semantic component to this parent sControl */
+                if(StyleManager.getStyleDeclaration(".sBarChart"))
+                {
+                  this.styleName = "sBarChart";
+                }
+              }
+              break;
+              
+              case "sLinearChart":
+              {
+                dispatchEvent(new SemanticComponentLoadEvent("progress", {
+                  label: "Downloading linear chart control...",
+                  progress: 5
+                }));  
+                
+                info = ModuleManager.getModule(baseUrl + "sLinearChart.swf?uid="+UIDUtil.createUID());
+                info.addEventListener(ModuleEvent.READY, modLinearChartReady);
+                
+                info.load();                   
+                
+                /** Set the main styleName of the semantic component to this parent sControl */
+                if(StyleManager.getStyleDeclaration(".sLinearChart"))
+                {
+                  this.styleName = "sLinearChart";
+                }
+              }
+              break;
+       
+            //          case "sImage":
+            //          {
+            //            var controlImage:sImage = new sImage();
+            //            controlImage.semanticDataProvider = _semanticDataProvider;
+            //            controlImage.targetAttributes = targetAttributes;
+            //            controlImage.targetTypes = targetTypes;
+            //            controlImage.semanticSource = "[[" + targetAttributes[0] + "]]";
+            //            
+            //            this.addChildAt(controlImage, 0);
+            //            
+            //            /** Set the main styleName of the semantic component to this parent sControl */
+            //            if(StyleManager.getStyleDeclaration(".sImage"))
+            //            {
+            //              this.styleName = "sImage";
+            //            }
+            //          }
+            //          break;
+            //          
+            //          case "sText":
+            //          {
+            //            var controlText:sText = new sText();
+            //            controlText.semanticDataProvider = _semanticDataProvider;
+            //            controlText.targetAttributes = targetAttributes;
+            //            controlText.targetTypes = targetTypes;
+            //            controlText.percentHeight = 100;
+            //            controlText.percentWidth = 100;          
+            //  
+            //            this.addChildAt(controlText, 0);
+            //            
+            //            /** Set the main styleName of the semantic component to this parent sControl */
+            //            if(StyleManager.getStyleDeclaration(".sText"))
+            //            {
+            //              this.styleName = "sText";
+            //            }
+            //          }
+            //          break;
+          }
+        }
+		  
+      private function modMapReady(e:ModuleEvent):void 
+      {
+        var controlMap:DisplayObject = info.factory.create() as DisplayObject;
+        
+        controlMap.targetAttributes = targetAttributes;
+        controlMap.targetTypes = targetTypes;
+        controlMap.semanticDataProvider = _semanticDataProvider;
+        
+        if(this.getChildren()[0] is ComboBox)
+        {
+          this.addChildAt(controlMap, 0);
+        }
+        else
+        {
+          this.getChildren()[0].addChildAt(controlMap, 0);
+        }
+                
+        if(this.parent.document.parent.document)
+        {
+          var componentName:String = flash.utils.getQualifiedClassName(this.parent.document.parent.document);
+          
+          if(componentName == "Workbench")
+          {
+            if(displayControls.length > 0)
+            {            
+              var menuItemChangeSwitcherControlDisplay:ContextMenuItem = new ContextMenuItem("Show/Hide Switcher Control...");
+              menuItemChangeSwitcherControlDisplay.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, changeSwitcherControlDisplay);
+              
+              var customContextMenu:ContextMenu = new ContextMenu();
+              
+              customContextMenu.customItems.push(menuItemChangeSwitcherControlDisplay);
+              
+              controlMap.contextMenu = customContextMenu;
+            }
+          }
+        }
+      }        
+        
+      private function modDashboardReady(e:ModuleEvent):void 
+      {
+        var controlDashboard:DisplayObject = info.factory.create() as DisplayObject;
+         
+        controlDashboard.targetAttributes = targetAttributes;
+        controlDashboard.targetTypes = targetTypes;
+        controlDashboard.targetRecords = targetRecords;
+        controlDashboard.schema = schema;
+        controlDashboard.semanticDataProvider = _semanticDataProvider;
+        
+        if(this.getChildren()[0] is ComboBox)
+        {
+          this.addChildAt(controlDashboard, 0);
+        }
+        else
+        {
+          this.getChildren()[0].addChildAt(controlDashboard, 0);
+        }
+        
+        if(this.parent.document.parent.document)
+        {
+          var componentName:String = flash.utils.getQualifiedClassName(this.parent.document.parent.document);   
+        
+          if(componentName == "Workbench")
+          {
+            if(displayControls.length > 0)
+            {            
+              var menuItemChangeSwitcherControlDisplay:ContextMenuItem = new ContextMenuItem("Show/Hide Switcher Control...");
+              menuItemChangeSwitcherControlDisplay.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, changeSwitcherControlDisplay);
+              
+              var customContextMenu:ContextMenu = new ContextMenu();
+              
+              customContextMenu.customItems.push(menuItemChangeSwitcherControlDisplay);
+              
+              controlDashboard.contextMenu = customContextMenu;
+            }
+          }
+        }
+      } 
+        
+      private function modLinearChartReady(e:ModuleEvent):void 
+      {
+        var controlLinearChart:DisplayObject = info.factory.create() as DisplayObject;
+        
+        controlLinearChart.percentHeight = 100;
+        controlLinearChart.percentWidth = 100;
+        controlLinearChart.targetAttributes = targetAttributes;
+        controlLinearChart.targetTypes = targetTypes;
+        controlLinearChart.schema = schema;
+        controlLinearChart.semanticDataProvider = _semanticDataProvider;
+        
+        if(this.getChildren()[0] is ComboBox)
+        {
+          this.addChildAt(controlLinearChart, 0);
+        }
+        else
+        {
+          this.getChildren()[0].addChildAt(controlLinearChart, 0);
+        }
+        
+        if(this.parent.document.parent.document)
+        {
+          var componentName:String = flash.utils.getQualifiedClassName(this.parent.document.parent.document);   
+          
+          if(componentName == "Workbench")
+          {
+            /** 
+             * The sLinearChart component is in a Workbench context, so we enable some additional
+             * contextual menus.
+             */            
+            var menuItemRenameTitle:ContextMenuItem = new ContextMenuItem("Rename title...");            
+            var menuItemChangeScales:ContextMenuItem = new ContextMenuItem("Change Scales...");
+            var menuItemChangeVerticalAxisLabel:ContextMenuItem = new ContextMenuItem("Change vertical axis label...");
+            
+            menuItemRenameTitle.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, this.parent.document.parent.document.renamePodTitle);
+            menuItemChangeScales.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, changeGraphScale);
+            menuItemChangeVerticalAxisLabel.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, changeVerticalAxisLabel);
+            
+            var customContextMenu:ContextMenu = new ContextMenu();
+            
+            /** Hide the default Flash menu items */
+            customContextMenu.hideBuiltInItems();
+            customContextMenu.customItems.push(menuItemChangeVerticalAxisLabel);  
+            customContextMenu.customItems.push(menuItemChangeScales);  
+            customContextMenu.customItems.push(menuItemRenameTitle);  
+            
+            if(displayControls.length > 0)
+            {            
+              var menuItemChangeSwitcherControlDisplay:ContextMenuItem = new ContextMenuItem("Show/Hide Switcher Control...");
+              menuItemChangeSwitcherControlDisplay.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, changeSwitcherControlDisplay);
+              customContextMenu.customItems.push(menuItemChangeSwitcherControlDisplay);  
+            }
+            
+            controlLinearChart.contextMenu = customContextMenu;
+          } 
+        }
+        
+        if(initializer.hasOwnProperty("sLinearChart"))
+        {
+          if(initializer.sLinearChart.hasOwnProperty("vScaleMinValue") &&
+             initializer.sLinearChart.hasOwnProperty("vScaleMaxValue"))
+          {
+            controlLinearChart.setVerticalScale(initializer.sLinearChart.vScaleMinValue, 
+                                                initializer.sLinearChart.vScaleMaxValue);
+          }
+          
+          if(initializer.sLinearChart.hasOwnProperty("vAxisLabel"))
+          {
+            controlLinearChart.setVerticalAxisLabel(initializer.sLinearChart.vAxisLabel);
+          }
+          
+        }        
+      }	        
+        
+      private function modBarChartReady(e:ModuleEvent):void 
+      {
+        var controlBarChart:DisplayObject = info.factory.create() as DisplayObject;
+
+        controlBarChart.percentHeight = 100;
+        controlBarChart.percentWidth = 100;
+        controlBarChart.targetAttributes = targetAttributes;
+        controlBarChart.targetTypes = targetTypes;
+        controlBarChart.schema = schema;
+        controlBarChart.semanticDataProvider = _semanticDataProvider;
+        
+        if(this.getChildren()[0] is ComboBox)
+        {
+          this.addChildAt(controlBarChart, 0);
+        }
+        else
+        {
+          this.getChildren()[0].addChildAt(controlBarChart, 0);
+        }
+        
+        if(this.parent.document.parent.document)
+        {
+          var componentName:String = flash.utils.getQualifiedClassName(this.parent.document.parent.document);   
+          
+          if(componentName == "Workbench")
+          {
+            /** 
+             * The sBarChart component is in a Workbench context, so we enable some additional
+             * contextual menus.
+             */
+            var menuItemRenameTitle:ContextMenuItem = new ContextMenuItem("Rename title...");            
+            var menuItemChangeScales:ContextMenuItem = new ContextMenuItem("Change Scales...");
+            
+            menuItemRenameTitle.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, this.parent.document.parent.document.renamePodTitle);
+            menuItemChangeScales.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, changeGraphScale);
+            
+            var customContextMenu:ContextMenu = new ContextMenu();
+            
+            /** Hide the default Flash menu items */
+            customContextMenu.hideBuiltInItems();
+            customContextMenu.customItems.push(menuItemChangeScales);  
+            customContextMenu.customItems.push(menuItemRenameTitle);  
+
+            if(displayControls.length > 0)
+            {            
+              var menuItemChangeSwitcherControlDisplay:ContextMenuItem = new ContextMenuItem("Show/Hide Switcher Control...");
+              menuItemChangeSwitcherControlDisplay.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, changeSwitcherControlDisplay);
+              customContextMenu.customItems.push(menuItemChangeSwitcherControlDisplay);  
+            }
+
+            controlBarChart.contextMenu = customContextMenu;
+          } 
+        }
+        
+        if(initializer.hasOwnProperty("sBarChart"))
+        {
+          if(initializer.sBarChart.hasOwnProperty("vScaleMinValue") &&
+            initializer.sBarChart.hasOwnProperty("vScaleMaxValue"))
+          {
+            controlBarChart.setVerticalScale(initializer.sBarChart.vScaleMinValue, 
+                                             initializer.sBarChart.vScaleMaxValue);
+          }
+        }         
+      }		  
+
+      private function changeVerticalAxisLabel(event:ContextMenuEvent):void
+      {
+        var changeScale:ChangeVerticalAxisLabelWindow =
+          ChangeVerticalAxisLabelWindow(PopUpManager.createPopUp(this, ChangeVerticalAxisLabelWindow, true));
+        
+        changeScale.targetChart = event.contextMenuOwner;
+      }
+        
+      private function changeGraphScale(event:ContextMenuEvent):void
+      {
+        var changeScale:ChangeScalesTileWindow =
+          ChangeScalesTileWindow(PopUpManager.createPopUp(this, ChangeScalesTileWindow, true));
+        
+        changeScale.targetChart = event.contextMenuOwner;
+      }
+
+      private function changeSwitcherControlDisplay(event:ContextMenuEvent):void
+      {
+        if(displayControlSwitcher)
+        {
+          toggleSwitcherDisplayVisibility(false);
+        }
+        else
+        {
+          toggleSwitcherDisplayVisibility(true);
+        }         
+      }        
+        
+      public function toggleSwitcherDisplayVisibility(visible:Boolean):void
+      {
+        if(visible)
+        {
+          displayControlSwitcher = true;
+        }
+        else
+        {
+          displayControlSwitcher = false;
+        }
+        
+        viewSwitcher.includeInLayout = visible;
+        viewSwitcher.visible = visible;
+      }
+        
+      private function modWebMapReady(e:ModuleEvent):void 
+      {
+        var controlWebMap:DisplayObject = info.factory.create() as DisplayObject;
+        
+        controlWebMap.targetAttributes = targetAttributes;
+        controlWebMap.targetTypes = targetTypes;
+        controlWebMap.schema = schema;
+        controlWebMap.semanticDataProvider = _semanticDataProvider;
+        
+        if(this.getChildren()[0] is ComboBox)
+        {
+          this.addChildAt(controlWebMap, 0);
+        }
+        else
+        {
+          this.getChildren()[0].addChildAt(controlWebMap, 0);
+        }        
+        
+        if(this.parent.document.parent.document)
+        {
+          var componentName:String = flash.utils.getQualifiedClassName(this.parent.document.parent.document);   
+        
+          if(componentName == "Workbench")
+          {
+            if(displayControls.length > 0)
+            {            
+              var menuItemChangeSwitcherControlDisplay:ContextMenuItem = new ContextMenuItem("Show/Hide Switcher Control...");
+              menuItemChangeSwitcherControlDisplay.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, changeSwitcherControlDisplay);
+              
+              var customContextMenu:ContextMenu = new ContextMenu();
+              
+              customContextMenu.customItems.push(menuItemChangeSwitcherControlDisplay);
+              
+              controlWebMap.contextMenu = customContextMenu;
+            }
+          }
+        }
+      }		  
+
+      private function modRelationBrowserProgressHandler(e:ModuleEvent):void 
+      {
+        dispatchEvent(new SemanticComponentLoadEvent("progress", {
+          label: "Loading relation browser control...",
+          progress: 5
+        }));          
+      }        
+        
+		  private function modRelationBrowserReadyHandler(e:ModuleEvent):void 
+		  {
+			  //var controlWebMap:sWebMap = new sWebMap();
+			  
+			  var controlRelationBrowser:DisplayObject = info.factory.create() as DisplayObject;
+			  
+        controlRelationBrowser.targetAttributes = targetAttributes;
+        controlRelationBrowser.targetTypes = targetTypes;
+        controlRelationBrowser.schema = schema;
+        controlRelationBrowser.semanticDataProvider = _semanticDataProvider;
+			  
+        if(this.getChildren()[0] is ComboBox)
+        {
+          this.addChildAt(controlRelationBrowser, 0);
+        }
+        else
+        {
+          this.getChildren()[0].addChildAt(controlRelationBrowser, 0);
+        }
+        
+        dispatchEvent(new SemanticComponentLoadEvent("progress", {
+          label: "Relation browser control loaded...",
+          progress: 5
+        }));           
+        
+        if(this.parent.document.parent.document)
+        {
+          var componentName:String = flash.utils.getQualifiedClassName(this.parent.document.parent.document);   
+        
+          if(componentName == "Workbench")
+          {
+            if(displayControls.length > 0)
+            {            
+              var menuItemChangeSwitcherControlDisplay:ContextMenuItem = new ContextMenuItem("Show/Hide Switcher Control...");
+              menuItemChangeSwitcherControlDisplay.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, changeSwitcherControlDisplay);
+              
+              var customContextMenu:ContextMenu = new ContextMenu();
+              
+              customContextMenu.customItems.push(menuItemChangeSwitcherControlDisplay);
+              
+              controlRelationBrowser.contextMenu = customContextMenu;
+            }
+          }
+        }
+		  }	
+      
+      private function modStoryProgressHandler(e:ModuleEvent):void 
+      {
+        dispatchEvent(new SemanticComponentLoadEvent("progress", {
+          label: "Loading story viewer control...",
+          progress: 5
+        }));          
+      }        
+      
+      private function modStoryReadyHandler(e:ModuleEvent):void 
+      {
+        //var controlWebMap:sWebMap = new sWebMap();
+        
+        var controlStory:DisplayObject = info.factory.create() as DisplayObject;
+        
+        controlStory.targetAttributes = targetAttributes;
+        controlStory.targetTypes = targetTypes;
+        controlStory.schema = schema;
+        controlStory.semanticDataProvider = _semanticDataProvider;       
+        
+        if(this.getChildren()[0] is ComboBox)
+        {
+          this.addChildAt(controlStory, 0);
+        }
+        else
+        {
+          this.getChildren()[0].addChildAt(controlStory, 0);
+        }
+        
+        dispatchEvent(new SemanticComponentLoadEvent("progress", {
+          label: "Story viewer control loaded...",
+          progress: 5
+        }));   
+                
+        if(this.parent.document.parent.document)
+        {
+          var componentName:String = flash.utils.getQualifiedClassName(this.parent.document.parent.document);   
+        
+          if(componentName == "Workbench")
+          {
+            if(displayControls.length > 0)
+            {            
+              var menuItemChangeSwitcherControlDisplay:ContextMenuItem = new ContextMenuItem("Show/Hide Switcher Control...");
+              menuItemChangeSwitcherControlDisplay.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, changeSwitcherControlDisplay);
+              
+              var customContextMenu:ContextMenu = new ContextMenu();
+              
+              customContextMenu.customItems.push(menuItemChangeSwitcherControlDisplay);
+              
+              controlStory.contextMenu = customContextMenu;
+            }
+          }
+        }
+      }	        
+  	  
+      /**
+       * Switch from a semantic component to another for the same sControl canvas. This only happens
+       * if multiple semantic component can be used to display information about the same records, target
+       * attributes and target types.
+       */
+      private function switchView(event:Event):void
+      {
+        /** Delete the visible control */
+        for each(var control:Object in event.target.dataProvider)
+        {
+          if(control.control != null)
+          {
+            var children:Array = control.control.getChildren();
+            
+            for each(var child:Object in children)
+            {
+              child.parent.removeChild(child);
+            }
+//              control.control.parent.removeChild(control.control);
+//              control.control = null;
+            break;
+          }
+        }
+        
+        /** Create the new control */
+        this.createControl(event.target.dataProvider[event.target.selectedIndex].controlName);
+        event.target.dataProvider[event.target.selectedIndex].control = this.getChildAt(0);
+      }
+      
+      /**
+       * Select a specific control within the list of available controls that can be used to
+       * display information about the input records.
+       */
+      public var selectControl:String = "";
+        
+      ]]>
+    </mx:Script>
+  </mx:Box>
+</mx:Module>

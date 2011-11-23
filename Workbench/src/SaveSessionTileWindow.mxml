@@ -11,6 +11,8 @@
       import mx.rpc.events.FaultEvent;
       import mx.rpc.events.ResultEvent;
       import mx.rpc.http.HTTPService;
+      
+      import mx.controls.Alert;
 
       /**
        * Initialize the tile window

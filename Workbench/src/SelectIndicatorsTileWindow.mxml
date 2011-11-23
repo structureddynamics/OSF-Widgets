@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Tile window that ask the user to load a session from the sessions server -->
+
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml" title="Select attributes to load in the Workbench" 
+                x="200" y="200" width="600" height="600"                
+                xmlns:view="com.esria.samples.dashboard.view.*" xmlns:toolbox="com.flextoolbox.controls.*" 
+                creationComplete="init()">
+  
+  <mx:Script>
+    <![CDATA[       
+      import com.sd.semantic.core.Resultset;
+      import com.sd.semantic.core.SchemaAttribute;
+      import com.sd.semantic.core.Subject;
+      
+      import mx.controls.Alert;
+      import mx.managers.PopUpManager;
+      import mx.messaging.AbstractConsumer;
+      import mx.rpc.events.FaultEvent;
+      import mx.rpc.events.ResultEvent;
+      import mx.rpc.http.HTTPService;      
+      
+      /**
+       * Initialize the tile window
+       */      
+      private function init():void
+      {
+        /** attribute filters */
+        var attributeFilters:String = "all";
+        
+        /** dataset filters */
+        var datasetFilters:String = "";
+        
+        if(this.parent.document.workbenchSettings.filterDatasets.length > 0)
+        {
+          var i:int = 0;
+          
+          for each(var filter:String in this.parent.document.workbenchSettings.filterDatasets)
+          {
+            if(i > 0)
+            {
+              datasetFilters += (";" + filter);
+            }
+            else
+            {
+              datasetFilters += filter;
+            }
+            
+            i++;
+          }
+        }
+        else
+        {
+          datasetFilters = "all";
+        }
+        
+        /** type filters */
+        var typeFilters:String = "all";
+        
+        /** Get the initial state of the structWSF data */
+        
+        var requestParameters
+        :Object = {attributes: attributeFilters, types: typeFilters, datasets: datasetFilters, items: "0",
+          page: "0", include_aggregates:"true"};
+        
+        var httpService:HTTPService = new HTTPService();
+        
+        httpService.url = this.parent.document.workbenchSettings.structWSFBaseURL + "/search/";
+        httpService.method = "POST";
+        httpService.headers['Accept'] = 'text/xml;q=1';
+        httpService.showBusyCursor = true;
+        httpService.resultFormat = "e4x";
+        httpService.addEventListener(ResultEvent.RESULT, sessionsLoadResultsetHandler);
+        httpService.addEventListener(FaultEvent.FAULT, sessionsLoadResultsetFaultHandler);
+        
+        httpService.send(requestParameters);        
+      }
+      
+      /** Faulty Sessions List event handler */
+      private function sessionsLoadResultsetFaultHandler(event:FaultEvent):void
+      {
+        Alert.show("Sessions cannot be listed from the server. Connection error.", "Connection Error");
+      }       
+      
+      /** Sessions list event handler */
+      private function sessionsLoadResultsetHandler(event:ResultEvent):void
+      {
+        var resultset:Resultset = new Resultset(event.result);
+        
+        var aggregates:Array = resultset.getSubjectsByType("aggr_Aggregate");
+        var attributesAggregates:Array =
+          resultset.getSubjectsByPredicateObjectValue("aggr_property", "rdf_Property", aggregates);
+        var attributes:Array = [];
+        
+        var prefLabels:Array = [];
+        
+        for each(var attributeAggregate:Subject in attributesAggregates)
+        {
+          var attributeURI:String = attributeAggregate.predicates["aggr_object"][0].uri;
+          var nbRecords:String = attributeAggregate.predicates["aggr_count"][0].value;
+          
+          var attribute:SchemaAttribute = this.parent.document.schema.getAttribute(attributeURI);
+          var prefLabel:String = "";
+          
+          if(attribute != null)
+          {
+            /**
+             * Only display attributes that can be dispayed in Workbench tools. These
+             * attributes are:
+             *
+             * (1) The ones that have numberic allowedValue (a) Integer (b) Float (c) Boolean
+             * (2) The ones are have a supported display control
+             */            
+            if(attribute.allowedPrimitiveValues.indexOf("Integer") != -1 || 
+               attribute.allowedPrimitiveValues.indexOf("Float") != -1 || 
+               attribute.allowedPrimitiveValues.indexOf("Boolean") != -1 ||
+               attribute.displayControls.indexOf("sBarChart") != -1 ||
+               attribute.displayControls.indexOf("sLinearChart") != -1)
+            {
+              prefLabel = attribute.prefLabel;
+              
+              if(prefLabel == "")
+              {
+                /** no type defined in the schema for this type URI */
+                var end:int = 0;
+                var name:String = "";
+                
+                end = attributeURI.lastIndexOf("#");
+                
+                if(end == -1)
+                {
+                  end = attributeURI.lastIndexOf("/");
+                }
+                
+                if(end > 0)
+                {
+                  end += 1;
+                  
+                  prefLabel = attributeURI.substr(end, (attributeURI.length - end));
+                }
+              }
+              
+              if(prefLabels.indexOf(prefLabel) != -1)
+              {
+                var end:int = 0;
+                var name:String = "";
+                
+                end = attributeURI.lastIndexOf("#");
+                
+                if(end == -1)
+                {
+                  end = attributeURI.lastIndexOf("/");
+                }
+                
+                if(end > 0)
+                {
+                  end += 1;
+                  
+                  prefLabel += " [" + attributeURI.substr(end, (attributeURI.length - end)) + "]";
+                }                
+              }
+              else
+              {
+                prefLabels.push(prefLabel);
+              }
+              
+              var selected:Boolean = false;
+              
+              /** 
+              * Check if the indicator is already selected in the Workbench. If it is, we re-select it in this
+              * list of indicators.
+              */
+              if(this.parent.document.includeAttributesList.indexOf(attributeURI) != -1)
+              {
+                selected = true;
+              }
+              
+              attributes.push({displayLabel: prefLabel + " (" + nbRecords + ")", prefLabel: prefLabel, nbRecords: nbRecords,
+                uri:attributeURI, selected: selected});
+            }
+          }          
+        }
+
+        attributes.sortOn("displayLabel", Array.ASCENDING);
+        
+        indicatorsSelectorList.dataProvider = attributes;
+        
+        indicatorsSelectorList.invalidateList();
+        
+      }      
+      
+      /** Event handler for the OK button. */
+      private function selectAttributes():void 
+      {
+        /** Load session */
+        this.parent.document.getInitialRecords();
+        
+        /** Remove this tile window */
+        PopUpManager.removePopUp(this);
+      }   
+      
+      private function loadSession():void
+      {
+        //this.parent.document.getInitialRecords();
+        
+        var loadSession:LoadSessionTileWindow =
+          LoadSessionTileWindow(PopUpManager.createPopUp(this, LoadSessionTileWindow, true));       
+        
+        /** Remove this tile window */
+        PopUpManager.removePopUp(this);
+      }
+      
+    ]]>
+  </mx:Script>
+  
+  <mx:HBox width="100%" height="100%">
+    <toolbox:CheckBoxList id="indicatorsSelectorList" width="100%" height="100%" 
+                          labelField="displayLabel" enabledField="enabled" 
+                          change="onDatasetFilterListChangeHandler(event);" >
+      <mx:Script>
+        <![CDATA[
+          
+          private function onDatasetFilterListChangeHandler(event:Event):void
+          {
+            if(this.parent.document.includeAttributesList.indexOf(event.itemRenderer.data.uri) == -1)
+            {
+              this.parent.document.includeAttributesList.push(event.itemRenderer.data.uri);
+            }
+            else
+            {
+              this.parent.document.includeAttributesList.splice(this.parent.document.includeAttributesList.indexOf(event.itemRenderer.data.uri), 1);
+            }
+          }
+          
+        ]]>
+      </mx:Script>
+    </toolbox:CheckBoxList>
+  </mx:HBox>
+  
+  <mx:HBox horizontalAlign="center" width="100%" >
+    <mx:Button label="Select Indicators" click="selectAttributes();"/>
+    <mx:Button label="Load Session" click="loadSession();"/>
+    <mx:Button label="Cancel" click="PopUpManager.removePopUp(this);"/>
+  </mx:HBox>
+  
+</mx:TitleWindow> 
