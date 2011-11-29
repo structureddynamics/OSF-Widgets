@@ -211,7 +211,9 @@
 				public function set schema(value:Schema):void
 				{
 					this._schema = value;
-				}      
+				}    
+        
+        private var resultsPerPage = 20;
 				
         /** Base URL of the flex component */
         var baseUrl:String = "./";
@@ -370,6 +372,8 @@
 					/** If the setting file is properly loaded, we continue to process the map component */
 					if(!isError)
 					{
+            resultsPerPage = settings.resultsPerPage;
+            
             dispatchEvent(new SemanticComponentLoadEvent("progress", {
               label: "Webmap settings loaded...",
               progress: 5
@@ -398,7 +402,8 @@
 						if(ExternalInterface.available)
 						{
               ExternalInterface.addCallback("clearMap", clearMap);
-							ExternalInterface.addCallback("tagRecord", tagRecord);
+              ExternalInterface.addCallback("tagRecord", tagRecord);
+              ExternalInterface.addCallback("setResultsPerPage", setResultsPerPage);
 							ExternalInterface.addCallback("untagRecord", untagRecord);
 							
 							if(settings.displayResultsHTML)
@@ -522,7 +527,7 @@
 						/** Change the pagination control */
 						if(ExternalInterface.available && settings.displayResultsHTML)
 						{
-							ExternalInterface.call("displayResultsPagination", nbResults, currentResultsetPage, settings.resultsPerPage); 
+							ExternalInterface.call("displayResultsPagination", nbResults, currentResultsetPage, resultsPerPage); 
 						}          
 						
 						/** display available datasets */
@@ -1852,8 +1857,8 @@
 								datasets: datasets, 
 								types: types, 
 								attributes: attributes,             
-								items: settings.resultsPerPage,
-									page: currentResultsetPage * settings.resultsPerPage, 
+								items: resultsPerPage,
+									page: currentResultsetPage * resultsPerPage, 
 									inference: "on", 
                   attributes_boolean_operator: attributesBooleanOperator,
 									include_aggregates:"true",
@@ -1943,15 +1948,9 @@
 							tagRecord(uri);
 						}
 						
-						if(!(filteredDatasets.length == 0 &&
-							filteredKinds.length == 0 &&
-							filteredAttributes == 0 &&
-							text == ""))
-						{
-							query = text;
-							
-							filterRecords();
-						}          
+						query = text;
+						
+						filterRecords();
 					}
 					else
 					{
@@ -2288,7 +2287,13 @@
           
           this.map.setCenter(latlngbounds.getCenter(), map.getBoundsZoomLevel(latlngbounds));
         }
-				
+
+        
+        public function setResultsPerPage(nb:Number):void
+        {
+          this.resultsPerPage = nb;
+        }
+        
 				public function tagRecord(uri:String):void
 				{
 					if(taggedRecords.getSubjectByURI(uri) == null)
@@ -2445,7 +2450,8 @@
 											alpha: 0.7}), 
 										fillStyle: new FillStyle({
 											color: 0xCC0000,
-											alpha: 0.05})
+											alpha: 0.05}),
+                    tooltip: s.getPrefLabel(generalSettings.prefLabelAttributes)
 									}));
 									
 									polygon.data = s;

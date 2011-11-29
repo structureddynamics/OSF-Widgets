@@ -953,7 +953,8 @@
           semanticControl.initializer[selectedComponentName]["vScaleMinValue"] = e.module.data.pod.control.vScale.@min.toString();
           semanticControl.initializer[selectedComponentName]["vScaleMaxValue"] = e.module.data.pod.control.vScale.@max.toString();
           
-          if(selectedComponentName == "sLinearChart")
+          if(selectedComponentName == "sBarChart" ||
+             selectedComponentName == "sLinearChart")
           {
             semanticControl.initializer[selectedComponentName]["vAxisLabel"] = e.module.data.pod.control.vAxisLabel.toString();
           }

@@ -1045,14 +1045,17 @@ description.
              */
             var menuItemRenameTitle:ContextMenuItem = new ContextMenuItem("Rename title...");            
             var menuItemChangeScales:ContextMenuItem = new ContextMenuItem("Change Scales...");
+            var menuItemChangeVerticalAxisLabel:ContextMenuItem = new ContextMenuItem("Change vertical axis label...");
             
             menuItemRenameTitle.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, this.parent.document.parent.document.renamePodTitle);
             menuItemChangeScales.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, changeGraphScale);
+            menuItemChangeVerticalAxisLabel.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, changeVerticalAxisLabel);
             
             var customContextMenu:ContextMenu = new ContextMenu();
             
             /** Hide the default Flash menu items */
             customContextMenu.hideBuiltInItems();
+            customContextMenu.customItems.push(menuItemChangeVerticalAxisLabel);  
             customContextMenu.customItems.push(menuItemChangeScales);  
             customContextMenu.customItems.push(menuItemRenameTitle);  
 
@@ -1075,6 +1078,11 @@ description.
             controlBarChart.setVerticalScale(initializer.sBarChart.vScaleMinValue, 
                                              initializer.sBarChart.vScaleMaxValue);
           }
+          
+          if(initializer.sBarChart.hasOwnProperty("vAxisLabel"))
+          {
+            controlBarChart.setVerticalAxisLabel(initializer.sBarChart.vAxisLabel);
+          }          
         }         
       }		  
 
