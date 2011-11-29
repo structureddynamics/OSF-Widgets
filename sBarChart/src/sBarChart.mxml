@@ -613,7 +613,33 @@
         this.parent.parent.initializer["sBarChart"]["vScaleMaxValue"] = yMax;
         
         dc.invalidateDisplayList(); 
-      }        
+      } 
+      
+      public function setVerticalAxisLabel(label:String):void
+      {
+        this.verticalAxisLabel.changeLabel(label);
+        this.verticalAxisLabel.visible = true;
+        this.dc.invalidateProperties();
+        this.dc.invalidateSize();
+        this.dc.invalidateDisplayList();
+        
+        /** 
+         * Set the changed vertical axis label in the parent sControl initializer object so that we
+         * re-initilize the chart properly if the user switch between multiple controls.
+         */
+        if(!this.parent.parent.initializer["sBarChart"])
+        {
+          this.parent.parent.initializer["sBarChart"] = {};
+        }
+        
+        this.parent.parent.initializer["sBarChart"]["vAxisLabel"] = label;
+      }
+      
+      public function getVerticalAxisLabel():String
+      {
+        return(this.verticalAxisLabel.labelValue);
+      }
+      
       
   		]]>
     </mx:Script>
@@ -626,6 +652,16 @@
         <axis:VAxis verticalScale="{vScale}" tickStroke="{axisStroke}" width="{dc.width}"
           height="{hLayout.height}" showDataTips="false" fontFamily="Myriad Pro" fontColor="0" fontSize="14" tickGap="5"
           labelFunction="{axisLabel}" id="vAxis"/>
+        
+      <labels:VLabel id="verticalAxisLabel"
+                     height="{dc.height}"
+                     width="15"
+                     fontFamily="Myriad Pro"
+                     fontSize="16"
+                     fontColor="{outerPalette.currentColor}"
+                     verticalCenter="1"
+                     labelValue=""
+                     x="-35" />           
       </axiis:backgroundGeometries>
   
       <!-- Layouts -->

@@ -2638,7 +2638,8 @@
             sessionXML += "            <vScale min=\""+selectedComponentObj.vScale.minValue+"\" max=\""+selectedComponentObj.vScale.maxValue+"\" />\n";
           }
           
-          if(selectedComponentObjName == "sLinearChart")
+          if(selectedComponentObjName == "sBarChart" ||
+             selectedComponentObjName == "sLinearChart")
           {
             sessionXML += "            <vAxisLabel>"+selectedComponentObj.getVerticalAxisLabel()+"</vAxisLabel>\n";
           }
