@@ -1,0 +1,9 @@
+== Introduction ==
+
+== Documentation ==
+
+== Semantic Components ==
+
+Here is a complete list of all the semantic components currently available:
+
+* [http://techwiki.openstructs.org/index.php/sWebMap sWebMap]

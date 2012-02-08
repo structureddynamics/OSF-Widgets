@@ -1,49 +1,4 @@
 == Introduction ==
 
-A '''Semantic Component''' is a [http://techwiki.openstructs.org/index.php/Flex Flex] component or [http://techwiki.openstructs.org/index.php/Widget_Concept widget] that takes record(s) description(s) and [http://techwiki.openstructs.org/index.php/Instance_Record_and_Object_Notation_(irON)_Specification#SUB-PART_1:_irXML_PROFILE irXML] schema(s) as input, and then outputs some (possibly interactive) visualization(s) of that record. Depending on the logic described in the input schema(s) and the input record(s) description(s), the Semantic Component may behave differently or provide presentation options to users.
-
-Each Semantic Component delivers a very focused set of functionality or visualization. Multiple components may be combined on the same canvas for more complicated displays and controls.
-
-The framework is open source (Apache 2 license) and designed for extensibility. Semantic Components and its extensions and enhancements are distributed and documented on the '''OpenStructs''' [http://openstructs.org/  Web site].
-
-You can read more about [http://techwiki.openstructs.org/index.php/StructWSF structWSF here]
-
 == Documentation ==
 
-Semantic Components are fully documented on the [http://techwiki.openstructs.org Techwiki]. You can easily access all the documentation pages related to it by checking this [http://techwiki.openstructs.org/index.php/Category:Semantic_Component category section].
-
-== Architecture ==
-
-The general structWSF architecture is described in two documents
-
-* [http://techwiki.openstructs.org/index.php/Semantic_Component_Library Semantic Component Library]
-* [http://techwiki.openstructs.org/index.php/Semantic_Component_Layout Semantic Component Layout]
-
-== Semantic Components ==
-
-Here is a complete list of all the semantic components currently available:
-
-* [http://techwiki.openstructs.org/index.php/SControl sControl]
-* [http://techwiki.openstructs.org/index.php/SCore sCore]
-* [http://techwiki.openstructs.org/index.php/SBarChart sBarChart]
-* [http://techwiki.openstructs.org/index.php/SLinearChart sLinearChart]
-* [http://techwiki.openstructs.org/index.php/SDashboard sDashboard]
-* [http://techwiki.openstructs.org/index.php/sMap sMap]
-* [http://techwiki.openstructs.org/index.php/sWebMap sWebMap]
-* [http://techwiki.openstructs.org/index.php/sRelationBrowser sRelationBrowser]
-* [http://techwiki.openstructs.org/index.php/sStory sStory]
-* [http://techwiki.openstructs.org/index.php/Workbench Workbench]
-* [http://techwiki.openstructs.org/index.php/PortableControlApplication PortableControlApplication]
-
-== Developers ==
-
-Developers and commiters to the Git repository should comply to the coding standards. An outline of the coding style is available in the Coding Standard folder. Additional requirements are listed in the README.mediawiki file in that folder. Finally, coding style is enforced b the PolyStyle code formatter application available here: http://polystyle.com.
-
-== Building and Compiling ==
-
-For any of these 3 applications, you have to compile them and make sure that:
-
-* You are using the Flex SDK 3.5
-* You are using the Flash Player version 10 and above
-* You have disabled strict type checking
-* Make sure that the project will generates HTML wrapper files
