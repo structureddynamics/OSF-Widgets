@@ -1,0 +1,86 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+  <head>
+    <title>sWebMap JavaScript Semantic Component Example</title>
+    
+    <meta http-equiv="X-UA-Compatible" content="ie=8">
+    
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" language="javascript"></script>
+    <script src="https://apis.google.com/js/client.js" language="javascript"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?v=3&sensor=false" language="javascript"></script>
+    
+    <script src="js/jquery.enhanced.cookie.js" language="javascript"></script>
+    <script src="js/jquery.autocomplete-webmap.js" language="javascript"></script>
+    <script src="js/jquery.pagination.js" language="javascript"></script>
+    <script src="js/jquery.scrollTo.js" language="javascript"></script>
+    <script src="js/jsDraw2D.js" language="javascript"></script>
+    <script src="js/pure.js" language="javascript"></script>
+    <script src="js/jquery.quicksearch.js" language="javascript"></script>
+    <script src="js/jquery.tipsy.js" language="javascript"></script>
+    <script src="js/jquery.blockUI.js" language="javascript"></script>
+    <script src="js/infobox_packed.js" language="javascript"></script>    
+    
+    <script src="js/sWebMap.js" language="javascript"></script>
+    <script src="js/sWebMap-templates.js" language="javascript"></script>
+    <script src="js/resultset.js" language="javascript"></script>
+    <script src="js/schema.js" language="javascript"></script>    
+    
+    <script src="schemas/NOW.js" language="javascript"></script>
+    <script src="schemas/rdf.js" language="javascript"></script>    
+    
+    <link rel="stylesheet" type="text/css" href="css/sWebMap.css" />
+    <link rel="stylesheet" type="text/css" href="css/tipsy.css" />    
+    
+    <script type="text/javascript">
+      $(document).ready(function() {
+      
+        var options = {
+          // This is what enable the multi-maps mode
+          enableFocusWindows: true,
+
+          defaultMapLat: "41.6611111",
+          defaultMapLong: "-91.53",  
+          defaultMapZoom: 8,
+          defaultMarkerUrl: "http://localhost/swebmap/imgs/defaultMarker.png",
+          imagesFolder: "http://localhost/swebmap/imgs/",
+          isAdmin: false,
+          mapDatasets: ["all"],
+          schemas: [new Schema(MUNI_schema_srz), new Schema(rdf_schema_srz)],
+          mapResultsPerPage: 20,
+          searchOnDrag: false,
+          searchOnZoomChanged: false,
+          structWSFAddress: "http://localhost/ws/",
+          googleUrlShortenerKey: "AIzaSyBA6WmtJfiVL7-f3xxMctz2ELnKCrM9Bjc",
+          sharedMapUrl: "http://localhost/swebmap/index.html",
+          focusMapsCenterPositions: {
+              "focusMap1": {
+                "lat": "41.6613",
+                "lng": "-91.5573",
+                "zoom": 14
+              },
+              "focusMap2": {
+                "lat": "41.6567",
+                "lng": "-91.5072",
+                "zoom": 14
+              },
+              "focusMap3": {
+                "lat": "41.6377",
+                "lng": "-91.5298",
+                "zoom": 14
+              }
+          }
+        }
+
+        var webMap = new SWebMap("mapCanvas", options);        
+      });
+    </script>
+  </head>
+  
+  <body>
+  
+  <div id="mapCanvas" style="width: 80%; height: 80%; padding-top: 30px;">
+    
+  </div>
+    
+  </body>
+</html>

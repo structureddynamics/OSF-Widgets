@@ -1,0 +1,22 @@
+== Minimized version ==
+
+Use this minimized version of the sWebMap for faster loadtime.
+
+You simply have to load the framework that way:
+
+<pre>
+  <script src="js-min/jquery.enhanced.cookie.min.js" language="javascript"></script>
+  <script src="js-min/jquery.autocomplete-webmap.min.js" language="javascript"></script>
+  <script src="js-min/jquery.pagination.min.js" language="javascript"></script>
+  <script src="js-min/jquery.scrollTo.min.js" language="javascript"></script>
+  <script src="js-min/jsDraw2D.min.js" language="javascript"></script>
+  <script src="js-min/pure.min.js" language="javascript"></script>
+  <script src="js-min/jquery.quicksearch.min.js" language="javascript"></script>
+  <script src="js-min/jquery.tipsy.min.js" language="javascript"></script>
+  <script src="js-min/jquery.blockUI.min.js" language="javascript"></script>
+  <script src="js-min/infobox_packed.min.js" language="javascript"></script>        
+  <script src="js-min/sWebMap.min.js" language="javascript"></script>
+  <script src="js-min/sWebMap-templates.min.js" language="javascript"></script>
+  <script src="js-min/resultset.min.js" language="javascript"></script>
+  <script src="js-min/schema.min.js" language="javascript"></script>
+</pre>
