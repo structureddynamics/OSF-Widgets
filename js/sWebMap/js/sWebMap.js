@@ -1720,7 +1720,15 @@ function SWebMap()
             }
             else
             {
-              templateData[predicate.replace(":", "_").replace(/[^A-Za-z0-9_-]/g, "-")] = subjectResultset.predicate[u][predicate];
+              if((typeof (subjectResultset.predicate[u][predicate]) == 'object' && 
+                  'value' in subjectResultset.predicate[u][predicate]))
+              {              
+                templateData[predicate.replace(":", "_").replace(/[^A-Za-z0-9_-]/g, "-")] = subjectResultset.predicate[u][predicate].value;
+              }
+              else
+              {
+                templateData[predicate.replace(":", "_").replace(/[^A-Za-z0-9_-]/g, "-")] = subjectResultset.predicate[u][predicate];
+              }
             }
           }
         }    
