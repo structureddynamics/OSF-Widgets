@@ -1720,7 +1720,15 @@ function SWebMap()
             }
             else
             {
-              templateData[predicate.replace(":", "_").replace(/[^A-Za-z0-9_-]/g, "-")] = subjectResultset.predicate[u][predicate];
+              if((typeof (subjectResultset.predicate[u][predicate]) == 'object' && 
+                  'value' in subjectResultset.predicate[u][predicate]))
+              {              
+                templateData[predicate.replace(":", "_").replace(/[^A-Za-z0-9_-]/g, "-")] = subjectResultset.predicate[u][predicate].value;
+              }
+              else
+              {
+                templateData[predicate.replace(":", "_").replace(/[^A-Za-z0-9_-]/g, "-")] = subjectResultset.predicate[u][predicate];
+              }
             }
           }
         }    
@@ -3550,7 +3558,7 @@ function SWebMap()
         "3": null
       };        
     }      
-    
+        
     if(this.attributeValueFilters[this.filtersAttributes[id].uri] == undefined)
     {
       this.attributeValueFilters[this.filtersAttributes[id].uri] = "";
@@ -3686,6 +3694,8 @@ function SWebMap()
       $("#attributeFilterImage_"+id).attr("src", this.imagesFolder+"magnifier_zoom_in.png"); 
       $("#attributeFilterImage_"+id).attr("title", "Add a value to filter by");      
       $("#attributeFilterCheckboxText_"+id).show();
+      
+      delete this.attributeValueFilters[this.filtersAttributes[id].uri];
     }
     else
     {

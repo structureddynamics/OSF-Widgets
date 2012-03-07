@@ -111,8 +111,18 @@ Resultset.prototype.getSubjectByURI = function(uri)
 // These are a series of Subject function that get added to the resultset subjects objects
 // by the Resultset function's utilities methods.
 
+// uri (uri/iri)
+// extended (bool)
 function subject_getPredicateValues(uri)
 {
+  // "extended" parameter (optional) [Boolean]
+  var extended = false;
+  
+  if(arguments[1] != undefined)
+  {
+    var extended = arguments[1];
+  }
+  
   var values = [];
   
   if('predicate' in this)
@@ -122,10 +132,47 @@ function subject_getPredicateValues(uri)
       var predicate = this.predicate[i];
       
       for(var predicateURI in predicate)
-      {   
+      {
         if(this.prefixize(uri) == predicateURI || uri == predicateURI)
         {
-          values.push(predicate[predicateURI]);
+          // Return a literal value
+          if((typeof (predicate[predicateURI]) == 'object' && 
+              'value' in predicate[predicateURI]))
+          {
+            if(!extended)
+            {
+              /*
+                Simply return the literal value
+              */
+              values.push(predicate[predicateURI].value);
+            }
+            else
+            {
+              /*
+                Returns:
+                
+                 {
+                   "value": "my-literal-value",
+                   "type": "xsd:type",
+                   "lang": "en"
+                 }
+              */
+              values.push(predicate[predicateURI]);
+            }
+          }
+          else
+          {
+            /*
+              (1) If it is a simple literal, we return the literal's value
+                
+                  "my literal"
+              
+              (2) If it is an object property, we return the boject reference value:
+                  
+                  {"uri": "referenced-uri}
+            */
+            values.push(predicate[predicateURI]);
+          }
         }
       }
     }  
