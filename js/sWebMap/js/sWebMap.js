@@ -3558,7 +3558,7 @@ function SWebMap()
         "3": null
       };        
     }      
-    
+        
     if(this.attributeValueFilters[this.filtersAttributes[id].uri] == undefined)
     {
       this.attributeValueFilters[this.filtersAttributes[id].uri] = "";
@@ -3694,6 +3694,8 @@ function SWebMap()
       $("#attributeFilterImage_"+id).attr("src", this.imagesFolder+"magnifier_zoom_in.png"); 
       $("#attributeFilterImage_"+id).attr("title", "Add a value to filter by");      
       $("#attributeFilterCheckboxText_"+id).show();
+      
+      delete this.attributeValueFilters[this.filtersAttributes[id].uri];
     }
     else
     {
