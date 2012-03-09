@@ -365,11 +365,27 @@ function resultset_saveN3()
           {
             if(this.isPrefixed(this.prefixize(predicate)))
             {
-              n3 += "  "+this.prefixize(predicate)+" \""+escapeN3(this.subjects[i].predicate[ii][predicate])+"\" ;\n"
+              if(typeof(this.subjects[i].predicate[ii][predicate]) == 'object' && 
+                 'value' in this.subjects[i].predicate[ii][predicate])
+              {
+                n3 += "  "+this.prefixize(predicate)+" \""+escapeN3(this.subjects[i].predicate[ii][predicate].value)+"\" ;\n"
+              }
+              else
+              {
+                n3 += "  "+this.prefixize(predicate)+" \""+escapeN3(this.subjects[i].predicate[ii][predicate])+"\" ;\n"
+              }
             }
             else
             {
-              n3 += "  <"+predicate+"> \""+escapeN3(this.subjects[i].predicate[ii][predicate])+"\" ;\n"
+              if(typeof(this.subjects[i].predicate[ii][predicate]) == 'object' && 
+                 'value' in this.subjects[i].predicate[ii][predicate])
+              {
+                n3 += "  <"+predicate+"> \""+escapeN3(this.subjects[i].predicate[ii][predicate].value)+"\" ;\n"
+              }
+              else
+              {
+                n3 += "  <"+predicate+"> \""+escapeN3(this.subjects[i].predicate[ii][predicate])+"\" ;\n"
+              }
             }
           } 
         }
