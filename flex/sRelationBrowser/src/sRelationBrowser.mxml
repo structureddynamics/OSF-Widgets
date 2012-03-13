@@ -27,7 +27,6 @@
 				import com.sd.semantic.events.SemanticComponentLoadEvent;
 				import com.sd.semantic.settings.GeneralSettings;
 				import com.sd.semantic.settings.RelationBrowserSettings;
-        import com.sd.semantic.events.SemanticComponentLoadEvent;
 				
 				import eu.stefaner.flareextensions.render.StairStepEdgeRenderer;
 				import eu.stefaner.relationbrowser.RelationBrowser;
