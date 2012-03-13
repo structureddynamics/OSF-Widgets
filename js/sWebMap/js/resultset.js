@@ -401,7 +401,7 @@ function resultset_saveN3()
 
 function escapeN3(str)
 {
-  return(str.replace('"', "\\\""));
+  return(str.replace(/"/g, "\\\""));
 }
 
 /*
