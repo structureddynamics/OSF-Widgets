@@ -72,6 +72,7 @@ function Resultset(rjson)
     this.subjects[i].getDescriptionTuple = subject_getDescriptionTuple;
     this.subjects[i].getTypes = subject_getTypes;
     this.subjects[i].rename = subject_rename;
+    this.subjects[i].setDescription = subject_setDescription;
     this.subjects[i].addAttributeValue = subject_addAttributeValue;
     this.subjects[i].removePredicateValues = subject_removePredicateValues;
     this.subjects[i].removePredicateValue = subject_removePredicateValue;
@@ -316,8 +317,21 @@ function xmlEncode(string)
            .replace(/>/g,'&'+'gt;').replace(/\'/g,'&'+'apos;').replace(/\"/g,'&'+'quot;'));
 }
 
+/**
+* @param URI (option) If speficied, the N3 document will only include the target subject. Otherwise, all
+*                     subjects will be included in the serialized N3 file.
+* 
+* @returns {String}
+*/
 function resultset_saveN3()
 {
+  var uri = "";
+  
+  if(arguments[0] != undefined)
+  {
+    uri = arguments[0];
+  }
+  
   n3 = "";
   
   // Serialize prefixes
@@ -331,6 +345,11 @@ function resultset_saveN3()
   // Serialize Subjects
   for(var i = 0; i < this.subjects.length; i++)
   {
+    if(uri != "" && this.subjects[i].uri != uri)
+    {
+      continue;
+    }
+    
     // Serialize the first type
     if(this.isPrefixed(this.prefixize(this.subjects[i].type)))
     {
@@ -442,8 +461,34 @@ function subject_rename(newName)
   }
   
   // New prefLabel found, so let's define one
-  this.addAttributeValue("http://www.w3.org/2004/02/skos/core#prefLabel", newName);
-    
+  this.addAttributeValue("http://www.w3.org/2004/02/skos/core#prefLabel", newName);   
+}
+
+// Utility function to define a new description for a subject
+function subject_setDescription(newDescription)
+{
+  if('predicate' in this)
+  {
+    for(var i = 0; i < this.predicate.length; i++)  
+    {
+      var predicate = this.predicate[i];
+      
+      for(var predicateURI in predicate)
+      {
+        for(var u = 0; u < descriptionAttributes.length; u++)  
+        {        
+          if(descriptionAttributes[u] == this.unprefixize(predicateURI)|| descriptionAttributes[u] == predicateURI)
+          {
+            predicate[predicateURI] = newDescription;
+            return;
+          }
+        }
+      }
+    }  
+  }
+  
+  // New prefLabel found, so let's define one
+  this.addAttributeValue("http://www.w3.org/2004/02/skos/core#description", newDescription);
 }
 
 // This function try to find a preferred label that refers to this subject
