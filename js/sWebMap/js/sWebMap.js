@@ -1137,7 +1137,7 @@ function SWebMap()
           
           if(!found)
           {
-            /** Display this.polygons on the this.map */
+            /** Display polygons on the this.map */
             var polygonCoordinates = subject.getPredicateValues("http://purl.org/ontology/sco#polygonCoordinates");
             
             var firstPosition = null;
@@ -1182,25 +1182,24 @@ function SWebMap()
               polygon.bounds = polygonLatLngBounds;
 
               var boxText = document.createElement("div");
-              boxText.style.cssText = "border: 1px solid #E48E1A; margin-top: 8px; background: #E48E1A; padding: 5px; color: black;";                        boxText.innerHTML = subject.getPrefLabel();
+              boxText.style.cssText = "font-weight: bolder; border: 1px solid #3366CC; margin-top: 8px; background: #3366CC; padding: 3px; color: black;";                        
+              boxText.innerHTML = subject.getPrefLabel();
                       
               var myOptions = { content: boxText,
-                                disableAutoPan: false,
+                                disableAutoPan: true,
                                 maxWidth: 0,
-                                pixelOffset: new google.maps.Size(-140, 0),
+                                pixelOffset: new google.maps.Size(0, 10),
                                 zIndex: null,
                                 boxStyle: { 
                                   background: "",
-                                  opacity: 0.75,
-                                  width: "150px"
+                                  opacity: 0.90
                                 },
                                 closeBoxMargin: "10px 2px 2px 2px",
                                 closeBoxURL: "",
                                 infoBoxClearance: new google.maps.Size(1, 1),
                                 isHidden: true,
                                 pane: "floatPane",
-                                enableEventPropagation: false,
-                                position: firstPosition};
+                                enableEventPropagation: false};
 
 
               var ib = new InfoBox(myOptions);
@@ -1214,10 +1213,15 @@ function SWebMap()
                 this.infobox.hide();
               });
               
-              google.maps.event.addListener(polygon, 'mouseover', function() {
+              google.maps.event.addListener(polygon, 'mouseover', function(e) {
                 this.infobox.show();
                 self.featureOver(this.data.uri);
               });
+
+              google.maps.event.addListener(polygon, 'mousemove', function(e) {
+                this.infobox.setPosition(e.latLng);
+              });
+
               
               self.polygons.push(polygon);
               
@@ -1284,26 +1288,25 @@ function SWebMap()
               polyline.bounds = polylineLatLngBounds;
 
               var boxText = document.createElement("div");
-              boxText.style.cssText = "border: 1px solid #E48E1A; margin-top: 8px; background: #E48E1A; padding: 5px; color: black;";
+              boxText.style.cssText = "font-weight: bolder; border: 1px solid #3366CC; margin-top: 8px; background: #3366CC; padding: 3px; color: black;";                        
               boxText.innerHTML = subject.getPrefLabel();
                       
               var myOptions = { content: boxText,
-                                disableAutoPan: false,
+                                disableAutoPan: true,
                                 maxWidth: 0,
-                                pixelOffset: new google.maps.Size(-140, 0),
+                                pixelOffset: new google.maps.Size(0, 10),
                                 zIndex: null,
                                 boxStyle: { 
                                   background: "",
-                                  opacity: 0.75,
-                                  width: "150px"
+                                  opacity: 0.90
                                 },
                                 closeBoxMargin: "10px 2px 2px 2px",
                                 closeBoxURL: "",
                                 infoBoxClearance: new google.maps.Size(1, 1),
                                 isHidden: true,
                                 pane: "floatPane",
-                                enableEventPropagation: false,
-                                position: firstPosition};
+                                enableEventPropagation: false};
+
 
               var ib = new InfoBox(myOptions);
               
@@ -1321,6 +1324,10 @@ function SWebMap()
                 self.infobox.show();
                 self.featureOver(this.data.uri);
               });
+              
+              google.maps.event.addListener(polygon, 'mousemove', function(e) {
+                this.infobox.setPosition(e.latLng);
+              });              
               
               self.polylines.push(polyline);
               
@@ -2143,26 +2150,25 @@ function SWebMap()
               polygon.bounds = polygonLatLngBounds;
 
               var boxText = document.createElement("div");
-              boxText.style.cssText = "border: 1px solid #E48E1A; margin-top: 8px; background: #E48E1A; padding: 5px; color: black;";
+              boxText.style.cssText = "font-weight: bolder; border: 1px solid #3366CC; margin-top: 8px; background: #3366CC; padding: 3px; color: black;";                        
               boxText.innerHTML = subject.getPrefLabel();
                       
               var myOptions = { content: boxText,
-                                disableAutoPan: false,
+                                disableAutoPan: true,
                                 maxWidth: 0,
-                                pixelOffset: new google.maps.Size(-140, 0),
+                                pixelOffset: new google.maps.Size(0, 10),
                                 zIndex: null,
                                 boxStyle: { 
                                   background: "",
-                                  opacity: 0.75,
-                                  width: "150px"
+                                  opacity: 0.90
                                 },
                                 closeBoxMargin: "10px 2px 2px 2px",
                                 closeBoxURL: "",
                                 infoBoxClearance: new google.maps.Size(1, 1),
                                 isHidden: true,
                                 pane: "floatPane",
-                                enableEventPropagation: false,
-                                position: firstPosition};
+                                enableEventPropagation: false};
+
 
 
               var ib = new InfoBox(myOptions);
@@ -2180,6 +2186,10 @@ function SWebMap()
                 this.infobox.show();
                 self.featureOver(this.data.uri);
               });
+              
+              google.maps.event.addListener(polygon, 'mousemove', function(e) {
+                this.infobox.setPosition(e.latLng);
+              });              
               
               this.polygons.push(polygon);
               
@@ -2247,26 +2257,25 @@ function SWebMap()
               polyline.bounds = polylineLatLngBounds;
 
               var boxText = document.createElement("div");
-              boxText.style.cssText = "border: 1px solid #E48E1A; margin-top: 8px; background: #E48E1A; padding: 5px; color: black;";
+              boxText.style.cssText = "font-weight: bolder; border: 1px solid #3366CC; margin-top: 8px; background: #3366CC; padding: 3px; color: black;";                        
               boxText.innerHTML = subject.getPrefLabel();
                       
               var myOptions = { content: boxText,
-                                disableAutoPan: false,
+                                disableAutoPan: true,
                                 maxWidth: 0,
-                                pixelOffset: new google.maps.Size(-140, 0),
+                                pixelOffset: new google.maps.Size(0, 10),
                                 zIndex: null,
                                 boxStyle: { 
                                   background: "",
-                                  opacity: 0.75,
-                                  width: "150px"
+                                  opacity: 0.90
                                 },
                                 closeBoxMargin: "10px 2px 2px 2px",
                                 closeBoxURL: "",
                                 infoBoxClearance: new google.maps.Size(1, 1),
                                 isHidden: true,
                                 pane: "floatPane",
-                                enableEventPropagation: false,
-                                position: firstPosition};
+                                enableEventPropagation: false};
+
 
               var ib = new InfoBox(myOptions);
               
@@ -2284,6 +2293,10 @@ function SWebMap()
                 this.infobox.show();
                 self.featureOver(this.data.uri);
               });
+              
+              google.maps.event.addListener(polygon, 'mousemove', function(e) {
+                this.infobox.setPosition(e.latLng);
+              });              
               
               this.polylines.push(polyline);
               
