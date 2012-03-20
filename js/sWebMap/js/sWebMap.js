@@ -42,6 +42,14 @@ function SWebMap()
   /** The URL where we can find the default marker icon if none are defined for a record */
   this.defaultMarkerUrl = (options.defaultMarkerUrl != undefined ? options.defaultMarkerUrl : "");
 
+  /** 
+  * This mode disable the default "browsing mode". The default behavior is that if you perform a search
+  * without any keywords, then all mappable record get displayed on the map. Also, if no filters are
+  * selected, then all mappable records get displayed. By disabling that mode, you force the user to
+  * enter a search key string, or to select a filter in order to see any results.
+  */
+  this.disableBrowseMode = (options.disableBrowseMode != undefined ? options.disableBrowseMode : false);
+  
   /** Displays the counts with the attribute/value filters */
   this.displayAttributeFiltersCounts = (options.displayAttributeFiltersCounts != undefined ? options.displayAttributeFiltersCounts : false);
 
@@ -50,6 +58,9 @@ function SWebMap()
 
   /** Display the filters section */
   this.displayFilters = (options.displayFilters != undefined ? options.displayFilters : true);
+  
+  /** Display the filters to the user without performed a search query (so, without displaying the search results) */
+  this.displayFiltersByDefault = (options.displayFiltersByDefault != undefined ? options.displayFiltersByDefault : false);
   
   /** Displays the counts with the type filters */
   this.displayTypeFiltersCounts = (options.displayTypeFiltersCounts != undefined ? options.displayTypeFiltersCounts : false);
@@ -291,6 +302,14 @@ function SWebMap()
   
   /** ID of the focus map that is currently selected by the user */
   this.selectedFocusMapID = -1;
+  
+  /** 
+  * This internal flag is used to know if the user requested any data from the map that got displayed
+  * to him. If the user perform a search, or if the user select a filter, then this flag will be "true".
+  * This is used to tame the behavior of searchOnZoomChanged and searchOnDrag. These won't be effective until
+  * this flag is true.
+  */
+  this.dataRequestedByUser = (this.forceSearch ? true : false);
    
   /**
   * Creation of the sWebMap component. 
@@ -384,6 +403,16 @@ function SWebMap()
     google.maps.event.addListenerOnce(this.map, 'idle', function(){
 
       google.maps.event.addListener(self.map, 'dragend', function(){
+        
+        if(self.dataRequestedByUser)
+        {
+          self.dataRequestedByUser = true;
+        }
+        else
+        {
+          self.dataRequestedByUser = false;
+        }        
+        
         if(!self.mapLoading && self.searchOnDrag && !self.enableFocusWindows)
         {
           self.search();
@@ -391,8 +420,18 @@ function SWebMap()
       });
       
       google.maps.event.addListener(self.map, 'zoom_changed', function(){
-        if(!self.mapLoading && self.searchOnZoomChanged && !self.enableFocusWindows)
+        
+        if(self.dataRequestedByUser)
         {
+          self.dataRequestedByUser = true;
+        }
+        else
+        {
+          self.dataRequestedByUser = false;
+        }
+        
+        if(!self.mapLoading && self.searchOnZoomChanged && !self.enableFocusWindows)
+        {          
           self.search();
         }
       });  
@@ -578,8 +617,7 @@ function SWebMap()
         }
       }           
       else
-      {
-        
+      {        
         if(typeof self.initializationSession != "undefined" && self.initializationSession != null)
         {
           self.startWaiting();
@@ -596,7 +634,15 @@ function SWebMap()
         {
           if(self.forceSearch)
           {
+            self.dataRequestedByUser = true;
             self.search();
+          }
+          else
+          {
+            if(self.displayFiltersByDefault)
+            {
+              self.search();
+            }
           }
         }
       }
@@ -608,6 +654,7 @@ function SWebMap()
   * The search will analyse the "session" object to set its parameters (filters, search query, etc). 
   */    
   this.search = function search() {
+    
     if(!this.enableFocusWindows)
     {
       this.searchMap(this.map); 
@@ -623,10 +670,23 @@ function SWebMap()
   * The search will analyse the "session" object to set its parameters (filters, search query, etc). 
   */
   this.searchMap = function searchMap(targetMap) {
+    
+    if((this.disableBrowseMode && ($("#searchInput").val() == "" || $("#searchInput").val() == this.labels.searchInput)) &&
+        this.dataRequestedByUser &&
+       (this.checkedFiltersAttributes.length == 0 &&
+        this.checkedFiltersDatasets.length == 0 &&
+        this.checkedFiltersTypes.length == 0))
+    {
+      $("#resultsPaginator").hide();
+      this.dataRequestedByUser = false;
+      this.prepareDisplayResults({resultset: {subject: []}}, targetMap);
+      return;
+    }
+    
     if(this.session.q != "" && this.session.q != this.labels.searchInput)
     {
       this.session.q = $("#searchInput").val();
-    }
+    }    
     
     var datasets = "";
     var types = "";
@@ -725,8 +785,8 @@ function SWebMap()
             "&datasets=" + datasets +
             "&types=" + types +
             "&attributes=" + attributes +
-            "&items=" + this.mapResultsPerPage +
-            "&page=" + this.currentResultsetPage * this.mapResultsPerPage +
+            "&items=" + (this.dataRequestedByUser ? this.mapResultsPerPage : "0") +
+            "&page=" + (this.dataRequestedByUser ? (this.currentResultsetPage * this.mapResultsPerPage) : "0") +
             "&inference=" + (this.session.inference != undefined && this.session.inference == "on" ? "on" : "off") +
             "&attributes_boolean_operator=" + this.session.attributes_boolean_operator +
             "&include_aggregates=" + (this.displayFilters ? "true" : "false") +
@@ -1015,9 +1075,17 @@ function SWebMap()
     
     if(this.displayResultsHTML)
     {
-      self.displayResultsPagination(self.nbResults, self.currentResultsetPage); 
-      
-      self.displayResults();
+      if(!self.displayFiltersByDefault || self.dataRequestedByUser)
+      {
+        self.displayResultsPagination(self.nbResults, self.currentResultsetPage); 
+        
+        self.displayResults();
+      }
+      else
+      {
+        $("#resultsBox").html('<p id="searchOrFilterExplanationText">Perform Search or select Source or Kinds filters to right to populate results</span>');
+        //$("#resultsBox").append('<div class="noSearchResults">No results for the <b>"'+($("#searchInput").val() == this.labels.searchInput ? "" : $("#searchInput").val())+'"</b> search keywords and for this this.map region and selected filters. <br /><br />You can try zooming-out the this.map to get this.results elsewhere in the city.</div>');  
+      }
       
       self.displayTaggedRecords(this.taggedResults);
       
@@ -1378,6 +1446,7 @@ function SWebMap()
           }
           else
           {
+//            self.dataRequestedByUser = true;
             self.search();
           }
         }
@@ -1698,12 +1767,14 @@ function SWebMap()
     {
       if(this.taggedRecords.length <= 0 && !this.mapLoading)
       {
-        $("#resultsBox").append('<div class="noSearchResults">No results for the <b>"'+($("#searchInput").val() == this.labels.searchInput ? "" : $("#searchInput").val())+'"</b> search keywords and for this this.map region and selected filters. <br /><br />You can try zooming-out the this.map to get this.results elsewhere in the city.</div>');  
+        $("#resultsBox").html('<div class="noSearchResults">No results for the <b>"'+($("#searchInput").val() == this.labels.searchInput ? "" : $("#searchInput").val())+'"</b> search keywords and for this this.map region and selected filters. <br /><br />You can try zooming-out the this.map to get this.results elsewhere in the city.</div>');  
       }
     }
     else
     {
       this.templatesData = [];
+      
+      $("#resultsBox").html('');
       
       for(var i = 0; i < this.results.length; i++)
       {  
@@ -1715,7 +1786,7 @@ function SWebMap()
 
         var subjectResultset = this.results[i].resultset;
         
-        var templateData = {};
+        var templateData = {};       
         
         for(var u = 0; u < subjectResultset.predicate.length; u++)
         {
@@ -2467,7 +2538,8 @@ function SWebMap()
     this.mapResultsPerPage = obj.value;
     
     $.cookie('webmap-resultsperpage', obj.value, { expires: 365, path: "/" });    
-
+                
+    this.dataRequestedByUser = true;
     this.search();
   }
 
@@ -2482,6 +2554,7 @@ function SWebMap()
     {
       self.currentResultsetPage = new_page_index;
       
+      self.dataRequestedByUser = true;
       self.search();
     }
     
@@ -2560,6 +2633,9 @@ function SWebMap()
   * @param checkbox A reference to the checkbox HTML control object
   */  
   this.datasetFilterCheck = function datasetFilterCheck(checkbox) {
+    
+    this.dataRequestedByUser = true;
+    
     $(".tipsy").remove();
     
     var index = checkbox.name.substring(checkbox.name.lastIndexOf("_") + 1);
@@ -2586,6 +2662,7 @@ function SWebMap()
       
       this.session.fd = this.checkedFiltersDatasets;   
       
+      this.dataRequestedByUser = true;
       this.search();
     }
     else // This means that the checkbox has just been un-checked
@@ -2600,6 +2677,7 @@ function SWebMap()
       this.nbResults = 0;
       this.currentResultsetPage = 0;  
       
+      this.dataRequestedByUser = true;
       this.search();
     }
   }
@@ -2607,7 +2685,7 @@ function SWebMap()
   /**
   * Display the type filters available for the current map
   */  
-  this.displayFiltersType = function displayFiltersType() {
+  this.displayFiltersType = function displayFiltersType() {            
     /* Delete all previously inserted item */
     $(".webMapFiltersTitleType").remove();
     $(".webMapFiltersType").remove();
@@ -2701,6 +2779,9 @@ function SWebMap()
   * @param checkbox A reference to the checkbox HTML control object
   */  
   this.typeFilterCheck = function typeFilterCheck(checkbox) {
+    
+    this.dataRequestedByUser = true;
+    
     $(".tipsy").remove();
     
     var index = checkbox.name.substring(checkbox.name.lastIndexOf("_") + 1);
@@ -2726,7 +2807,8 @@ function SWebMap()
       this.currentResultsetPage = 0; 
       
       this.session.ft = this.checkedFiltersTypes;   
-      
+    
+      this.dataRequestedByUser = true;
       this.search();
     }
     else // This means that the checkbox has just been un-checked
@@ -2741,6 +2823,7 @@ function SWebMap()
       this.nbResults = 0;
       this.currentResultsetPage = 0;    
       
+      this.dataRequestedByUser = true;
       this.search();
     }  
   }
@@ -2886,6 +2969,7 @@ function SWebMap()
     $('.searchButton').val(this.labels.searchButton);
     
     $('.searchButton').click(function() {
+      self.dataRequestedByUser = true;
       self.search();
     });
     
@@ -2932,10 +3016,6 @@ function SWebMap()
   */
   this.clearMap = function clearMap() { 
     
-    this.checkedFiltersDatasets = [];
-    this.checkedFiltersTypes = [];
-    this.checkedFiltersAttributes = [];
-    
     this.hideUntaggedRecords();  
     
     this.displayResultsPagination(0, 0);
@@ -2943,16 +3023,23 @@ function SWebMap()
     this.results = [];
     
     this.displayResults();
+
+    if(!this.displayFiltersByDefault)
+    {
+      this.checkedFiltersDatasets = [];
+      this.checkedFiltersTypes = [];
+      this.checkedFiltersAttributes = [];
+      
+      this.filtersAttributes = [];
+      this.filtersTypes = [];
+      this.filtersDatasets = [];
+      
+      this.attributeValueFilters = {};
+    }
     
-    this.filtersAttributes = [];
-    this.filtersTypes = [];
-    this.filtersDatasets = [];
-    
-    this.attributeValueFilters = {};
-    
-    this.displayFiltersAttribute();
-    this.displayFiltersType();
     this.displayFiltersDataset();    
+    this.displayFiltersType();
+    this.displayFiltersAttribute();
   }
 
   /**
@@ -3181,12 +3268,14 @@ function SWebMap()
     
     if(!isTaggedRecords)
     {
+      this.dataRequestedByUser = true;
       this.search();
     }
     else
     {
       if(this.forceSearch)
       {
+        this.dataRequestedByUser = true;
         this.search();
       }
 
@@ -3224,20 +3313,29 @@ function SWebMap()
     
     if(this.initializationSession.records.length <= 0)
     {
+      this.dataRequestedByUser = true;
       this.search();
     }   
     else
     {      
-      if(this.forceSearch)
-      {
-        this.search();
-      }
-
       if(this.inclusionRecords.length > 0)
       {
         $("#inclusionButtonDiv").show();
         
         this.zoomToTaggedRecords();
+      }
+      
+      if(this.forceSearch)
+      {
+        this.dataRequestedByUser = true;
+        this.search();
+      }          
+      else
+      {
+        if(this.displayFiltersByDefault)
+        {
+          this.search();
+        }
       }
     } 
   }
@@ -3517,6 +3615,7 @@ function SWebMap()
 
     if (keycode == 13)
     {
+      this.dataRequestedByUser = true;
       this.search();
 
       return false;
@@ -3533,6 +3632,7 @@ function SWebMap()
   this.browse = function browse() {
     $("#searchInput").val(this.labels.searchInput);
     
+    this.dataRequestedByUser = true;
     this.search();
   }
 
@@ -3697,6 +3797,9 @@ function SWebMap()
   }
 
   this.attributeValueFilter = function attributeValueFilter(id) {
+    
+    this.dataRequestedByUser = true;
+    
     $(".tipsy").remove();
     
     var filteringValue = $("#webMapFiltersInputText_"+id).val();
@@ -3735,6 +3838,7 @@ function SWebMap()
       this.session.fa = this.filtersAttributes;
       this.session.av = this.attributeValueFilters;
 
+      this.dataRequestedByUser = true;
       this.search();
     }  
   }
@@ -3769,6 +3873,7 @@ function SWebMap()
     this.session.fa = this.checkedFiltersAttributes;
     this.session.av = this.attributeValueFilters;
     
+    this.dataRequestedByUser = true;
     this.search();
   }
 
@@ -4088,7 +4193,7 @@ function SWebMap()
       }
     }  
     
-    this.map.fitBounds(latlngbounds);
+    this.map.fitBounds(latlngbounds);  
   }
 
   /**
@@ -4164,6 +4269,7 @@ function SWebMap()
       $("#inclusionButtonInput").val(this.labels.inclusionRecordsButtonOn);
     }
     
+    this.dataRequestedByUser = true;
     this.search();
   }  
   
@@ -4297,7 +4403,7 @@ function SWebMap()
     rectangle.focusMap = focusMap;
     
     google.maps.event.addListener(marker, 'dragend', function(){    
-      if(self.searchOnDrag)
+      if(self.searchOnDrag && self.dataRequestedByUser)
       { 
         self.selectedFocusMapID = this.focusMap.focusMapID;
         this.focusMap.toggleFocusWindowSelection();
@@ -4424,7 +4530,7 @@ function SWebMapFocus()
       });
 
       google.maps.event.addListener(self.map, 'dragend', function(){   
-        if(self.sWebMap.searchOnDrag)
+        if(self.sWebMap.searchOnDrag && self.sWebMap.dataRequestedByUser)
         { 
           self.sWebMap.selectedFocusMapID = self.focusMapID;
           self.sWebMap.search();
@@ -4432,7 +4538,7 @@ function SWebMapFocus()
       });
             
       google.maps.event.addListener(self.map, 'zoom_changed', function(){    
-        if(self.sWebMap.searchOnZoomChanged)
+        if(self.sWebMap.searchOnZoomChanged && self.sWebMap.dataRequestedByUser)
         { 
           self.sWebMap.selectedFocusMapID = self.focusMapID;
           self.sWebMap.search();
@@ -4451,6 +4557,7 @@ function SWebMapFocus()
         }
         else
         {
+          self.sWebMap.dataRequestedByUser = true;
           self.sWebMap.search();
         }
         
@@ -4461,6 +4568,7 @@ function SWebMapFocus()
       {
         self.toggleFocusWindowSelection();
         self.sWebMap.selectedFocusMapID = self.focusMapID;
+        self.sWebMap.dataRequestedByUser = true;
         self.sWebMap.search();        
       }
     });    

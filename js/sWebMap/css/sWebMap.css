@@ -1,4 +1,12 @@
 
+#searchOrFilterExplanationText {
+  width: 100%;
+  padding-top: 50px;
+  text-align: center;
+  font-weight: bolder;
+  font-size: 17px;
+}
+
 #recordDescriptionOverlay {
   background-color: #F2F1ED
 }
