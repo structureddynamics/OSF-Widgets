@@ -120,7 +120,9 @@
         import com.sd.semantic.core.Subject;
         import com.sd.semantic.events.*;
         import com.sd.semantic.settings.GeneralSettings;
+        import com.sd.semantic.settings.LinearChartSettings;
         
+        import mx.controls.Alert;
         import mx.core.Application;
         
         import org.axiis.core.AxiisSprite;
@@ -190,7 +192,10 @@
         
         /** General Settings */
         private var generalSettings:GeneralSettings = null;
-        
+
+        /** Linear Chart Settings */
+        public var settings:LinearChartSettings = null;
+
         /** Index of record selector column IDs and their bound record URIs */
         private var columnIdToRecordUri:Array = [];
         
@@ -344,11 +349,64 @@
             }
           }
           
-          /** If the setting file is properly loaded, we continue to process the bar chart component */      
+          /** If the setting file is properly loaded, we continue to process the linear chart component */      
           if(!isError)
           {
             dispatchEvent(new SemanticComponentLoadEvent("progress", {
               label: "General settings for the linear chart control loaded...",
+              progress: 5
+            }, true, false));  
+            
+            dispatchEvent(new SemanticComponentLoadEvent("progress", {
+              label: "Loading linear chart settings...",
+              progress: 5
+            }, true, false));              
+            
+            /** URL Loader for the map settings file */
+            var settingsLoader:URLLoader = new URLLoader();
+            
+            settingsLoader.load(new URLRequest(settingsUrl + "sLinearChart.xml"));
+            settingsLoader.addEventListener(Event.COMPLETE, processLinearChartSettingsHandler);             
+          }
+          
+          this.removeEventListener(Event.COMPLETE, processSettingsHandler);
+        }         
+        
+        /**
+         * Get, parse and process the map settings 
+         * 
+         * @param event URLLoader success/failure event
+         */
+        private function processLinearChartSettingsHandler(event:Event):void
+        {
+          var isError:Boolean = false;
+          
+          try
+          { 
+            /** Generate a settings class instance from the XML settings file */
+            this.settings = new LinearChartSettings(new XML(event.target.data));
+          }
+          catch(error:Error)
+          { 
+            Alert.show("Can't load settings file '/settings/sLinearChart.xml'. The chart won't be displayed." +
+              "(" + error.message + ")");
+            isError = true;
+          }
+          
+          if(!isError)
+          { 
+            if(settings.error == true)
+            {
+              Alert.show("Required settings are missing in the settings file '/settings/sLinearChart.xml'. The chart won't be displayed.");
+              isError = true;
+            }
+          }
+          
+          /** If we don't have any error, we continue the initialization of the relation browser */
+          if(!isError)
+          {
+            dispatchEvent(new SemanticComponentLoadEvent("progress", {
+              label: "Linear chart seettings loaded...",
               progress: 5
             }, true, false));               
             
@@ -390,176 +448,341 @@
              */
             
             /**
-             * List of all comparableWith attributes that will be used to populate the linear graph.
-             */
-            var comparableAttributes:Array = [];
+            * Here we have two usecases:
+            * 
+            * (1) There is at least one "global aggregation property" defined in the settings of this
+            *     sLinearChart, and that property is used to describe the records given as input. In this
+            *     case, that property will be used as the x-axis value.
+            * 
+            * (2) Case #1 above is not met, then we check if we have comparable attributes and use them as the
+            *     x-axis values.
+            */
             
-            for each(var predKey:String in targetAttributes)
+            /** Check if we are in the usecase #1 described above */
+            var globalAggregationProperty:String = "";
+            
+            for each(var aggregationProperty:String in this.document.settings.globalAggregationProperties)
             {
-              /** a target attribute for this linear graph */
-              var attribute:SchemaAttribute = this.schema.getAttribute(predKey);
-              
-              if(attribute)
+              for each(var subject:Subject in _semanticDataProvider.subjects)
               {
-                /** Get all comparable attributes */
-                var dump:Array = [];
-                schema.getComparableAttributes(attribute.uri, dump);
-
-                comparableAttributes = comparableAttributes.concat(dump);
+                var values:Array = subject.getPredicateValues(aggregationProperty);
                 
-//                /**
-//                 * Get the parent attribute of the target attribute(s) (if existing) and add the entire list
-//                 * of their children to the list of comparable attributes. Here the convention is that all
-//                 * the sub-attributes of an attribute are comparable.
-//                 */
-//                var superAttributes:Array = schema.getSuperAttributes(attribute.uri);
-//                
-//                for each(var supera:SchemaAttribute in superAttributes)
-//                {
-//                  var subAttributes:Array = schema.getSubAttributes(supera.uri);
-//                  
-//                  for each(var suba:SchemaAttribute in subAttributes)
-//                  {
-//                    comparableAttributes = comparableAttributes.concat(suba);
-//                  }
-//                }
+                if(values.length > 0)
+                {
+                  globalAggregationProperty = aggregationProperty;
+                  break;
+                }
               }
-            }  
-            
-            /**
-             * Get all the other attributes, used to define the records of the resultset, that
-             * share the same unitType as the target attributes.
-             */
-            
-            /** Get the list of all the attributes defining all the records in the resultset */
-//            var resultsetRecordsAttributes:Array = [];
-//            
-//            for each(var subject:Subject in this.semanticDataProvider.subjects)
-//            {
-//              for(var predicate:String in subject.predicates)
-//              {
-//                if(resultsetRecordsAttributes.indexOf(predicate) == -1)
-//                {
-//                  resultsetRecordsAttributes.push(predicate);
-//                }
-//              }
-//            }            
-            
-            /** 
-            * For each target attribute, we get the list of all the attributes that share the same
-            * unitType.
-            */
-//            var attributesWithSameUnitType:Array = [];
-//            
-//            for each(var predKey:String in targetAttributes)
-//            {
-//              /** a target attribute for this linear graph */
-//              var attribute:SchemaAttribute = this.schema.getAttribute(predKey);
-//              
-//              if(attribute)
-//              {
-//                var awsut:Array = [];
-//                
-//                schema.getSameUnitTypeAttributes(attribute.uri, awsut);
-//                
-//                for each(var att:SchemaAttribute in awsut)
-//                {
-//                  if(attributesWithSameUnitType.indexOf(att.uri) == -1)
-//                  {
-//                    attributesWithSameUnitType.push(att.uri);
-//                  }
-//                }
-//              }
-//            }
-            
-            /** 
-            * We keep the attributes that share the same unitType and that are used to define the
-            * records. All these attributes are considered comparable and are added to the
-            * comparableOrderingValues array.
-            */
-            
-//            for each(var a:String in resultsetRecordsAttributes)
-//            {
-//              if(attributesWithSameUnitType.indexOf(a) != -1 &&
-//                comparableAttributes.indexOf(a) == -1)
-//              {
-//                comparableAttributes.push(this.schema.getAttribute(a));
-//              }
-//            }
-            
-            
-            /** Ordering values used to populate the xAxis of the linear graph */  
-            var comparableOrderingValues:Array = [];  
-            
-            /** 
-             * Get the ordering value of the attribute. 
-             * 
-             * Internally, if there is none defined, the system simply used the 
-             * prefLabel of the attribute, or event its URI as the ordering value
-             */ 
-            
-            var bAttributes:Array = [];
-            
-            for each(var ca:SchemaAttribute in comparableAttributes)
-            {
-              if(bAttributes.indexOf(ca.uri) == -1) /** Remove duplicates */
+              
+              if(globalAggregationProperty != "")
               {
-                comparableOrderingValues.push({uri: ca.uri, orderingValue: ca.orderingValue, shortLabel: ca.shortLabel});
-                
-                bAttributes.push(ca.uri);
+                break;
               }
             }
             
-            comparableOrderingValues.sortOn("orderingValue", Array.NUMERIC);
             
-            /** Populate the columns with the prefLabel of the records */
-            
-            /** Keep track of the ID of the columns as they are created */
-            var columnId = 1;
-            
-            for each(var subject:Subject in _semanticDataProvider.subjects)
+            if(globalAggregationProperty != "")
             {
-              var columnLabel:String = "";
+              /** Populate the columns with the prefLabel of the records */
               
-              columnLabel = subject.getPrefLabel(this.document.generalSettings.prefLabelAttributes);
-              columnLabel = columnLabel.replace(/,/g, " - ");
+              /** Keep track of the ID of the columns as they are created */
+              var columnId = 1;
+              var targetAttribute:String = targetAttributes[0];
               
-              csv = csv + columnLabel + ",";
+              /** Ordering values used to populate the xAxis of the linear graph */  
+              var aggregationOrderingValues:Array = [];  
               
-              columnIdToRecordUri[columnId] = subject.uri;
-              columnId++;
-            }          
-            
-            /** replace the last "," by a new line */
-            csv = csv.substr(0, csv.length - 1) + "\n";
-            
-            /** 
-             * Create each row from the comparable attributes, and populate each of them
-             * with the value of the attribute(s) for each of the records
-             */
-            for each(var attr:Object in comparableOrderingValues)
-            {
-              csv = csv + '"' + attr.shortLabel + '"' + ",";
+              var processedSubjects:Array = [];
               
-              /** Get the value for the attribute for each record */
               for each(var subject:Subject in _semanticDataProvider.subjects)
               {
-                var values:Array = subject.getPredicateValues(attr.uri);
+                /** Make sure this subject is described using the global aggregation property */
+                var testValues:Array = subject.getPredicateValues(globalAggregationProperty);
                 
-                if(values && values.length > 0)
+                if(testValues.length <= 0)
                 {
-                  csv = csv + '"' + values[0].value + '"' + ",";
+                  continue;
                 }
                 else
                 {
-                  csv = csv + ",";
+                  if(aggregationOrderingValues.indexOf(testValues[0].value) == -1)
+                  {
+                    aggregationOrderingValues.push(testValues[0].value);
+                  }
                 }
-              }
+                
+                /** Make sure the target attribute is describing this subject */
+                
+                /** Make sure the subject is described using this attribute */
+                testValues = subject.getPredicateValues(targetAttribute);
+                
+                if(testValues.length <= 0)
+                {
+                  continue;
+                }
+                
+                var attribute:SchemaAttribute = this.schema.getAttribute(targetAttribute);
+                
+                if(attribute)
+                {
+                  /** Make sure the allowedValue is Float or Integer */
+                  if(attribute.allowedPrimitiveValues.indexOf("float") == -1 &&
+                     attribute.allowedPrimitiveValues.indexOf("integer") == -1)
+                  {
+                    continue;
+                  }
+                }
+                else
+                {
+                  continue;
+                }  
+                
+                /** Make sure the subject is not already defined in the head of the CSV file */
+                if(processedSubjects.indexOf(subject.getPrefLabel()) != -1)
+                {
+                  continue;
+                } 
+                else
+                {
+                  processedSubjects.push(subject.getPrefLabel());
+                }
+                
+                var columnLabel:String = "";
+                
+                columnLabel = subject.getPrefLabel(this.document.generalSettings.prefLabelAttributes);
+                columnLabel = columnLabel.replace(/,/g, " - ");
+                
+                csv = csv + columnLabel + ",";
+                
+                columnIdToRecordUri[columnId] = subject.uri;
+                columnId++;
+              }          
               
               /** replace the last "," by a new line */
               csv = csv.substr(0, csv.length - 1) + "\n";
+              
+              /** 
+               * Create each row from the comparable attributes, and populate each of them
+               * with the value of the attribute(s) for each of the records
+               */
+              
+              aggregationOrderingValues.sort();
+              
+              for each(var xAxisValue:Object in aggregationOrderingValues)
+              {
+                csv = csv + '"' + xAxisValue + '"' + ",";
+                
+                /** 
+                * Get the value for the attribute for each record for that aggregation value,
+                * and the target attribute
+                */
+                var nbValuesAdded:int = 0;
+                for each(var subject:Subject in _semanticDataProvider.subjects)
+                {
+                  var aggregationValue:Array = subject.getPredicateValues(globalAggregationProperty);
+                  
+                  /** Make sure we are checking the proper pivot aggregation value */
+                  if(aggregationValue.length > 0 && aggregationValue[0].value == xAxisValue)
+                  {
+                    var targetAttributeValue:Array = subject.getPredicateValues(targetAttribute);
+                    
+                    if(targetAttributeValue.length > 0)
+                    {
+                      csv = csv + '"' + targetAttributeValue[0].value + '"' + ",";
+                    }
+                    else
+                    {
+                      csv = csv + '""' + ",";
+                    }
+                    
+                    nbValuesAdded++;
+                  }
+                }
+
+                /** Pad if needed */
+                for(var i = 0; i < ((columnId - 1) - nbValuesAdded); i++)
+                {
+                  csv = csv + '""' + ",";
+                }                
+                
+                /** replace the last "," by a new line */
+                csv = csv.substr(0, csv.length - 1) + "\n";
+              }              
             }
-            
+            else
+            {
+              /**
+               * List of all comparableWith attributes that will be used to populate the linear graph.
+               */
+              var comparableAttributes:Array = [];
+              
+              for each(var predKey:String in targetAttributes)
+              {
+                /** a target attribute for this linear graph */
+                var attribute:SchemaAttribute = this.schema.getAttribute(predKey);
+                
+                if(attribute)
+                {
+                  /** Get all comparable attributes */
+                  var dump:Array = [];
+                  schema.getComparableAttributes(attribute.uri, dump);
+                  
+                  comparableAttributes = comparableAttributes.concat(dump);
+                  
+                  //                /**
+                  //                 * Get the parent attribute of the target attribute(s) (if existing) and add the entire list
+                  //                 * of their children to the list of comparable attributes. Here the convention is that all
+                  //                 * the sub-attributes of an attribute are comparable.
+                  //                 */
+                  //                var superAttributes:Array = schema.getSuperAttributes(attribute.uri);
+                  //                
+                  //                for each(var supera:SchemaAttribute in superAttributes)
+                  //                {
+                  //                  var subAttributes:Array = schema.getSubAttributes(supera.uri);
+                  //                  
+                  //                  for each(var suba:SchemaAttribute in subAttributes)
+                  //                  {
+                  //                    comparableAttributes = comparableAttributes.concat(suba);
+                  //                  }
+                  //                }
+                }
+              }  
+              
+              /**
+               * Get all the other attributes, used to define the records of the resultset, that
+               * share the same unitType as the target attributes.
+               */
+              
+              /** Get the list of all the attributes defining all the records in the resultset */
+              //            var resultsetRecordsAttributes:Array = [];
+              //            
+              //            for each(var subject:Subject in this.semanticDataProvider.subjects)
+              //            {
+              //              for(var predicate:String in subject.predicates)
+              //              {
+              //                if(resultsetRecordsAttributes.indexOf(predicate) == -1)
+              //                {
+              //                  resultsetRecordsAttributes.push(predicate);
+              //                }
+              //              }
+              //            }            
+              
+              /** 
+               * For each target attribute, we get the list of all the attributes that share the same
+               * unitType.
+               */
+              //            var attributesWithSameUnitType:Array = [];
+              //            
+              //            for each(var predKey:String in targetAttributes)
+              //            {
+              //              /** a target attribute for this linear graph */
+              //              var attribute:SchemaAttribute = this.schema.getAttribute(predKey);
+              //              
+              //              if(attribute)
+              //              {
+              //                var awsut:Array = [];
+              //                
+              //                schema.getSameUnitTypeAttributes(attribute.uri, awsut);
+              //                
+              //                for each(var att:SchemaAttribute in awsut)
+              //                {
+              //                  if(attributesWithSameUnitType.indexOf(att.uri) == -1)
+              //                  {
+              //                    attributesWithSameUnitType.push(att.uri);
+              //                  }
+              //                }
+              //              }
+              //            }
+              
+              /** 
+               * We keep the attributes that share the same unitType and that are used to define the
+               * records. All these attributes are considered comparable and are added to the
+               * comparableOrderingValues array.
+               */
+              
+              //            for each(var a:String in resultsetRecordsAttributes)
+              //            {
+              //              if(attributesWithSameUnitType.indexOf(a) != -1 &&
+              //                comparableAttributes.indexOf(a) == -1)
+              //              {
+              //                comparableAttributes.push(this.schema.getAttribute(a));
+              //              }
+              //            }
+              
+              
+              /** Ordering values used to populate the xAxis of the linear graph */  
+              var comparableOrderingValues:Array = [];  
+              
+              /** 
+               * Get the ordering value of the attribute. 
+               * 
+               * Internally, if there is none defined, the system simply used the 
+               * prefLabel of the attribute, or event its URI as the ordering value
+               */ 
+              
+              var bAttributes:Array = [];
+              
+              for each(var ca:SchemaAttribute in comparableAttributes)
+              {
+                if(bAttributes.indexOf(ca.uri) == -1) /** Remove duplicates */
+                {
+                  comparableOrderingValues.push({uri: ca.uri, orderingValue: ca.orderingValue, shortLabel: ca.shortLabel});
+                  
+                  bAttributes.push(ca.uri);
+                }
+              }
+              
+              comparableOrderingValues.sortOn("orderingValue", Array.NUMERIC);
+              
+              /** Populate the columns with the prefLabel of the records */
+              
+              /** Keep track of the ID of the columns as they are created */
+              var columnId = 1;
+              
+              for each(var subject:Subject in _semanticDataProvider.subjects)
+              {
+                var columnLabel:String = "";
+                
+                columnLabel = subject.getPrefLabel(this.document.generalSettings.prefLabelAttributes);
+                columnLabel = columnLabel.replace(/,/g, " - ");
+                
+                csv = csv + columnLabel + ",";
+                
+                columnIdToRecordUri[columnId] = subject.uri;
+                columnId++;
+              }          
+              
+              /** replace the last "," by a new line */
+              csv = csv.substr(0, csv.length - 1) + "\n";
+              
+              /** 
+               * Create each row from the comparable attributes, and populate each of them
+               * with the value of the attribute(s) for each of the records
+               */
+              for each(var attr:Object in comparableOrderingValues)
+              {
+                csv = csv + '"' + attr.shortLabel + '"' + ",";
+                
+                /** Get the value for the attribute for each record */
+                for each(var subject:Subject in _semanticDataProvider.subjects)
+                {
+                  var values:Array = subject.getPredicateValues(attr.uri);
+                  
+                  if(values && values.length > 0)
+                  {
+                    csv = csv + '"' + values[0].value + '"' + ",";
+                  }
+                  else
+                  {
+                    csv = csv + ",";
+                  }
+                }
+                
+                /** replace the last "," by a new line */
+                csv = csv.substr(0, csv.length - 1) + "\n";
+              }
+            }
+              
             ds.processCsvAsTable(csv, false);
             
             /**
@@ -581,13 +804,12 @@
             {
               vScale.maxValue = custumVScaleMax;
             }
-                        
             
-            dc.invalidateDisplayList();
+            dc.invalidateDisplayList();       
           }
           
-          this.removeEventListener(Event.COMPLETE, processSettingsHandler);
-        }         
+          this.removeEventListener(Event.COMPLETE, processLinearChartSettingsHandler);
+        }        
         
         /** Format the attribute labels properly on the axis */
         private function axisLabel(obj:Object):String
