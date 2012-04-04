@@ -20,7 +20,10 @@ package
   
     /** Display the "related stories" section. */
     public var displayRelatedStories:Boolean = false;
-  
+    
+    /** Display the "related named entities" section. */
+    public var displayRelatedNamedEntities:Boolean = false;
+    
     /** URI of the property describing the relationship between a concept and a story */
     public var relatedStoryRelation:String = "";
   
@@ -50,6 +53,20 @@ package
     
     /** Name of the GATE annotation set used to define all tagged named entities within the text */
     public var namedEntitiesAnnotationSet:String = "";
+    
+    /** 
+    * Determine the position of the items panels in the layout of the component. If it is false,
+    * their position will be at the left 
+    */
+    public var panelPositionRight:Boolean = true;
+    
+    /** 
+    * An array of colors to use to colorize the items in the lists, and within the text of the story.
+    * If not enough colors are defined in this list, then the component will restart from the beginning
+    * of the list, and cycle that way until nothing else has to be colorized.
+    */
+    public var itemsColors:Array = [0xFFf5800b, 0xFFeb0810, 0xFFf4e601, 0xFFc6d816, 0xFF0c5e2c, 0xFF00a5d9,
+      0xFF581886, 0xFFab1057];
     
     /**
      * Constructor
