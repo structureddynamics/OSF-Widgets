@@ -2,7 +2,7 @@
 $(document).ready(function() {
   
   /** Definin indexOf() on arrays for Internet Explorer */
-  if(!Array.indexOf){
+  if(!Array.indexOf){                                                                            
     Array.prototype.indexOf = function(obj){
       for(var i=0; i<this.length; i++){
         if(this[i]==obj){
@@ -83,6 +83,12 @@ function SWebMap()
     
   /** Enable the map controls to save, load and share map sessions. */
   this.enableSessions = (options.enableSessions != undefined ? options.enableSessions : true);
+
+  /** 
+  * When a search action is performed in focus windows mode, we only query the focused window. If false,
+  * all three focus windows will be queried, and data will be shown across all three windows.
+  */
+  this.queryFocusWindowOnly = (options.queryFocusWindowOnly != undefined ? options.queryFocusWindowOnly : true);
     
   /** 
   * The default lat/long positions, and the default zoom level, of each focus window. 
@@ -141,6 +147,21 @@ function SWebMap()
     options.labels = {};
   }
   
+  this.directionsService = null;
+  
+  this.directionsDisplay = {
+    "main": null,
+    "focus1": null,
+    "focus2": null,
+    "focus3": null
+  };
+  
+  /** Determine where to start getting directions from */
+  this.directionsFromHere = null;
+  
+  /** Determine where to start getting directions to */
+  this.directionsToHere = null;
+  
   this.labels.searchButton = (typeof options.labels.searchButton != "undefined" ? options.labels.searchButton : "Search");
   this.labels.searchInput = (typeof options.labels.sesearchInputarchButton != "undefined" ? options.labels.searchInput : "Search Map");
   this.labels.saveSessionButton = (typeof options.labels.saveSessionButton != "undefined" ? options.labels.saveSessionButton : "save");
@@ -177,8 +198,25 @@ function SWebMap()
   */
   this.sharedMapUrl = (options.sharedMapUrl != undefined ? options.sharedMapUrl : "");
   
+  /**
+  * Show the zoom control on the small focus windows
+  */
+  this.focusMapShowZoomControl = (options.focusMapShowZoomControl != undefined ? options.focusMapShowZoomControl : true);
   
+  /**
+  * Show the pan control on the small focus windows
+  */
+  this.focusMapShowPanControl = (options.focusMapShowPanControl != undefined ? options.focusMapShowPanControl : true);
   
+  /**
+  * Show the maptype selection control on the small focus window
+  */
+  this.focusMapShowMapTypeControl = (options.focusMapShowMapTypeControl != undefined ? options.focusMapShowMapTypeControl : true);
+  
+  /**
+  * Show the street view control on the small focus window
+  */
+  this.focusMapShowStreetViewControl = (options.focusMapShowStreetViewControl != undefined ? options.focusMapShowStreetViewControl : true);
   
   /** Base URI of the structWSF endpoints. It as to end with a slash character. */
   this.structWSFAddress = (options.structWSFAddress != undefined ? options.structWSFAddress : "http://localhost/ws/search/");
@@ -197,6 +235,147 @@ function SWebMap()
   */
   this.inclusionRecords = (options.inclusionRecords != undefined ? options.inclusionRecords : []);
   
+  /**
+  * Specifies where the paginator control should be displayed in the sWebMap control. There
+  * are two possible values:
+  * 
+  *   "top": shows the control above the list of results
+  *   "bottom": shows the control below the list of results
+  */
+  this.paginatorLocation = (options.paginatorLocation != undefined ? options.paginatorLocation : "top");
+  
+  /**
+  * Minimal radius distance between the center of a focus window and the sides of the rectangle
+  * representing it on the main map. The distance is in meter. If this value is "0", then
+  * the feature get disabled.
+  */
+  this.minimalFocusWindowRectangleRadius = (options.minimalFocusWindowRectangleRadius != undefined ? options.minimalFocusWindowRectangleRadius : 0);
+
+  /** Specify if the user want to enable Google's directions service to get the path between two markers */
+  this.enableDirectionsService = (options.enableDirectionsService != undefined ? options.enableDirectionsService : true);  
+  
+  /**
+  * List all map type IDs to use for the sWebMap
+  */
+  this.mapTypeIds = (options.mapTypeIds != undefined ? options.mapTypeIds : null);
+
+  /**
+  * Show the traffic layer when the user is requestion directions between two markers.
+  */
+  this.directionsShowTrafficLayer = (options.directionsShowTrafficLayer != undefined ? options.directionsShowTrafficLayer : false);
+  
+  /**
+  * List of all the custom map type functions that can be used for creating new map types.
+  * Map types are based map tiles used as the base of the map.
+  * 
+  * This is an array of new map types. Two types are currently supported:
+  * 
+  * (1) custom
+  * (2) wms
+  * 
+  * The custom type require a ID (a maptype ID) and a function. The function
+  * is what is used to define the options of the map type.
+  * 
+  * The wms type require a name, which is used to specify the name of the
+  * map type. It requires a baseUrl where the geo server is located and a
+  * set of custom parameters needed by the WMS server.
+  * 
+  * This object looks like:
+  * 
+  *  [
+  *    {
+  *      "id": "NEWTYPE",
+  *      "type": "custom",
+  *      "func": {
+  *        getTileUrl: function(coord, zoom) {
+  *            return "http://mygeoserver.com/mapapi/getTile.aspx?x=" + coord.x + "&y=" + coord.y + "&zoom="+zoom;
+  *        },
+  *        tileSize: new google.maps.Size(256, 256),
+  *        name: "MyGeoMapTiles",
+  *        maxZoom: 18
+  *      }
+  *    },
+  *    {
+  *      "id": "NEW-WMS-TYPE",
+  *      "name": "New WMS Type",
+  *      "type": "wms",
+  *      "baseUrl": "http://mywmsgeoserver.com/mapapi/parcel.ashx?",
+  *      "wmsParams": [
+  *        "WIDTH=256",
+  *        "HEIGHT=256",
+  *        "cache=0",
+  *        "FIDs=12567"
+  *      ]
+  *    },
+  *  ]
+  */
+  this.mapTypes = (options.mapTypes != undefined ? options.mapTypes : []);
+  
+  /**
+  * List of all the custom map type functions that can be used for creating new layer.
+  * Overlay layers are superposed above a map type, and have some transparency.
+  * 
+  * This is an array of new map types. Two types are currently supported:
+  * 
+  * (1) custom
+  * (2) wms
+  * 
+  * The custom overlay layers require a ID (a maptype ID) and a function. 
+  * The function is what is used to define the options of the map type.
+  * 
+  * The wms type require a name, which is used to specify the name of the
+  * overlay layer. It requires a baseUrl where the geo server is located and a
+  * set of custom parameters needed by the WMS server.
+  * 
+  * This object looks like:
+  * 
+  *  [
+  *    {
+  *      "id": "NEWTYPE",
+  *      "type": "custom",
+  *      "func": {
+  *        getTileUrl: function(coord, zoom) {
+  *            return "http://mygeoserver.com/mapapi/getTile.aspx?x=" + coord.x + "&y=" + coord.y + "&zoom="+zoom;
+  *        },
+  *        tileSize: new google.maps.Size(256, 256),
+  *        name: "MyGeoMapTiles",
+  *        maxZoom: 18
+  *      }
+  *    },
+  *    {
+  *      "id": "NEW-WMS-TYPE",
+  *      "name": "New WMS Type",
+  *      "type": "wms",
+  *      "baseUrl": "http://mywmsgeoserver.com/mapapi/parcel.ashx?",
+  *      "wmsParams": [
+  *        "WIDTH=256",
+  *        "HEIGHT=256",
+  *        "cache=0",
+  *        "FIDs=12567"
+  *      ]
+  *    },
+  *  ]
+  */  
+  this.mapLayers =  (options.mapLayers != undefined ? options.mapLayers : []);
+  
+  /**
+  * Search plugins are used to let the user contrains their searches on pre-defined
+  * and specific information spaces.
+  * 
+  * If there is more than one search plugin defined, then a combo box will appear
+  * next to the Search button to let the user selecting one of these search plugin.
+  * 
+  * This option is an array of objects which are defined with three variables:
+  * 
+  * (1) "name": the name of the search plugin; this is what appear in the combo box
+  * 
+  * target can be: (1) all, (2) focus, (3) main
+  */
+  this.searchPlugins =  (options.searchPlugins != undefined ? options.searchPlugins : [{
+    "name": "All",
+    "datasets": ["all"],
+    "target": "focus"
+  }]);
   
   /**
   * Internal variables of all kind.
@@ -282,8 +461,17 @@ function SWebMap()
   /** Focus maps currently used by the component */
   this.focusMaps = [];
   
+  this.trafficLayer = null;
+  
+  /** 
+  * Forces all focus windows to send a search query. For some actions, this behavior may be
+  * needed, but for others not, so this is the variable that control that behavior to happen.
+  */
+  this.forceAllFocusWindowsSearch = false;
+  
   /** The structXML resultset of the latest search query for the main map */
   this.mainMapResults;
+  
   
   /** The structXML resultset of the latest search query for each of the focus map. */
   this.focusMapsResults = {
@@ -336,6 +524,9 @@ function SWebMap()
    
     if(this.enableFocusWindows)
     {
+      // Fix the label to display in the search box
+      this.labels.searchInput = "Search Small Maps";
+            
       focusMapsHtml = '<tr>\
                          <td colspan="2" style="width: 100%">\
                           <table id="webMapFocusWindows">\
@@ -359,10 +550,11 @@ function SWebMap()
                                               <tr id="resultsCanvas">\
                                                 <td valign="top" class="webMapResultsTd">\
                                                   <div class="webMapResults" id="webMapResults">\
+                                                    '+(this.paginatorLocation == "top" ? '<div id="resultsPaginator" class="resultsPaginator" style="display:block; padding-bottom: 40px;"></div>' : '')+'\
                                                     <div id="mapActionsButtons" class="mapActionsButtons"></div>\
                                                     <div id="taggedRecordsBox" class="taggedRecordsBox"></div>\
                                                     <div id="resultsBox" class="resultsBox"></div>\
-                                                    <div id="resultsPaginator" class="resultsPaginator"></div>\
+                                                    '+(this.paginatorLocation == "bottom" ? '<div id="resultsPaginator" class="resultsPaginator"></div>' : '')+'\
                                                   </div>\
                                                 </td>\
                                                 <td class="webMapFiltersTd" valign="top">\
@@ -372,7 +564,29 @@ function SWebMap()
                                               </tr>\
                                             </tbody>\
                                           </table>\
-                                          <div id="recordDescriptionOverlay" />');
+                                          <div id="recordDescriptionOverlay" />\
+                                          <div id="directionsOverlay">\
+                                           <div style="width: 100%; height: 100%">\
+                                             <img id="directionsOverlayClose" title="Close popup" src="" style="position:relative; float: right; cursor: pointer; top: 3px; right: 3px;" />\
+                                             <div id="directionsPanelControls" style="display: none">\
+                                               <table style="width: 100%; background: none repeat scroll 0 0 #EEEEEE; border: 1px solid silver; color: #000000;">\
+                                                 <tbody style="border: none;">\
+                                                  <tr>\
+                                                    <td>\
+                                                      <select id="directionsMode">\
+                                                        <option value="bicycling">Bicycling</option>\
+                                                        <option value="driving">Driving</option>\
+                                                        <option value="walking">Walking</option>\
+                                                      </select>\
+                                                      '+(this.directionsShowTrafficLayer ? '<input type="checkbox" id="traffic" checked />Traffic' : '')+'\
+                                                    </td>\
+                                                  </tr>\
+                                               </tbody>\
+                                              </table>\
+                                             </div>\
+                                             <div id="directionsPanel"></div>\
+                                           </div>\
+                                          </div>');
 
     $('#webMap').width($('#webMap').parent().width());
     
@@ -398,7 +612,70 @@ function SWebMap()
       mapTypeId: google.maps.MapTypeId.ROADMAP
     }
     
-    this.map = new google.maps.Map(document.getElementById("webMapMain"), mapOptions);    
+    // Add custom map tile layer(s)
+
+    // Use the default type IDs if none have been specified by the user.    
+    if(!this.mapTypeIds)
+    {
+      this.mapTypeIds = [];
+      
+      for(var type in google.maps.MapTypeId) 
+      {
+        this.mapTypeIds.push(google.maps.MapTypeId[type]);
+      }
+    }
+    
+    mapOptions.mapTypeControlOptions = {
+      "mapTypeIds": this.mapTypeIds,
+      "style": google.maps.MapTypeControlStyle.DROPDOWN_MENU
+    };  
+    
+    this.map = new google.maps.Map(document.getElementById("webMapMain"), mapOptions);       
+    
+    if(this.enableDirectionsService)
+    {
+      $('#directionsMode').change(function(){
+        self.calculateDirections();
+      });
+      
+      if(this.directionsShowTrafficLayer)
+      {
+        $('#traffic').change(function(){
+          if(document.getElementById('traffic').checked)
+          {
+            if(!self.trafficLayer)
+            {
+              self.trafficLayer = new google.maps.TrafficLayer();
+            }
+            
+            self.trafficLayer.setMap(self.map);
+          }
+          else
+          {
+            self.trafficLayer.setMap(null);
+          }
+        });
+      }
+      
+      this.directionsService = new google.maps.DirectionsService();
+      this.directionsDisplay.main = new google.maps.DirectionsRenderer();
+      
+      this.directionsDisplay.main.setMap(this.map);
+      this.directionsDisplay.main.setPanel(document.getElementById("directionsPanel"));
+    }
+
+    // Register all external image map types functions used to deliver the URL queries.    
+    for(var it = 0; it < this.mapTypes.length; it++)
+    {
+      if(this.mapTypes[it].type == "wms")
+      {
+        this.map.mapTypes.set(this.mapTypes[it].id, getWMSMapType(this.map, this.mapTypes[it].baseUrl, this.mapTypes[it].wmsParams, this.mapTypes[it].name));  
+      }
+      else
+      {
+        this.map.mapTypes.set(this.mapTypes[it].id, new google.maps.ImageMapType(this.mapTypes[it].getTileUrl));  
+      }
+    }
     
     google.maps.event.addListenerOnce(this.map, 'idle', function(){
 
@@ -415,6 +692,7 @@ function SWebMap()
         
         if(!self.mapLoading && self.searchOnDrag && !self.enableFocusWindows)
         {
+          self.forceAllFocusWindowsSearch = false;
           self.search();
         }
       });
@@ -432,6 +710,7 @@ function SWebMap()
         
         if(!self.mapLoading && self.searchOnZoomChanged && !self.enableFocusWindows)
         {          
+          self.forceAllFocusWindowsSearch = false;
           self.search();
         }
       });  
@@ -476,6 +755,16 @@ function SWebMap()
         });        
       }
       
+      /** Add the overlay layers selection tool if needed */      
+      if(self.mapLayers.length > 0)
+      {
+        var selectMapLayersDiv = document.createElement('DIV');
+        selectMapLayersDiv.id = "selectMapLayersDiv";
+        var selectMapControl = new self.SelectMapLayersControl(selectMapLayersDiv, 'mapLayersList', self.map);
+        
+        selectMapLayersDiv.index = 1;
+        self.map.controls[google.maps.ControlPosition.TOP_RIGHT].push(selectMapLayersDiv);         
+      }               
       
       if(self.enableSessions)
       {      
@@ -533,9 +822,6 @@ function SWebMap()
         selectMapDiv.index = 1;
         self.map.controls[google.maps.ControlPosition.TOP_RIGHT].push(selectMapDiv); 
       }        
-      
-   
-
 
       /** Remove the default google background color generated by the this.map api */
       $("#webMapMain").css("background-color", ""); 
@@ -635,12 +921,14 @@ function SWebMap()
           if(self.forceSearch)
           {
             self.dataRequestedByUser = true;
+            self.forceAllFocusWindowsSearch = true;
             self.search();
           }
           else
           {
             if(self.displayFiltersByDefault)
             {
+              self.forceAllFocusWindowsSearch = true;
               self.search();
             }
           }
@@ -659,9 +947,38 @@ function SWebMap()
     {
       this.searchMap(this.map); 
     }
-    else
+    else                         
     {
-      this.searchMap(this.focusMaps[this.selectedFocusMapID - 1].map);
+      var targetSearchPlugin = 0;
+      
+      if(this.searchPlugins.length > 1)
+      {
+        targetSearchPlugin = $('#searchPluginsSelect').val();
+      }
+      
+      if(this.searchPlugins[targetSearchPlugin].target == "focus" || 
+         this.searchPlugins[targetSearchPlugin].target == "all")
+      {
+        if(!this.queryFocusWindowOnly && this.forceAllFocusWindowsSearch)
+        {
+          this.hideUntaggedRecords();
+          
+          this.searchMap(this.focusMaps[0].map);
+          this.searchMap(this.focusMaps[1].map);
+          this.searchMap(this.focusMaps[2].map);
+        }
+        else
+        {
+          this.hideTargetFocusWindowRecords(this.selectedFocusMapID);
+          
+          this.searchMap(this.focusMaps[this.selectedFocusMapID - 1].map);
+        }        
+        
+        if(this.searchPlugins[targetSearchPlugin].target == "all")
+        {
+          this.searchMap(this.map);
+        }
+      }
     }
   }
     
@@ -706,6 +1023,12 @@ function SWebMap()
       datasets = this.mapDatasets.join(";");
     }  
     
+    // Replaces the datasets to query if the non-default search plugin is selected by the user.
+    if(this.searchPlugins.length > 1 && this.searchPlugins[$('#searchPluginsSelect').val()].datasets[0] != "all")
+    {
+      datasets = this.searchPlugins[$('#searchPluginsSelect').val()].datasets;
+    }
+    
     if(this.session.ft.length > 0)
     {
       for(var t = 0; t < this.session.ft.length; t++)
@@ -748,7 +1071,7 @@ function SWebMap()
       attributes = "all";
     }  
     
-    /** Possibly contraining this.results to target neighbourhoods */
+    /** Possibly contraining results to target neighbourhoods */
     if(this.includeResultsInTargetInclusionRecords)
     {
       if(attributes == "all")
@@ -771,7 +1094,7 @@ function SWebMap()
       }
     }
     
-    /** Get the coordinates of the squares of the current view this.map */
+    /** Get the coordinates of the squares of the current view map */
     var bounds = targetMap.getBounds();
     var topRight = bounds.getNorthEast();
     var bottomLeft = bounds.getSouthWest();  
@@ -790,6 +1113,7 @@ function SWebMap()
             "&inference=" + (this.session.inference != undefined && this.session.inference == "on" ? "on" : "off") +
             "&attributes_boolean_operator=" + this.session.attributes_boolean_operator +
             "&include_aggregates=" + (this.displayFilters ? "true" : "false") +
+            "&results_location_aggregator=" + targetMap.getCenter().lat() + ',' + targetMap.getCenter().lng() +
             "&range_filter=" + topRight.lat()+";"+topRight.lng()+";"+bottomLeft.lat()+";"+bottomLeft.lng(),
       dataType: "json",
       targetMap: targetMap,
@@ -798,23 +1122,41 @@ function SWebMap()
         if(this.targetMap.b.id == "mapFocus1")
         {
           self.focusMapsResults["1"] = rset;
+          
+          if(!self.queryFocusWindowOnly)
+          {
+            self.selectedFocusMapID = 1;            
+            self.focusMaps[0].toggleFocusWindowSelection();  
+          }
         }
         
         if(this.targetMap.b.id == "mapFocus2")
         {
           self.focusMapsResults["2"] = rset;
+          
+          if(!self.queryFocusWindowOnly)
+          {
+            self.selectedFocusMapID = 2;
+            self.focusMaps[1].toggleFocusWindowSelection();  
+          }
         }
         
         if(this.targetMap.b.id == "mapFocus3")
         {
           self.focusMapsResults["3"] = rset;
+          
+          if(!self.queryFocusWindowOnly)
+          {
+            self.selectedFocusMapID = 3;
+            self.focusMaps[2].toggleFocusWindowSelection();  
+          }
         }
         
         if(this.targetMap.b.id == "webMapMain")
         {
           self.mainMapResults = rset;
         }
-        
+                
         self.prepareDisplayResults(rset, this.targetMap);
       },
       error: function(jqXHR, textStatus, error)
@@ -1103,9 +1445,12 @@ function SWebMap()
       }
     }
 
-    self.hideUntaggedRecords();        
+    if(self.queryFocusWindowOnly)
+    {
+      self.hideUntaggedRecords();        
+    }
  
-    /** Show/add this.markers for the records in the filtered resultset */
+    /** Show/add markers for the records in the filtered resultset */
     for(var s = 0; s < resultset.subjects.length; s++)   
     {   
       var subject = resultset.subjects[s];
@@ -1119,7 +1464,8 @@ function SWebMap()
         {
           var marker = self.markers[m];
           
-          if(marker.data.uri == subject.uri)
+          if(marker.data.uri == subject.uri &&
+             targetMap.getDiv().id == marker.map.getDiv().id)
           {
             found = true;
             marker.setVisible(true);
@@ -1129,7 +1475,7 @@ function SWebMap()
         
         if(!found)
         {
-          /** Display markers on the this.map */
+          /** Display markers on the map */
           var lat = subject.getPredicateValues("http://www.w3.org/2003/01/geo/wgs84_pos#lat");
           var lg = subject.getPredicateValues("http://www.w3.org/2003/01/geo/wgs84_pos#long");
           
@@ -1184,6 +1530,15 @@ function SWebMap()
             google.maps.event.addListener(marker, 'mouseover', function() {
               self.featureOver(this.data.uri);
             });             
+            
+            if(this.enableDirectionsService)
+            {
+              google.maps.event.addListener(marker, 'rightclick', function(event) {
+                
+                self.showMarkerContextMenu(event.latLng, this);              
+                
+              });             
+            }
             
             self.markers.push(marker);
           }
@@ -1385,15 +1740,15 @@ function SWebMap()
               // Add a listener for displaying tooltips for the this.polygons
               
               google.maps.event.addListener(polyline, 'mouseout', function() {
-                self.infobox.hide();
+                this.infobox.hide();
               });
               
               google.maps.event.addListener(polyline, 'mouseover', function() {
-                self.infobox.show();
+                this.infobox.show();
                 self.featureOver(this.data.uri);
               });
               
-              google.maps.event.addListener(polygon, 'mousemove', function(e) {
+              google.maps.event.addListener(polyline, 'mousemove', function(e) {
                 this.infobox.setPosition(e.latLng);
               });              
               
@@ -1408,6 +1763,161 @@ function SWebMap()
     
     self.stopWaiting();     
   }
+  
+  this.getCanvasXY = function getCanvasXY(caurrentLatLng, marker){  
+    var scale = Math.pow(2, marker.map.getZoom());
+    var nw = new google.maps.LatLng(marker.map.getBounds().getNorthEast().lat(), marker.map.getBounds().getSouthWest().lng());
+    var worldCoordinateNW = marker.map.getProjection().fromLatLngToPoint(nw);
+    var worldCoordinate = marker.map.getProjection().fromLatLngToPoint(caurrentLatLng);
+    var caurrentLatLngOffset = new google.maps.Point(
+      Math.floor((worldCoordinate.x - worldCoordinateNW.x) * scale),
+      Math.floor((worldCoordinate.y - worldCoordinateNW.y) * scale)
+    );
+    
+    return caurrentLatLngOffset;
+  }
+  
+  this.setMenuXY = function setMenuXY(caurrentLatLng, marker){
+    var mapWidth = /*$('#map_canvas').width();*/ marker.map.getDiv().clientWidth;
+    var mapHeight = /*$('#map_canvas').height();*/ marker.map.getDiv().clientWidth;
+    var menuWidth = $('.contextmenu').width();
+    var menuHeight = $('.contextmenu').height();
+    var clickedPosition = this.getCanvasXY(caurrentLatLng, marker);
+    var x = clickedPosition.x ;
+    var y = clickedPosition.y ;
+
+    if((mapWidth - x ) < menuWidth)
+    {
+      x = x - menuWidth;
+    }
+    
+    if((mapHeight - y ) < menuHeight)
+    {
+      y = y - menuHeight;
+    }
+
+    $('.contextmenu').css('left', x);
+    $('.contextmenu').css('top', y);
+  };
+    
+  this.showMarkerContextMenu = function showMarkerContextMenu(caurrentLatLng, marker) {
+    
+    var projection;
+    var contextmenuDir;
+    
+    projection = marker.map.getProjection() ;
+    
+    $('.contextmenu').remove();
+    
+    contextmenuDir = document.createElement("div");
+    contextmenuDir.className  = 'contextmenu';
+    contextmenuDir.innerHTML = "<a id='markerContextMenu_DirectionsFromHere'>\
+                                  <div class=context>Directions from here<\/div>\
+                                <\/a>\
+                                <a id='markerContextMenu_DirectionsToHere'>\
+                                  <div class=context>Directions to here<\/div>\
+                                <\/a>";
+    
+    $(marker.map.getDiv()).append(contextmenuDir);
+        
+    this.setMenuXY(caurrentLatLng, marker);
+
+    contextmenuDir.style.visibility = "visible";
+    
+    $('#markerContextMenu_DirectionsFromHere').click(function(){
+      $('.contextmenu').remove();
+      
+      self.directionsFromHere = marker.getPosition();
+      
+      if(self.directionsToHere)      
+      {
+        self.calculateDirections();
+      }
+    });
+    
+    $('#markerContextMenu_DirectionsToHere').click(function(){
+      $('.contextmenu').remove();
+      
+      self.directionsToHere = marker.getPosition();
+      
+      if(self.directionsFromHere)
+      {
+        self.calculateDirections();
+      }       
+    });
+    
+    google.maps.event.addListenerOnce(marker.map, 'click', function(){
+      $('.contextmenu').remove();
+    });
+    
+  }  
+  
+  this.calculateDirections = function calculateDirections() {
+    
+    if(!self.directionsFromHere) 
+    {
+      alert("Select a marker where to start getting directions");
+      return;
+    }
+    
+    if(!self.directionsToHere) 
+    {
+      alert("Select a marker where to end getting directions");
+      return;
+    }
+    
+    // Check if we show the traffic on the main map
+    if(self.directionsShowTrafficLayer)
+    {
+      if(document.getElementById('traffic').checked)
+      {
+        if(!self.trafficLayer)
+        {
+          self.trafficLayer = new google.maps.TrafficLayer();
+        }      
+        
+        self.trafficLayer.setMap(self.map);
+      }
+      else
+      {
+        self.trafficLayer.setMap(null);
+      }
+    }
+    
+    var mode;
+    switch ($('#directionsMode').val()) {
+      case "bicycling":
+        mode = google.maps.DirectionsTravelMode.BICYCLING;
+        break;
+      case "driving":
+        mode = google.maps.DirectionsTravelMode.DRIVING;
+        break;
+      case "walking":
+        mode = google.maps.DirectionsTravelMode.WALKING;
+        break;
+    }
+    
+    var request = {
+        origin: self.directionsFromHere,
+        destination: self.directionsToHere,
+        /*waypoints: waypoints,*/
+        travelMode: mode,
+        /*optimizeWaypoints: document.getElementById('optimize').checked,*/
+        /*avoidHighways: document.getElementById('highways').checked,
+        avoidTolls: document.getElementById('tolls').checked*/
+    };
+    
+    self.directionsService.route(request, function(response, status) {
+      if (status == google.maps.DirectionsStatus.OK) {
+        self.openDirectionsOverlay();
+        self.directionsDisplay.main.setDirections(response);
+        if(self.enableFocusWindows)
+        {
+          self.directionsDisplay["focus"+self.selectedFocusMapID].setDirections(response);
+        }
+      }
+    });
+  }  
 
   /**
   * Remove all the HTML elements from a string
@@ -1447,6 +1957,7 @@ function SWebMap()
           else
           {
 //            self.dataRequestedByUser = true;
+            self.forceAllFocusWindowsSearch = false;
             self.search();
           }
         }
@@ -1767,7 +2278,29 @@ function SWebMap()
     {
       if(this.taggedRecords.length <= 0 && !this.mapLoading)
       {
-        $("#resultsBox").html('<div class="noSearchResults">No results for the <b>"'+($("#searchInput").val() == this.labels.searchInput ? "" : $("#searchInput").val())+'"</b> search keywords and for this this.map region and selected filters. <br /><br />You can try zooming-out the this.map to get this.results elsewhere in the city.</div>');  
+        if(this.enableFocusWindows)
+        {
+          $("#resultsBox").html('<div class="noSearchResults">No results for the <b>\
+                                   "'+($("#searchInput").val() == this.labels.searchInput ? "" : $("#searchInput").val())+'"\
+                                   </b> \
+                                   search keywords and for this focus map region and selected filters. \
+                                   <br /><br />\
+                                   You can try zooming-out the map to get results elsewhere in the city.\
+                                   <br /><br />\
+                                   You can also try to select another focus window to see if results for that search\
+                                   query exist for their region.\
+                                   </div>');  
+        }
+        else
+        {
+          $("#resultsBox").html('<div class="noSearchResults">No results for the <b>\
+                                   "'+($("#searchInput").val() == this.labels.searchInput ? "" : $("#searchInput").val())+'"\
+                                   </b> \
+                                   search keywords and for this map region and selected filters. \
+                                   <br /><br />\
+                                   You can try zooming-out the map to get results elsewhere in the city.\
+                                   </div>');  
+        }
       }
     }
     else
@@ -2155,6 +2688,15 @@ function SWebMap()
             google.maps.event.addListener(marker, 'mouseover', function() {
               self.featureOver(this.data.uri);
             });             
+
+            if(this.enableDirectionsService)
+            {
+              google.maps.event.addListener(marker, 'rightclick', function(event) {
+                
+                self.showMarkerContextMenu(event.latLng, this);
+
+              });             
+            }            
             
             this.markers.push(marker);
           }
@@ -2540,6 +3082,7 @@ function SWebMap()
     $.cookie('webmap-resultsperpage', obj.value, { expires: 365, path: "/" });    
                 
     this.dataRequestedByUser = true;
+    this.forceAllFocusWindowsSearch = true;
     this.search();
   }
 
@@ -2555,6 +3098,7 @@ function SWebMap()
       self.currentResultsetPage = new_page_index;
       
       self.dataRequestedByUser = true;
+      this.forceAllFocusWindowsSearch = false;
       self.search();
     }
     
@@ -2663,6 +3207,7 @@ function SWebMap()
       this.session.fd = this.checkedFiltersDatasets;   
       
       this.dataRequestedByUser = true;
+      this.forceAllFocusWindowsSearch = true;
       this.search();
     }
     else // This means that the checkbox has just been un-checked
@@ -2678,6 +3223,7 @@ function SWebMap()
       this.currentResultsetPage = 0;  
       
       this.dataRequestedByUser = true;
+      this.forceAllFocusWindowsSearch = true;
       this.search();
     }
   }
@@ -2809,6 +3355,7 @@ function SWebMap()
       this.session.ft = this.checkedFiltersTypes;   
     
       this.dataRequestedByUser = true;
+      this.forceAllFocusWindowsSearch = true;
       this.search();
     }
     else // This means that the checkbox has just been un-checked
@@ -2824,6 +3371,7 @@ function SWebMap()
       this.currentResultsetPage = 0;    
       
       this.dataRequestedByUser = true;
+      this.forceAllFocusWindowsSearch = true;
       this.search();
     }  
   }
@@ -2958,18 +3506,86 @@ function SWebMap()
   * Display search/browse/sessions controls
   */
   this.displaySearch = function displaySearch() {
+    
+    var searchPluginsHTML = "";
+    
+    if(this.searchPlugins.length > 1)
+    {
+      searchPluginsHTML = '<select id="searchPluginsSelect">';
+      
+      for(var i = 0; i < this.searchPlugins.length; i++)
+      {
+        searchPluginsHTML += '<option value="'+i+'" '+(i == 0 ? "selected" : "")+' >'+this.searchPlugins[i].name+'</option>';
+      }
+      
+      searchPluginsHTML += '</select>';
+    }
+    
     $("#webMapSearch").append('<table width="100%">\
       <tr>\
         <td width="100%"><div class="searchMapWrapper"><div class="inputMapWrapper"><input type="text" maxlength="2048" id="searchInput" class="searchBox" value="Search Map" style="font-style: italic" /></div></div></td>\
         <td width="0%"><div class="searchButtonMapWrapper"><input type="submit" class="searchButton" value=""></div></td>\
+        <td width="0%"><div class="searchSelectionMapWrapper">'+(this.searchPlugins.length > 1 ? searchPluginsHTML : "")+'</div></td>\
       </tr>\
     </table>');
+    
+    $('#searchPluginsSelect').change(function(){
+      
+      self.dataRequestedByUser = false;
+      self.displayFiltersByDefault = true;
+      
+      // Re-initialize a few structures when the user select a new search plugin.
+      /** The set of dataset filters */
+      self.filtersDatasets = [];
+
+      /** The set of type filters */
+      self.filtersTypes = [];
+
+      /** The set of attribute filters */
+      self.filtersAttributes = [];
+
+      /** The list of dataset filters that have been checked (selected) by the user */
+      self.checkedFiltersDatasets = [];
+
+      /** The list of type filters that have been checked (selected) by the user */
+      self.checkedFiltersTypes = [];
+
+      /** The list of attribute filters that have been checked (selected) by the user */
+      self.checkedFiltersAttributes = [];
+
+      /** The set of attribute/value filters that have been defined by the user */
+      self.attributeValueFilters = {};
+      
+      $('.searchBox').val(self.labels.searchInput);
+
+      self.session = {
+        name: "",   // The name of the session
+        notes: "",  // Some notes to display to the user about the session
+        q: "",      // The search query
+        fd: [],     // The dataset filters (dataset URIs to include in the resultset)
+        fa: [],     // The attribute filters (attribute URIs to include in the resultset)
+        ft: [],     // The type filters (type URIS to include in the resultset)
+        av: {},     // The attribute/value filters (URI + value to include in the resultset)
+        attributes_boolean_operator: "and", // The boolean operator to use when multiple attribute/value filters are defined.
+        records: [] // The pre-selected (tagged) records to persist on the map
+      };  
+      
+      $("#resultsPaginator").hide();
+      
+      if(self.enableFocusWindows)
+      {      
+        self.forceAllFocusWindowsSearch = true;
+      }
+      
+      self.search();
+    });
     
     $('.searchBox').val(this.labels.searchInput);
     $('.searchButton').val(this.labels.searchButton);
     
     $('.searchButton').click(function() {
       self.dataRequestedByUser = true;
+      self.forceAllFocusWindowsSearch = true;
       self.search();
     });
     
@@ -3269,6 +3885,7 @@ function SWebMap()
     if(!isTaggedRecords)
     {
       this.dataRequestedByUser = true;
+      this.forceAllFocusWindowsSearch = true;
       this.search();
     }
     else
@@ -3276,6 +3893,7 @@ function SWebMap()
       if(this.forceSearch)
       {
         this.dataRequestedByUser = true;
+        this.forceAllFocusWindowsSearch = true;
         this.search();
       }
 
@@ -3314,6 +3932,7 @@ function SWebMap()
     if(this.initializationSession.records.length <= 0)
     {
       this.dataRequestedByUser = true;
+      this.forceAllFocusWindowsSearch = true;
       this.search();
     }   
     else
@@ -3328,12 +3947,14 @@ function SWebMap()
       if(this.forceSearch)
       {
         this.dataRequestedByUser = true;
+        this.forceAllFocusWindowsSearch = true;
         this.search();
       }          
       else
       {
         if(this.displayFiltersByDefault)
         {
+          this.forceAllFocusWindowsSearch = true;
           this.search();
         }
       }
@@ -3616,6 +4237,7 @@ function SWebMap()
     if (keycode == 13)
     {
       this.dataRequestedByUser = true;
+      this.forceAllFocusWindowsSearch = true;
       this.search();
 
       return false;
@@ -3633,6 +4255,7 @@ function SWebMap()
     $("#searchInput").val(this.labels.searchInput);
     
     this.dataRequestedByUser = true;
+    this.forceAllFocusWindowsSearch = true;
     this.search();
   }
 
@@ -3758,9 +4381,20 @@ function SWebMap()
     }  
     
     /** Get the coordinates of the squares of the current view this.map */
-    var bounds = this.map.getBounds();
-    var topRight = bounds.getNorthEast();
-    var bottomLeft = bounds.getSouthWest(); 
+    var bounds, topRight, bottomLeft = 0; 
+    
+    if(this.enableFocusWindows)
+    {
+      var bounds = this.focusMaps[this.selectedFocusMapID - 1].map.getBounds();
+      var topRight = bounds.getNorthEast();
+      var bottomLeft = bounds.getSouthWest();       
+    }
+    else
+    {
+      var bounds = this.map.getBounds();
+      var topRight = bounds.getNorthEast();
+      var bottomLeft = bounds.getSouthWest(); 
+    }
     
     filterAc = $("#webMapFiltersInputText_"+id).autocomplete({ 
       serviceUrl: this.structWSFAddress + "search/",
@@ -3839,6 +4473,7 @@ function SWebMap()
       this.session.av = this.attributeValueFilters;
 
       this.dataRequestedByUser = true;
+      this.forceAllFocusWindowsSearch = true;
       this.search();
     }  
   }
@@ -3874,6 +4509,7 @@ function SWebMap()
     this.session.av = this.attributeValueFilters;
     
     this.dataRequestedByUser = true;
+    this.forceAllFocusWindowsSearch = true;
     this.search();
   }
 
@@ -4100,7 +4736,37 @@ function SWebMap()
     $(selectMapDiv).append('<select id="mapsList" name="menu">'+self.getMapsListBoxOptions()+'</select>');
     
     $(selectMapDiv).change(function() {
+      
+      // Make sure that we force a search query when the user load a map
+      // from the map loading control on the map. That way, we make sure
+      // not only to show the selected records, but the selected
+      // filtering criterias as well.
+      self.forceSearch = true;
+      
       self.loadMap(this);
+    });       
+  }
+
+  /**
+  * Display the list of overlay layers to display
+  */
+  this.SelectMapLayersControl = function SelectMapLayersControl(selectLayerDiv, divClass, map) { 
+    
+    var selector = '<select class="'+divClass+'" name="menu">';
+
+    selector += '<option value="Layer..." selected>Layer...</option>';      
+    
+    for(var i = 0; i < self.mapLayers.length; i++)
+    {
+      selector += '<option value="'+self.mapLayers[i].name+'">'+self.mapLayers[i].name+'</option>';      
+    }
+    
+    selector += '</select>';
+    
+    $(selectLayerDiv).append(selector);
+    
+    $(selectLayerDiv).change(function() {
+      self.switchLayer(this, map);
     });       
   }
 
@@ -4196,11 +4862,59 @@ function SWebMap()
     this.map.fitBounds(latlngbounds);  
   }
 
+  this.hideTargetFocusWindowRecords = function hideTargetFocusWindowRecords(focusWindowID) {
+    
+    var resultset = new Resultset(this.focusMapsResults[focusWindowID]);
+    
+    if(resultset)
+    {
+      /** Hide all markers, and only shows the ones that have to be displayed */
+      for(var m = 0; m < this.markers.length; m++)   
+      {
+        /** Hide all markers of this focus window except the tagged ones */
+        if(this.taggedRecords.indexOf(this.markers[m].data.uri) < 0)
+        {
+          if(resultset.getSubject(this.markers[m].data.uri))
+          {
+            this.markers[m].setVisible(false);
+          }
+        }
+      }    
+      
+      
+      /** Hide all polygons, and only shows the ones that have to be displayed */
+      for(var p = 0; p < this.polygons.length; p++)   
+      {
+        // Hide all polygons except the tagged ones
+        if(this.taggedRecords.indexOf(this.polygons[p].data.uri) < 0)
+        {
+          if(resultset.getSubject(this.polygons[p].data.uri))
+          {
+            this.polygons[p].setMap(null);
+          }
+        }
+      }        
+      
+      /** Hide all polylines, and only shows the ones that have to be displayed */
+      for(var p = 0; this.polylines < this.polylines.length; p++)   
+      {
+        // Hide all polylines except the tagged ones
+        if(this.taggedRecords.indexOf(this.polylines[p].data.uri) < 0)
+        {
+          if(resultset.getSubject(this.polylines[p].data.uri))
+          {        
+            this.polylines[p].setMap(null);
+          }
+        }
+      }      
+    }
+  }
+  
   /**
   * Hide all the records that are not tagged
   */
   this.hideUntaggedRecords = function hideUntaggedRecords() {
-    
+
     if(this.enableFocusWindows)
     {
       var taggedMarkers = [];      
@@ -4270,6 +4984,7 @@ function SWebMap()
     }
     
     this.dataRequestedByUser = true;
+    this.forceAllFocusWindowsSearch = true;
     this.search();
   }  
   
@@ -4369,6 +5084,77 @@ function SWebMap()
     });    
   }
   
+  this.resetDirections = function resetDirections() {
+    
+    this.directionsFromHere = null;
+    this.directionsToHere = null;
+    
+    this.directionsDisplay.main.setMap(null);
+
+    if(this.enableFocusWindows)
+    {
+      this.directionsDisplay["focus1"].setMap(null);
+      this.directionsDisplay["focus2"].setMap(null);
+      this.directionsDisplay["focus3"].setMap(null);
+    }    
+    
+    this.directionsDisplay.main = new google.maps.DirectionsRenderer();   
+    this.directionsDisplay.main.setMap(this.map);
+    this.directionsDisplay.main.setPanel(document.getElementById("directionsPanel"));
+
+    if(this.enableFocusWindows)
+    {
+      this.directionsDisplay["focus1"] = new google.maps.DirectionsRenderer();
+      this.directionsDisplay["focus1"].setMap(this.focusMaps[0]);
+      
+      this.directionsDisplay["focus2"] = new google.maps.DirectionsRenderer();
+      this.directionsDisplay["focus2"].setMap(this.focusMaps[1]);
+
+      this.directionsDisplay["focus3"] = new google.maps.DirectionsRenderer();
+      this.directionsDisplay["focus3"].setMap(this.focusMaps[2]);
+    }
+  }
+  
+  /**
+  * Open an overlay that display the directions pannel between two markers.
+  */
+  this.openDirectionsOverlay = function openDirectionsOverlay() {
+    
+    var targetCanvasId = 'webMap';
+    
+    if(this.enableFocusWindows)
+    {
+      targetCanvasId = 'resultsCanvas';
+    }
+    
+    var resultsBoxPosition = $('#' + targetCanvasId).position();
+    
+    $('#directionsOverlay').css({
+      "background-color": '#F2F1ED',
+      position: 'absolute',
+      top: resultsBoxPosition.top,
+      left: resultsBoxPosition.left,
+      width: $('#' + targetCanvasId).css('width'),
+      height: $('#' + targetCanvasId).css('height')
+    });       
+    
+    $('#directionsOverlayClose').attr('src', this.imagesFolder+'cross.png');
+    
+    $('#directionsOverlayClose').click(function (){
+      self.closeDirectionsOverlay();
+    });
+    
+    $('#directionsPanelControls').show();
+    $('#directionsOverlay').fadeIn('fast', function() {});              
+  }
+  
+  this.closeDirectionsOverlay = function closeDirectionsOverlay() {
+    $('#directionsOverlay').fadeOut('fast', function() {
+      $('#directionsPanel').empty();
+      self.resetDirections();
+    });    
+  }  
+  
   this.drawFocusPolygon = function drawFocusPolygon(focusMap, color) {
     
     color = this.hexc(color);
@@ -4377,7 +5163,7 @@ function SWebMap()
     
     var marker = new google.maps.Marker({
       map: this.map,
-      position: new google.maps.LatLng(focusMap.map.getBounds().getNorthEast().lat(), focusMap.map.getBounds().getNorthEast().lng()),
+      position: focusMap.map.getBounds().getCenter()/*new google.maps.LatLng(focusMap.map.getBounds().getNorthEast().lat(), focusMap.map.getBounds().getNorthEast().lng())*/,
       draggable: true,
       title: 'Move focus window',
       icon: markerImage
@@ -4394,11 +5180,40 @@ function SWebMap()
       bounds: focusMap.map.getBounds()
     });    
     
+    var rectangleBounds = rectangle.getBounds();    
+    
+    // Now we have to calculate the proportions of the focus window.
+    // We have to calculate a ratio that will be applied to the distance
+    // of the computed offset such that we keep the same form between
+    // the focus window, and the outlined area on the big map.
+    var ne = focusMap.map.getBounds().getNorthEast();
+    var sw = focusMap.map.getBounds().getSouthWest();    
+    
+    var rectWidth = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(ne.lat(), ne.lng()), new google.maps.LatLng(ne.lat(), sw.lng()));
+    var rectHeight = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(ne.lat(), sw.lng()), new google.maps.LatLng(sw.lat(), sw.lng()));
+    
+    var widthRatio = 1;
+    var heightRatio = 1;
+    
+    if(rectWidth > rectHeight)
+    {
+      widthRatio = rectHeight / rectWidth;
+    }
+    else
+    {
+      heightRatio = rectWidth / rectHeight;
+    }
+    
+    rectangleBounds.extend(google.maps.geometry.spherical.computeOffset(focusMap.map.getBounds().getCenter(), focusMap.sWebMap.minimalFocusWindowRectangleRadius * widthRatio, 0));
+    rectangleBounds.extend(google.maps.geometry.spherical.computeOffset(focusMap.map.getBounds().getCenter(), focusMap.sWebMap.minimalFocusWindowRectangleRadius * heightRatio, 90));
+    rectangleBounds.extend(google.maps.geometry.spherical.computeOffset(focusMap.map.getBounds().getCenter(), focusMap.sWebMap.minimalFocusWindowRectangleRadius * widthRatio, 180));
+    rectangleBounds.extend(google.maps.geometry.spherical.computeOffset(focusMap.map.getBounds().getCenter(), focusMap.sWebMap.minimalFocusWindowRectangleRadius * heightRatio, 270));
+        
     focusMap.map.bindTo('center', marker, 'position');
     
     rectangle.bindTo('bounds', focusMap.map, 'position');
     
-    rectangle.setBounds(focusMap.map.getBounds());
+    rectangle.setBounds(rectangleBounds);
     
     rectangle.focusMap = focusMap;
     
@@ -4406,6 +5221,7 @@ function SWebMap()
       if(self.searchOnDrag && self.dataRequestedByUser)
       { 
         self.selectedFocusMapID = this.focusMap.focusMapID;
+        
         this.focusMap.toggleFocusWindowSelection();
         self.searchMap(this.focusMap.map);
       }
@@ -4466,6 +5282,32 @@ function SWebMap()
       $('#mapFocus3').width($('#mapFocus3').width());
     }                               
   });  
+  
+  this.switchLayer = function switchLayer(obj, map) {
+  
+    var selectedName = $(obj).children(":first").get(0).value;
+    
+    if(map.overlayMapTypes.getLength() > 0)
+    {
+      map.overlayMapTypes.removeAt(0);
+    }
+        
+    for(var i = 0; i < this.mapLayers.length; i++)
+    {
+      if(this.mapLayers[i].name == selectedName)
+      {
+        if(this.mapLayers[i].type == "wms")
+        {
+          loadWMSOverlay(map, this.mapLayers[i].baseUrl, this.mapLayers[i].wmsParams, this.mapLayers[i].name);  
+        }
+        else
+        {
+          map.overlayMapTypes.insertAt(0, new google.maps.ImageMapType(this.mapLayers[i].getTileUrl));
+        }
+      }
+    }
+        
+  }  
 }
 
 function SWebMapFocus()
@@ -4509,18 +5351,112 @@ function SWebMapFocus()
       disableDefaultUI: true,
       mapTypeId: google.maps.MapTypeId.ROADMAP
     }
+
+    if(this.sWebMap.focusMapShowZoomControl)
+    {    
+      mapOptions.zoomControl = true;
+    }
+    
+    if(this.sWebMap.focusMapShowMapTypeControl)
+    {
+      mapOptions.mapTypeControl = true;
+    }
+    
+    if(this.sWebMap.focusMapShowStreetViewControl)
+    {
+      mapOptions.streetViewControl = true;
+    }
+    
+    /*
+    if(this.sWebMap.focusMapShowPanControl)
+    {
+      mapOptions.panControl = true;
+    } */
+    
+    if(!this.sWebMap.mapTypeIds)
+    {
+      for(var type in google.maps.MapTypeId) 
+      {
+        this.sWebMap.mapTypeIds.push(google.maps.MapTypeId[type]);
+      }
+    }
+    
+    mapOptions.mapTypeControlOptions = {
+      "mapTypeIds": this.sWebMap.mapTypeIds,
+      "style": google.maps.MapTypeControlStyle.DROPDOWN_MENU
+    };      
     
     this.map = new google.maps.Map(document.getElementById(mapFocusContainerElement), mapOptions);    
+    
+    if(this.sWebMap.enableDirectionsService)
+    {
+      this.sWebMap.directionsDisplay["focus" + this.focusMapID] = new google.maps.DirectionsRenderer();
+      this.sWebMap.directionsDisplay["focus" + this.focusMapID].setMap(this.map);
+    }
+    
+    // Register all external image map types functions used to deliver the URL queries.    
+    for(var it = 0; it < this.sWebMap.mapTypes.length; it++)
+    {
+      if(this.sWebMap.mapTypes[it].type == "wms")
+      {
+        this.sWebMap.map.mapTypes.set(this.sWebMap.mapTypes[it].id, getWMSMapType(this.map, this.sWebMap.mapTypes[it].baseUrl, this.sWebMap.mapTypes[it].wmsParams, this.sWebMap.mapTypes[it].name));  
+      }
+      else
+      {
+        this.map.mapTypes.set(this.sWebMap.mapTypes[it].id, new google.maps.ImageMapType(this.sWebMap.mapTypes[it].getTileUrl));  
+      }
+    }    
     
     google.maps.event.addListenerOnce(this.map, 'idle', function(){
       
       /** Remove the default google background color generated by the map api */
       $("#mapFocus" + self.focusMapID).css("background-color", ""); 
             
+      /** Add the overlay layers selection tool if needed */      
+      if(self.sWebMap.mapLayers.length > 0)
+      {
+        var selectMapLayersDiv = document.createElement('DIV');
+        selectMapLayersDiv.id = "selectMapLayersDiv" + "_focus_" + self.focusMapID;
+        var selectMapControl = new self.sWebMap.SelectMapLayersControl(selectMapLayersDiv, 'focusMapLayersList', self.map);
+        
+        selectMapLayersDiv.index = 1;
+        self.map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(selectMapLayersDiv);         
+      }               
+            
       google.maps.event.addListener(self.map, 'bounds_changed', function(){    
         if(self.focusPolygon != null)
         {
-          self.focusPolygon.setBounds(self.map.getBounds());
+          /** Set the minimum size of the bounding rectangle, on the main map, that represent the focus window */          
+          var focusMapBounds = self.map.getBounds();
+
+          // Now we have to calculate the proportions of the focus window.
+          // We have to calculate a ratio that will be applied to the distance
+          // of the computed offset such that we keep the same form between
+          // the focus window, and the outlined area on the big map.
+          var ne = self.map.getBounds().getNorthEast();
+          var sw = self.map.getBounds().getSouthWest();    
+          
+          var rectWidth = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(ne.lat(), ne.lng()), new google.maps.LatLng(ne.lat(), sw.lng()));
+          var rectHeight = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(ne.lat(), sw.lng()), new google.maps.LatLng(sw.lat(), sw.lng()));
+          
+          var widthRatio = 1;
+          var heightRatio = 1;
+          
+          if(rectWidth > rectHeight)
+          {
+            widthRatio = rectHeight / rectWidth;
+          }
+          else
+          {
+            heightRatio = rectWidth / rectHeight;
+          }
+          
+          focusMapBounds.extend(google.maps.geometry.spherical.computeOffset(self.map.getBounds().getCenter(), self.sWebMap.minimalFocusWindowRectangleRadius * widthRatio, 0))
+          focusMapBounds.extend(google.maps.geometry.spherical.computeOffset(self.map.getBounds().getCenter(), self.sWebMap.minimalFocusWindowRectangleRadius * heightRatio, 90))
+          focusMapBounds.extend(google.maps.geometry.spherical.computeOffset(self.map.getBounds().getCenter(), self.sWebMap.minimalFocusWindowRectangleRadius * widthRatio, 180))
+          focusMapBounds.extend(google.maps.geometry.spherical.computeOffset(self.map.getBounds().getCenter(), self.sWebMap.minimalFocusWindowRectangleRadius * heightRatio, 270))
+          
+          self.focusPolygon.setBounds(focusMapBounds);
                
           if(self.focusMapID == self.sWebMap.selectedFocusMapID)
           {
@@ -4533,6 +5469,7 @@ function SWebMapFocus()
         if(self.sWebMap.searchOnDrag && self.sWebMap.dataRequestedByUser)
         { 
           self.sWebMap.selectedFocusMapID = self.focusMapID;
+          self.sWebMap.forceAllFocusWindowsSearch = false;
           self.sWebMap.search();
         }
       });
@@ -4541,6 +5478,7 @@ function SWebMapFocus()
         if(self.sWebMap.searchOnZoomChanged && self.sWebMap.dataRequestedByUser)
         { 
           self.sWebMap.selectedFocusMapID = self.focusMapID;
+          self.sWebMap.forceAllFocusWindowsSearch = false;
           self.sWebMap.search();
         }
       });
@@ -4558,6 +5496,7 @@ function SWebMapFocus()
         else
         {
           self.sWebMap.dataRequestedByUser = true;
+          self.sWebMap.forceAllFocusWindowsSearch = false;
           self.sWebMap.search();
         }
         
@@ -4569,6 +5508,7 @@ function SWebMapFocus()
         self.toggleFocusWindowSelection();
         self.sWebMap.selectedFocusMapID = self.focusMapID;
         self.sWebMap.dataRequestedByUser = true;
+        self.sWebMap.forceAllFocusWindowsSearch = false;
         self.sWebMap.search();        
       }
     });    

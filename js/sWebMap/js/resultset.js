@@ -35,6 +35,11 @@ var prefURLAttributes = [
 
 function Resultset(rjson) 
 {
+  if(!rjson)
+  {
+    return;
+  }
+
   // Define all prefixes of this resultset
   this.prefixes = rjson.prefixes;  
   
