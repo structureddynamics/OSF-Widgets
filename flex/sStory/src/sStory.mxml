@@ -282,7 +282,19 @@
         {
           panelRelatedStories.parent.removeChild(panelRelatedStories);
         }
-  
+
+        /** Check if the administrator wants to display the panel with related named entities */
+        if(!settings.displayRelatedNamedEntities)
+        {
+          panelNamedEntities.parent.removeChild(panelNamedEntities);
+        }
+        
+        if(!settings.panelPositionRight)
+        {
+          storyHorizontalLayout.setChildIndex(storyTextArea, 1);
+        }
+        
+        
         /** Get the text from the peg:storyTextUri attribute */
         if(_semanticDataProvider.subjects[0].predicates.hasOwnProperty(settings.storyTextUriAttr))
         {
@@ -511,8 +523,12 @@
             0xFF20B2AA, 0xFF008B8B, 0xFF00FFFF, 0xFFAFEEEE, 0xFF7FFFD4, 0xFF40E0D0, 0xFF5F9EA0, 0xFF4682B4, 0xFFB0C4DE,
             0xFFB0E0E6, 0xFF87CEFA, 0xFF00BFFF, 0xFF1E90FF, 0xFF6495ED, 0xFF7B68EE, 0xFF4169E1, 0xFF0000FF];
   */
+          /*
           var colors:Array = [0xFFf5800b, 0xFFeb0810, 0xFFf4e601, 0xFFc6d816, 0xFF0c5e2c, 0xFF00a5d9,
                               0xFF581886, 0xFFab1057];
+          */
+          
+          var colors:Array = settings.itemsColors;
   
           var nbAdditionalConcepts:int = 0;
           
@@ -733,11 +749,15 @@
           /** Colors to feed to the list component to highlight named entities */
           var neItemColors:Array = new Array();
   
-          if(this.neAnnotations.annotations.length > 0)
+          if(this.neAnnotations.annotations.length > 0 && settings.displayRelatedNamedEntities)
           {
             /** Re-calculate the colors pallet for the named entities */
+            /*
             var colors:Array = [0xFFf5800b, 0xFFeb0810, 0xFFf4e601, 0xFFc6d816, 0xFF0c5e2c, 0xFF00a5d9,
               0xFF581886, 0xFFab1057];
+            */
+            
+            var colors:Array = settings.itemsColors;
             
             var nbAdditionalConcepts:int = 0;
             
@@ -819,10 +839,10 @@
               
               i += 1;            
             }
+            
+            neCheckboxesListControl.dataProvider = namedEntities;
+            neCheckboxesListControl.itemBackgroundColors = neItemColors;            
           }
-  
-          neCheckboxesListControl.dataProvider = namedEntities;
-          neCheckboxesListControl.itemBackgroundColors = neItemColors;
         }
         
         this.removeEventListener(Event.COMPLETE, processStoryAnnotatedTextHandler);
@@ -910,7 +930,9 @@
       ]]>
     </mx:Script>
   
-    <mx:HBox height="100%" width="100%">
+    <mx:HBox height="100%" width="100%" id="storyHorizontalLayout">
+      <mx:TextArea styleName="storyTextAreaStyle" id="storyTextArea" width="100%" height="100%"
+                   textInput="storyTextAreaTextInput(event);"/>       
       <mx:VBox styleName="sStoryToolsVBox" height="100%" width="300">
         <mx:HBox height="29" width="100%" paddingTop="4" verticalAlign="middle">
           <mx:Text text="Search:"/>
@@ -926,9 +948,11 @@
           </mx:HBox>
         </mx:HBox>
   
-        <mx:Panel styleName="sStoryConceptsPanel" id="panelConcepts" title="Story's Concepts" height="100%" width="100%">
+        <mx:Panel styleName="sStoryConceptsPanel" id="panelConcepts" title="Story's Concepts" height="100%" width="100%"
+                  backgroundAlpha="0" backgroundColor="0xFFFFFFFF">
           <toolbox:CheckBoxList id="isAboutCheckboxesListControl" styleName="isAboutCheckboxesListControl" width="100%"
-            height="100%" labelField="prefLabel" enabledField="enabled" change="onCheckboxChangeHandler(event);">
+            height="100%" labelField="prefLabel" enabledField="enabled" change="onCheckboxChangeHandler(event);"
+            backgroundAlpha="0" backgroundColor="0xFFFFFFFF">
             <mx:Script>
               <![CDATA[
   
@@ -1100,15 +1124,17 @@
         </mx:Panel>
   
         <mx:Panel styleName="sStoryRelatedStoriesPanel" id="panelRelatedStories" title="Related Stories" height="100%"
-          width="100%">
+          width="100%" backgroundAlpha="0" backgroundColor="0xFFFFFFFF">
           <mx:List id="relatedStoriesList" styleName="relatedStoriesList" width="100%" height="100%"
-            itemClick="gotoStoryHandler(event)" wordWrap="true"/>
-        </mx:Panel>
+            itemClick="gotoStoryHandler(event)" wordWrap="true"
+            backgroundAlpha="0" backgroundColor="0xFFFFFFFF"/>
+        </mx:Panel> 
   
         <mx:Panel styleName="sStoryNamedEntitiesPanel" id="panelNamedEntities" title="Named Entities" height="100%" width="100%"
-          visible="false" includeInLayout="false">
+          visible="false" includeInLayout="false" backgroundAlpha="0" backgroundColor="0xFFFFFFFF">
           <toolbox:CheckBoxList id="neCheckboxesListControl" styleName="neCheckboxesListControl" width="100%"
-            height="100%" labelField="prefLabel" enabledField="enabled" change="onNeCheckboxChangeHandler(event);">
+            height="100%" labelField="prefLabel" enabledField="enabled" change="onNeCheckboxChangeHandler(event);"
+            backgroundAlpha="0" backgroundColor="0xFFFFFFFF">
             <mx:Script>
               <![CDATA[
   
@@ -1150,8 +1176,7 @@
           </toolbox:CheckBoxList>
         </mx:Panel>
       </mx:VBox>
-      <mx:TextArea styleName="storyTextAreaStyle" id="storyTextArea" width="100%" height="100%"
-                   textInput="storyTextAreaTextInput(event);"/>    
+   
     </mx:HBox>
   </mx:Canvas>
 </mx:Module>

@@ -289,7 +289,7 @@ package com.sd.semantic.core
       {
         if(allowedValue.hasOwnProperty("primitive"))
         {
-          allowedPrimitiveValues.push(namespaces.getVariable(allowedValue.primitive.toString()));
+          allowedPrimitiveValues.push(namespaces.getVariable(allowedValue.primitive.toString().toLowerCase()));
         }
 
         if(allowedValue.hasOwnProperty("type"))

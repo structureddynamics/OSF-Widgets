@@ -397,6 +397,8 @@ package com.sd.semantic.core
         {
           /** Comparable Schema attribute in the schema */
           var targetComparableAttribute:SchemaAttribute = getAttribute(comparableAttribute);
+          
+          comparableAttributes.push(targetComparableAttribute);
 
           if(targetComparableAttribute.comparableWith.length > 0)
           {

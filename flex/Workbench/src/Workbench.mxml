@@ -325,6 +325,9 @@
 
       if(!isError)
       {
+        /** Initialize the includeAttributesList list with the globalAggregationProperties */
+        this.includeAttributesList = this.workbenchSettings.globalAggregationProperties.concat();
+        
         /** Create the Dashboard module */
         info = ModuleManager.getModule(baseUrl + "sDashboard.swf");
         info.addEventListener(ModuleEvent.READY, modDashboardReadyHandler);
@@ -633,10 +636,11 @@
             var rec:Object = {};
 
             /**
-            * First we create the data for the two main columns:
+            * First we create the data for the three main columns:
             *   (1) The "id" column, with a recordset ID used mainly for local referencing & sorting
             *   (2) The "record" column, with the prefLabel of the record
             *   (3) The "kind" column, with the kind of the record (used for sorting purposes)
+            *   (4) A column for each globalAggregationProperties defined in the settings
             * 
             * These three columns are static, and are the minimal columns to be displayed.
             */
@@ -690,6 +694,25 @@
             }
 
             rec["kind"] = recordTypeName;
+            
+            for each(var globalAttributeUri:String in this.workbenchSettings.globalAggregationProperties)
+            {
+              var attr:SchemaAttribute = schema.getAttribute(globalAttributeUri);
+              
+              if(attr != null)
+              {
+                var values:Array = record.getPredicateValues(globalAttributeUri);
+                
+                if(values.length > 0)
+                {
+                  rec[attr.prefLabel] = values[0].value;
+                }
+                else
+                {
+                  rec[attr.prefLabel] = "";  
+                }                
+              }
+            }
 
             for each(var includeAttribute:String in includeAttributesList)
             {
@@ -703,6 +726,9 @@
                 var columnName:String = "";
   
                 columnName = attr.prefLabel
+                  
+                /** Remove the "." (dot) character */
+                columnName = columnName.replace(/[^A-Za-z0-9\s\[\]-_]/ig, '');
                   
                 /**
                 * If no preferred label is available for this attribute, we get it by manipulating the
@@ -1068,11 +1094,45 @@
         columnType.setStyle("color", "#000000");
         columns.push(columnType);
         
+        for each(var globalAttributeUri:String in this.workbenchSettings.globalAggregationProperties)
+        {
+          var attr:SchemaAttribute = schema.getAttribute(globalAttributeUri);
+          
+          if(attr != null)
+          {
+            var columnGlobalAttribute:DataGridColumn = new DataGridColumn(attr.prefLabel);
+            columnGlobalAttribute.showDataTips = true;
+            columnGlobalAttribute.setStyle("backgroundColor", "#CEE3F6");
+            columnGlobalAttribute.setStyle("color", "#000000");
+            columns.push(columnGlobalAttribute);              
+          }
+        }        
+        
 
         /** Now we iterate all coloumns that have been created to add checkboxes for each of them */
         for(var columnId:int = 0; columnId < orderedColumns.length; columnId++)
         {
           var columnName:String = orderedColumns[columnId]["attribute"];
+          
+          var next:Boolean = false;
+          for each(var globalAttributeUri:String in this.workbenchSettings.globalAggregationProperties)
+          {
+            var attr:SchemaAttribute = schema.getAttribute(globalAttributeUri);
+            
+            if(attr != null)
+            {
+              if(columnName.indexOf(attr.prefLabel) == 0)
+              {
+                next = true;
+                break;
+              }
+            }
+          }
+          
+          if(next)
+          {
+            continue;
+          }
           
           if(columnName != "record" && columnName != "kind" && columnName != "id")
           {

@@ -1,681 +1,765 @@
 
-#recordDescriptionOverlay {
-  background-color: #F2F1ED
-}
-
-#recordDescriptionFrame {
-  background-color: #F2F1ED
-}
-
-.noSearchResults {
-  padding: 20px;
-}
-
-/* Main container that englobes everything of the sWebMap component */
-.webMapMain {
-  width: 100%;
-  height: 400px;
-  padding: 0px;
-}
-
-/* Map component of the application */
-.webMap {
-  width: 100%;
-  /*height: 100%;*/
-  float: left;
-}
-
-/* Results display section */
-.webMapResultsTd {
-  width: 65%;
-  height: 400px;
-  overflow: auto;
-}
-
-.webMapResults {
-  width: 100%;
-  height: 400px;
-  overflow: auto;
-}
-
-/* Filters fisplay section */
-.webMapFiltersTd {
-  width: 35%;
-  height: 400px;
-  overflow: auto;  
-}
-
-/* Filters fisplay section */
-.webMapFilters {
-  width: 100%;
-  height: 400px;
-  overflow: auto;  
-}
-
-/* Main container of the search box */
-.webMapSearch {
-  width: 100%;
-  height: 20px;
-  text-align: center;
-  padding-bottom: 5px;
-  display: table;
-}
-
-#taggedRecordsBox {
-  display: none;
-}
-
-.mapSessionsPanel {
-  width: 100%;
-  /*height: 100px;*/
-  display: none;
-  border: 1px solid #EED300;
-  background-color: #FFFACE;
-}
-
-.panelResultsButton {
-  float:right;
-  margin-right: 8px;
-}
-
-.panelFiltersButton {
-  float:right;
-  margin-right: 8px;
-}
-
-.searchBox {
-  width: 40%;
-  height: 22px;
-}
-
-.searchButton {
-  border-bottom: #888 1px solid;
-  border-left: #888 1px solid;
-  padding-bottom: 2px;
-  margin: 3px;
-  padding-left: 2px;
-  padding-right: 2px;
-  font-family: Trebuchet MS, Liberation Sans, DejaVu Sans, sans-serif;
-  border-top: #888 1px solid;
-  font-weight: bold;
-  border-right: #888 1px solid;
-  padding-top: 2px;
-  line-height: 1;
-  height: 25px;
-  cursor: pointer;
-}
-
-.resultImageColumn {
-  width: 60px;
-  text-align: center;
-}
- 
-.browseClearButton {
-  border-bottom: #888 1px solid;
-  border-left: #888 1px solid;
-  padding-bottom: 2px;
-  margin: 3px;
-  padding-left: 2px;
-  padding-right: 2px;
-  font-family: Trebuchet MS, Liberation Sans, DejaVu Sans, sans-serif;
-  border-top: #888 1px solid;
-  font-weight: bold;
-  border-right: #888 1px solid;
-  padding-top: 2px;
-  line-height: 1;
-  height: 25px;
-  cursor: pointer;
-}
-
-.panelResultsButton {
-  border-bottom: #888 1px solid;
-  border-left: #888 1px solid;
-  padding-bottom: 2px;
-  margin: 3px;
-  padding-left: 2px;
-  padding-right: 2px;
-  font-family: Trebuchet MS, Liberation Sans, DejaVu Sans, sans-serif;
-  border-top: #888 1px solid;
-  font-weight: bold;
-  border-right: #888 1px solid;
-  padding-top: 2px;
-  line-height: 1;
-  height: 25px;
-  cursor: pointer;
-}
-
-.panelFiltersButton {
-  border-bottom: #888 1px solid;
-  border-left: #888 1px solid;
-  padding-bottom: 2px;
-  margin: 3px;
-  padding-left: 2px;
-  padding-right: 2px;
-  font-family: Trebuchet MS, Liberation Sans, DejaVu Sans, sans-serif;
-  border-top: #888 1px solid;
-  font-weight: bold;
-  border-right: #888 1px solid;
-  padding-top: 2px;
-  line-height: 1;
-  height: 25px;
-  cursor: pointer;
-}
-
-.attributeCheckbox {
-  margin-right: 5px;
-}
-
-.datasetCheckbox {
-  margin-right: 5px;
-}
-
-.typeCheckbox {
-  margin-right: 5px;
-}
-
-.attributeFilterImage {
-  margin-right: 7px;
-  cursor: pointer;
-  position: relative;
-  top: 4px;  
-  float: left;
-}
-
-.result-tag {
-  width: 98%;  
-  background-color: #FFFCE3;
-}
-
-/* Main container of a result */
-.result-odd {
-  width: 98%;
-}
-
-.result-odd:hover {
-  width: 98%;
-  background-color: #E48E1A;
-}
-
-.result-even {
-  width: 98%;
-  background-color: #E0EAF1;
-}
-
-.result-highlight {
-  width: 98%;
-  background-color: #E48E1A;
-}
-
-.result-even:hover {
-  width: 98%;
-  background-color: #E48E1A;
-}
-
-/* Container of the result's title */
-.resultTitle {
-  cursor: pointer
-}
-
-/* Container of the results paginator */
-.resultsPaginator {
- margin-left: 5px; 
-}
-
-/* Container of the dataset filters */
-.webMapFiltersDataset {
-  padding-left: 5px;
-}
-
-/* Container for a dataset filter section's title */
-.webMapFiltersDatasetTitleItem {
-}
-
-/* Container for a single dataset filter item */
-.webMapFiltersDatasetItem {
-}
-
-/* Container of the type filters */
-.webMapFiltersType {
-  padding-left: 5px;
-}
-
-/* Container for a type filter section's title */
-.webMapFiltersTypeTitleItem {
-}
-
-/* Container for a single type filter item */
-.webMapFiltersTypeItem {
-}
-
-/* Container of the attribute filters */
-.webMapFiltersAttribute {
-  padding-left: 5px;
-}
-
-/* Container for a attribute filter section's title */
-.webMapFiltersAttributeTitleItem {
-}
-
-/* Container for a single attribute filter item */
-.webMapFiltersAttributeItem {
-  cursor: default;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-webMapFiltersInputContainer {
-}
-
-/* Table containing the description of a single result */
-.resultTable {
-  width: 100%;
-  margin-left: 3px;
-}
-
-#mapsList {
-  float: left;
-  position: relative;
-  top: 7px;  
-  cursor: pointer;
-}
-
-#saveMapIcon {
-  float: left;
-  position: relative;
-  top: 8px;  
-  padding-left: 5px;
-  cursor: pointer;
-}
-
-#linkMapIcon {
-  float: left;
-  position: relative;
-  top: 4px;  
-  padding-left: 5px;
-  padding-right: 10px;
-  cursor: pointer;
-}
-
-#deleteMapIcon {
-  float: left;
-  position: relative;
-  top: 4px;  
-  padding-left: 5px;
-  cursor: pointer;
-}
-
-.resultTable tbody {
-  border: none;
-}
-
-.taggedResultTable {
-  width: 100%;
-}
-
-.taggedResultTable tbody {
-  border: none;
-  width: 100%;
-}
-
-.attributeFilterInputTable tbody {
-  border: none;
-}
-
-.attributeFilterInputTable {
-  background-color: #FFFCE3;
-  width: 200px;
-  float: right;
-}
-
-.webMapFiltersInputText {
-  width: 100%;
-}
-
-/* Left column of a result table where a checkbox is displayed */
-.resultLeftColumn {
-  width: 15px;
-}
-
-/* Right column of a result table where the title, description, images, etc. are displayed */
-.resultRightColumn {
-  float: right;
-  margin-right: 10px;
-  width: 35px;
-}
-
-.resultCenterColumn {
-  width: 100%;
-}
-
-.webMapFiltersTitleDataset {
-  font-family: Myriad Pro,Myriad Web Pro Regular,Lucida Grande,Geneva,Trebuchet MS,sans-serif;
-  border-bottom: 2px solid #E6E6E6;
-  color: #2D2972;
-  text-decoration: none;
-  font-size: 16px;
-  margin-bottom: 3px;
-  margin-left: 5px;
-}
-
-.webMapFiltersTitleType {
-  font-family: Myriad Pro,Myriad Web Pro Regular,Lucida Grande,Geneva,Trebuchet MS,sans-serif;
-  border-bottom: 2px solid #E6E6E6;
-  color: #2D2972;
-  text-decoration: none;
-  font-size: 16px;
-  margin-top: 6px;
-  margin-bottom: 3px;
-  margin-left: 5px;
-}
-
-.webMapFiltersTitleAttribute {
-  font-family: Myriad Pro,Myriad Web Pro Regular,Lucida Grande,Geneva,Trebuchet MS,sans-serif;
-  border-bottom: 2px solid #E6E6E6;
-  color: #2D2972;
-  text-decoration: none;
-  font-size: 16px;
-  margin-top: 6px;
-  margin-bottom: 3px;
-  margin-left: 5px;
-}
-
-/*
- CSS for the jQuery pagination plugin
- 
-   http://plugins.jquery.com/project/pagination
-*/
-.pagination {
-  font-size: 80%;
-}
-
-.pagination a {
-  text-decoration: none;
-  border: solid 1px #AAE;
-  color: #15B;
-}
-
-.pagination a, .pagination span {
-  display: block;
-  float: left;
-  padding: 0.3em 0.5em;
-  margin-right: 1px;
-  margin-bottom: 5px;
-  min-width:1em;
-  text-align:center;
-}
-
-.pagination .current {
-  background: #26B;
-  color: #fff;
-  border: solid 1px #AAE;
-}
-
-.pagination .current.prev, .pagination .current.next{
-  color:#999;
-  border-color:#999;
-  background:#fff;
-}
-
-/* Autocomplete Styles */
-
-.autocomplete-w1 { 
-  position:absolute; 
-  top:0px; 
-  left:0px; 
-  margin:8px 0 0 6px; 
-  
-  /* IE6 fix: */ 
-  _background:none; _margin:0; 
-}
-
-.autocomplete 
-{ 
-  border:1px solid #999; 
-  background:#FFF; 
-  cursor:default; 
-  text-align:left; 
-  max-height:350px; 
-  overflow:auto; 
-  margin:-6px 6px 6px -6px; 
-  
-  /* IE6 specific: */ 
-  _height:350px;  
-  _margin:0; 
-  _overflow-x:hidden; 
-}
-
-.autocomplete .selected { 
-  background:#F0F0F0; 
-}
-
-.autocomplete div { 
-  padding:2px 5px; 
-  white-space:nowrap; 
-}
-
-.autocomplete strong { 
-  font-weight:normal; 
-  color:#3399FF; 
-}
-
-.neighbourhoodIcon {
-  position: relative;
-  float: right;
-}
-
-.neighbourhoodIcon img {
-  width: 40px;
-}
-
-#webMapSearch select{
-    margin-right: 5px;
-    vertical-align: middle;
-    margin-top: 2px;
-    top: 0;
-}
-
-#webMapSearch input{
-    margin: 0;
-    padding: 0;
-    height: auto;
-    font-size: 14px;
-    line-height: 14px;
-    position: static;
-    top: 0;
-    left: 0;
-    border: 0;
+  #searchOrFilterExplanationText {
+    width: 100%;
+    padding-top: 50px;
+    text-align: center;
+    font-weight: bolder;
+    font-size: 17px;
+  }
+
+  #recordDescriptionOverlay {
+    background-color: #F2F1ED
+  }
+
+  #recordDescriptionFrame {
+    background-color: #F2F1ED
+  }
+
+  .noSearchResults {
+    padding: 20px;
+  }
+
+  /* Main container that englobes everything of the sWebMap component */
+  .webMapMain {
+    width: 100%;
+    height: 400px;
+    padding: 0px;
+  }
+
+  /* Map component of the application */
+  .webMap {
+    width: 100%;
+    /*height: 100%;*/
+    float: left;
+  }
+
+  /* Results display section */
+  .webMapResultsTd {
+    width: 65%;
+    height: 400px;
+    overflow: auto;
+  }
+
+  .webMapResults {
+    width: 100%;
+    height: 400px;
+    overflow: auto;
+  }
+
+  /* Filters fisplay section */
+  .webMapFiltersTd {
+    width: 35%;
+    height: 400px;
+    overflow: auto;  
+  }
+
+  /* Filters fisplay section */
+  .webMapFilters {
+    width: 100%;
+    height: 400px;
+    overflow: auto;  
+  }
+
+  /* Main container of the search box */
+  .webMapSearch {
+    width: 100%;
+    height: 20px;
+    text-align: center;
+    padding-bottom: 5px;
+    display: table;
+  }
+
+  #taggedRecordsBox {
+    display: none;
+  }
+
+  .mapSessionsPanel {
+    width: 100%;
+    /*height: 100px;*/
+    display: none;
+    border: 1px solid #EED300;
+    background-color: #FFFACE;
+  }
+
+  .panelResultsButton {
+    float:right;
+    margin-right: 8px;
+  }
+
+  .panelFiltersButton {
+    float:right;
+    margin-right: 8px;
+  }
+
+  .searchBox {
+    width: 40%;
+    height: 22px;
+  }
+
+  .searchButton {
+    border-bottom: #888 1px solid;
+    border-left: #888 1px solid;
+    padding-bottom: 2px;
+    margin: 3px;
+    padding-left: 2px;
+    padding-right: 2px;
+    font-family: Trebuchet MS, Liberation Sans, DejaVu Sans, sans-serif;
+    border-top: #888 1px solid;
     font-weight: bold;
-}
+    border-right: #888 1px solid;
+    padding-top: 2px;
+    line-height: 1;
+    height: 25px;
+    cursor: pointer;
+  }
 
-#webMapSearch .inputMapWrapper input,
-#webMapSearch .browseButtonWrapper input,
-#webMapSearch .searchButtonMapWrapper input,
+  #searchPluginsSelect {
+    border-bottom: #888 1px solid;
+    border-left: #888 1px solid;
+    padding-bottom: 2px;
+    margin: 3px;
+    padding-left: 2px;
+    padding-right: 2px;
+    font-family: Trebuchet MS, Liberation Sans, DejaVu Sans, sans-serif;
+    border-top: #888 1px solid;
+    font-weight: bold;
+    border-right: #888 1px solid;
+    padding-top: 2px;
+    line-height: 1;
+    height: 25px;
+    cursor: pointer;  
+  }
 
-#mapActionsButtons input,
-#mapActionsButtons .clearButtonMapWrapper,
-#mapActionsButtons .saveMapIconWrapper{
-    color: #ffffff;
-    padding: 5px;
+  .resultImageColumn {
+    width: 60px;
+    text-align: center;
+  }
+   
+  .browseClearButton {
+    border-bottom: #888 1px solid;
+    border-left: #888 1px solid;
+    padding-bottom: 2px;
+    margin: 3px;
+    padding-left: 2px;
+    padding-right: 2px;
+    font-family: Trebuchet MS, Liberation Sans, DejaVu Sans, sans-serif;
+    border-top: #888 1px solid;
+    font-weight: bold;
+    border-right: #888 1px solid;
+    padding-top: 2px;
+    line-height: 1;
+    height: 25px;
+    cursor: pointer;
+  }
+
+  .panelResultsButton {
+    border-bottom: #888 1px solid;
+    border-left: #888 1px solid;
+    padding-bottom: 2px;
+    margin: 3px;
+    padding-left: 2px;
+    padding-right: 2px;
+    font-family: Trebuchet MS, Liberation Sans, DejaVu Sans, sans-serif;
+    border-top: #888 1px solid;
+    font-weight: bold;
+    border-right: #888 1px solid;
+    padding-top: 2px;
+    line-height: 1;
+    height: 25px;
+    cursor: pointer;
+  }
+
+  .panelFiltersButton {
+    border-bottom: #888 1px solid;
+    border-left: #888 1px solid;
+    padding-bottom: 2px;
+    margin: 3px;
+    padding-left: 2px;
+    padding-right: 2px;
+    font-family: Trebuchet MS, Liberation Sans, DejaVu Sans, sans-serif;
+    border-top: #888 1px solid;
+    font-weight: bold;
+    border-right: #888 1px solid;
+    padding-top: 2px;
+    line-height: 1;
+    height: 25px;
+    cursor: pointer;
+  }
+
+  .attributeCheckbox {
     margin-right: 5px;
-    border: none;
-}
+  }
 
-#mapActionsButtons:hover input{
-  cursor: pointer;
-}
+  .datasetCheckbox {
+    margin-right: 5px;
+  }
 
-#mapActionsButtons {
+  .typeCheckbox {
+    margin-right: 5px;
+  }
 
-}
+  .attributeFilterImage {
+    margin-right: 7px;
+    cursor: pointer;
+    position: relative;
+    top: 4px;  
+    float: left;
+  }
 
-#webMapSearch .inputMapWrapper input{
-    background-color: #ffffff;
-    border: 1px solid #cccccc;
-    color: #000000;
-    font-weight: normal;
-}
+  .result-tag {
+    width: 98%;  
+    background-color: #FFFCE3;
+  }
 
-#mapActionsButtons .saveMapIconWrapper input{
-    background-color: #CA2251;
-}
+  /* Main container of a result */
+  .result-odd {
+    width: 98%;
+  }
 
-#webMapSearch .browseButtonWrapper input{
+  .result-odd:hover {
+    width: 98%;
     background-color: #E48E1A;
-}
+  }
 
-#mapActionsButtons .clearButtonMapWrapper input{
-    background-color: #00ADDC;
-}
+  .result-even {
+    width: 98%;
+    background-color: #E0EAF1;
+  }
 
-#webMapSearch .searchButtonMapWrapper input{
-    background-color: #2D737B;
-    margin-right: 0;
-}
+  .result-highlight {
+    width: 98%;
+    background-color: #E48E1A;
+  }
 
-#webMapSearch .searchMapWrapper{
-    /*float: right;*/
-}
+  .result-even:hover {
+    width: 98%;
+    background-color: #E48E1A;
+  }
 
-#webMapSearch .saveMapIconWrapper,
-#webMapSearch .inputMapWrapper,
-#webMapSearch .searchButtonMapWrapper,
-#webMapSearch .browseButtonWrapper,
-#webMapSearch .clearButtonMapWrapper{
-    /*float: left;*/
-}
+  /* Container of the result's title */
+  .resultTitle {
+    cursor: pointer
+  }
 
-#searchInput {
-  width: 100%;
-}
+  /* Container of the results paginator */
+  .resultsPaginator {
+   margin-left: 5px; 
+  }
 
-#webMapFocusWindows {
-  width: 100%;
-}
+  /* Container of the dataset filters */
+  .webMapFiltersDataset {
+    padding-left: 5px;
+  }
 
-.mapFocus1_selected {
-  width: 100%;
-  height: 100%;  
-  border-left: 2px solid #CA2251;
-  border-right: 2px solid #CA2251;
-  border-top: 2px solid #CA2251;
-  border-bottom: 8px solid #CA2251;
-  padding-bottom: 0px;
-  overflow: hidden;
-  position: relative;  
-}
+  /* Container for a dataset filter section's title */
+  .webMapFiltersDatasetTitleItem {
+  }
 
-.mapFocus1_unselected {
-  width: 100%;
-  height: 100%;  
-  border-left: 2px solid #CA2251;
-  border-right: 2px solid #CA2251;
-  border-top: 2px solid #CA2251;
-  border-bottom: 2px solid #CA2251;
-  margin-bottom: 6px;
-  overflow: hidden;
-  position: relative;  
-}
+  /* Container for a single dataset filter item */
+  .webMapFiltersDatasetItem {
+  }
 
-.mapFocus2_selected {
-  width: 100%;
-  height: 100%;  
-  border-left: 2px solid #00ADDC;
-  border-right: 2px solid #00ADDC;
-  border-top: 2px solid #00ADDC;
-  border-bottom: 8px solid #00ADDC;
-  padding-bottom: 0px;
-  overflow: hidden;
-  position: relative;  
-}
+  /* Container of the type filters */
+  .webMapFiltersType {
+    padding-left: 5px;
+  }
 
-.mapFocus2_unselected {
-  width: 100%;
-  height: 100%;  
-  border-left: 2px solid #00ADDC;
-  border-right: 2px solid #00ADDC;
-  border-top: 2px solid #00ADDC;
-  border-bottom: 2px solid #00ADDC;
-  margin-bottom: 6px;
-  overflow: hidden;
-  position: relative;  
-}
+  /* Container for a type filter section's title */
+  .webMapFiltersTypeTitleItem {
+  }
 
-.mapFocus3_selected {
-  width: 100%;
-  height: 100%;  
-  border-left: 2px solid #C5D816;
-  border-right: 2px solid #C5D816;
-  border-top: 2px solid #C5D816;
-  border-bottom: 8px solid #C5D816;
-  padding-bottom: 0px;
-  overflow: hidden;
-  position: relative;  
-}
+  /* Container for a single type filter item */
+  .webMapFiltersTypeItem {
+  }
 
-.mapFocus3_unselected {
-  width: 100%;
-  height: 100%;  
-  border-left: 2px solid #C5D816;
-  border-right: 2px solid #C5D816;
-  border-top: 2px solid #C5D816;
-  border-bottom: 2px solid #C5D816;
-  margin-bottom: 6px;
-  overflow: hidden;
-  position: relative;  
-}
+  /* Container of the attribute filters */
+  .webMapFiltersAttribute {
+    padding-left: 5px;
+  }
 
-#mapsList {
-  -moz-user-select: none;
-  background: -moz-linear-gradient(center top , #FFFFFF, #E6E6E6) repeat scroll 0 0 transparent;
-  border: 1px solid #717B87;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
-  color: #000000;
-  direction: ltr;
-  font-family: Arial,sans-serif;
-  font-size: 13px;
-  font-weight: bold;
-  min-width: 28px;
-  overflow: hidden;
-  padding: 1px 6px;
-  position: relative;
-  top: 5px;
-}
+  /* Container for a attribute filter section's title */
+  .webMapFiltersAttributeTitleItem {
+  }
 
-#inclusionButtonInput,
-#clearMapButtonControl,
-#shareMapButtonControl, 
-#deleteMapButtonControl,
-#saveMapButtonControl {
-  -moz-user-select: none;
-  background: -moz-linear-gradient(center top , #FFFFFF, #E6E6E6) repeat scroll 0 0 transparent;
-  border: 1px solid #717B87;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
-  color: #000000;
-  direction: ltr;
-  font-family: Arial,sans-serif;
-  font-size: 13px;
-  font-weight: bold;
-  min-width: 28px;
-  overflow: hidden;
-  padding: 1px 6px;
-  position: relative;
-  text-align: center;
-  margin-top: 5px;  
-  cursor: pointer;
-}
+  /* Container for a single attribute filter item */
+  .webMapFiltersAttributeItem {
+    cursor: default;
+    overflow: hidden;
+    white-space: nowrap;
+  }
 
-/** Used by the PURE Templates to hide element from the template. This is used by PURE directives */
-.hidden 
-{
-  display : none; 
-} 
+  webMapFiltersInputContainer {
+  }
 
-#showSelectedRecordsOnlyDiv {
-  height: 30px;
-}
+  /* Table containing the description of a single result */
+  .resultTable {
+    width: 100%;
+    margin-left: 3px;
+  }
 
-#showSelectedRecordsOnlyDiv span {
-  float: right;
-  margin-right: 25px;
-  font-weight: bold;
-}
+  #mapsList {
+    float: left;
+    position: relative;
+    top: 7px;  
+    cursor: pointer;
+  }
+
+  #saveMapIcon {
+    float: left;
+    position: relative;
+    top: 8px;  
+    padding-left: 5px;
+    cursor: pointer;
+  }
+
+  #linkMapIcon {
+    float: left;
+    position: relative;
+    top: 4px;  
+    padding-left: 5px;
+    padding-right: 10px;
+    cursor: pointer;
+  }
+
+  #deleteMapIcon {
+    float: left;
+    position: relative;
+    top: 4px;  
+    padding-left: 5px;
+    cursor: pointer;
+  }
+
+  .resultTable tbody {
+    border: none;
+  }
+
+  .taggedResultTable {
+    width: 100%;
+  }
+
+  .taggedResultTable tbody {
+    border: none;
+    width: 100%;
+  }
+
+  .attributeFilterInputTable tbody {
+    border: none;
+  }
+
+  .attributeFilterInputTable {
+    background-color: #FFFCE3;
+    width: 200px;
+    float: right;
+  }
+
+  .webMapFiltersInputText {
+    width: 100%;
+  }
+
+  /* Left column of a result table where a checkbox is displayed */
+  .resultLeftColumn {
+    width: 15px;
+  }
+
+  /* Right column of a result table where the title, description, images, etc. are displayed */
+  .resultRightColumn {
+    float: right;
+    margin-right: 10px;
+    width: 35px;
+  }
+
+  .resultCenterColumn {
+    width: 100%;
+  }
+
+  .webMapFiltersTitleDataset {
+    font-family: Myriad Pro,Myriad Web Pro Regular,Lucida Grande,Geneva,Trebuchet MS,sans-serif;
+    border-bottom: 2px solid #E6E6E6;
+    color: #2D2972;
+    text-decoration: none;
+    font-size: 16px;
+    margin-bottom: 3px;
+    margin-left: 5px;
+  }
+
+  .webMapFiltersTitleType {
+    font-family: Myriad Pro,Myriad Web Pro Regular,Lucida Grande,Geneva,Trebuchet MS,sans-serif;
+    border-bottom: 2px solid #E6E6E6;
+    color: #2D2972;
+    text-decoration: none;
+    font-size: 16px;
+    margin-top: 6px;
+    margin-bottom: 3px;
+    margin-left: 5px;
+  }
+
+  .webMapFiltersTitleAttribute {
+    font-family: Myriad Pro,Myriad Web Pro Regular,Lucida Grande,Geneva,Trebuchet MS,sans-serif;
+    border-bottom: 2px solid #E6E6E6;
+    color: #2D2972;
+    text-decoration: none;
+    font-size: 16px;
+    margin-top: 6px;
+    margin-bottom: 3px;
+    margin-left: 5px;
+  }
+
+  /*
+   CSS for the jQuery pagination plugin
+   
+     http://plugins.jquery.com/project/pagination
+  */
+  .pagination {
+    font-size: 80%;
+  }
+
+  .pagination a {
+    text-decoration: none;
+    border: solid 1px #AAE;
+    color: #15B;
+  }
+
+  .pagination a, .pagination span {
+    display: block;
+    float: left;
+    padding: 0.3em 0.5em;
+    margin-right: 1px;
+    margin-bottom: 5px;
+    min-width:1em;
+    text-align:center;
+  }
+
+  .pagination .current {
+    background: #26B;
+    color: #fff;
+    border: solid 1px #AAE;
+  }
+
+  .pagination .current.prev, .pagination .current.next{
+    color:#999;
+    border-color:#999;
+    background:#fff;
+  }
+
+  /* Autocomplete Styles */
+
+  .autocomplete-w1 { 
+    position:absolute; 
+    top:0px; 
+    left:0px; 
+    margin:8px 0 0 6px; 
+    
+    /* IE6 fix: */ 
+    _background:none; _margin:0; 
+  }
+
+  .autocomplete 
+  { 
+    border:1px solid #999; 
+    background:#FFF; 
+    cursor:default; 
+    text-align:left; 
+    max-height:350px; 
+    overflow:auto; 
+    margin:-6px 6px 6px -6px; 
+    
+    /* IE6 specific: */ 
+    _height:350px;  
+    _margin:0; 
+    _overflow-x:hidden; 
+  }
+
+  .autocomplete .selected { 
+    background:#F0F0F0; 
+  }
+
+  .autocomplete div { 
+    padding:2px 5px; 
+    white-space:nowrap; 
+  }
+
+  .autocomplete strong { 
+    font-weight:normal; 
+    color:#3399FF; 
+  }
+
+  .neighbourhoodIcon {
+    position: relative;
+    float: right;
+  }
+
+  .neighbourhoodIcon img {
+    width: 40px;
+  }
+
+  #webMapSearch select{
+      margin-right: 5px;
+      vertical-align: middle;
+      margin-top: 2px;
+      top: 0;
+  }
+
+  #webMapSearch input{
+      margin: 0;
+      padding: 0;
+      height: auto;
+      font-size: 14px;
+      line-height: 14px;
+      position: static;
+      top: 0;
+      left: 0;
+      border: 0;
+      font-weight: bold;
+  }
+
+  #webMapSearch .inputMapWrapper input,
+  #webMapSearch .browseButtonWrapper input,
+  #webMapSearch .searchButtonMapWrapper input,
+  #webMapSearch .searchSelectionMapWrapper select,
+
+  #mapActionsButtons input,
+  #mapActionsButtons .clearButtonMapWrapper,
+  #mapActionsButtons .saveMapIconWrapper{
+      color: #ffffff;
+      padding: 5px;
+      margin-right: 5px;
+      border: none;
+  }
+
+  #mapActionsButtons:hover input{
+    cursor: pointer;
+  }
+
+  #mapActionsButtons {
+
+  }
+
+  #webMapSearch .inputMapWrapper input{
+      background-color: #ffffff;
+      border: 1px solid #cccccc;
+      color: #000000;
+      font-weight: normal;
+  }
+
+  #mapActionsButtons .saveMapIconWrapper input{
+      background-color: #CA2251;
+  }
+
+  #webMapSearch .browseButtonWrapper input{
+      background-color: #E48E1A;
+  }
+
+  #mapActionsButtons .clearButtonMapWrapper input{
+      background-color: #00ADDC;
+  }
+
+  #webMapSearch .searchButtonMapWrapper input{
+      background-color: #2D737B;
+      margin-right: 0;
+  }
+
+  #webMapSearch .searchSelectionMapWrapper select{
+      background-color: #2D737B;
+      margin-right: 0;
+  }
+
+  #webMapSearch .searchMapWrapper{
+      /*float: right;*/
+  }
+
+  #webMapSearch .saveMapIconWrapper,
+  #webMapSearch .inputMapWrapper,
+  #webMapSearch .searchButtonMapWrapper,
+  #webMapSearch .browseButtonWrapper,
+  #webMapSearch .clearButtonMapWrapper{
+      /*float: left;*/
+  }
+
+  #searchInput {
+    width: 100%;
+  }
+
+  #webMapFocusWindows {
+    width: 100%;
+  }
+
+  .mapFocus1_selected {
+    width: 100%;
+    height: 100%;  
+    border-left: 2px solid #CA2251;
+    border-right: 2px solid #CA2251;
+    border-top: 2px solid #CA2251;
+    border-bottom: 8px solid #CA2251;
+    padding-bottom: 0px;
+    overflow: hidden;
+    position: relative;  
+  }
+
+  .mapFocus1_unselected {
+    width: 100%;
+    height: 100%;  
+    border-left: 2px solid #CA2251;
+    border-right: 2px solid #CA2251;
+    border-top: 2px solid #CA2251;
+    border-bottom: 2px solid #CA2251;
+    margin-bottom: 6px;
+    overflow: hidden;
+    position: relative;  
+  }
+
+  .mapFocus2_selected {
+    width: 100%;
+    height: 100%;  
+    border-left: 2px solid #00ADDC;
+    border-right: 2px solid #00ADDC;
+    border-top: 2px solid #00ADDC;
+    border-bottom: 8px solid #00ADDC;
+    padding-bottom: 0px;
+    overflow: hidden;
+    position: relative;  
+  }
+
+  .mapFocus2_unselected {
+    width: 100%;
+    height: 100%;  
+    border-left: 2px solid #00ADDC;
+    border-right: 2px solid #00ADDC;
+    border-top: 2px solid #00ADDC;
+    border-bottom: 2px solid #00ADDC;
+    margin-bottom: 6px;
+    overflow: hidden;
+    position: relative;  
+  }
+
+  .mapFocus3_selected {
+    width: 100%;
+    height: 100%;  
+    border-left: 2px solid #C5D816;
+    border-right: 2px solid #C5D816;
+    border-top: 2px solid #C5D816;
+    border-bottom: 8px solid #C5D816;
+    padding-bottom: 0px;
+    overflow: hidden;
+    position: relative;  
+  }
+
+  .mapFocus3_unselected {
+    width: 100%;
+    height: 100%;  
+    border-left: 2px solid #C5D816;
+    border-right: 2px solid #C5D816;
+    border-top: 2px solid #C5D816;
+    border-bottom: 2px solid #C5D816;
+    margin-bottom: 6px;
+    overflow: hidden;
+    position: relative;  
+  }
+
+  #mapsList {
+    -moz-user-select: none;
+    background: -moz-linear-gradient(center top , #FFFFFF, #E6E6E6) repeat scroll 0 0 transparent;
+    border: 1px solid #717B87;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    color: #000000;
+    direction: ltr;
+    font-family: Arial,sans-serif;
+    font-size: 13px;
+    font-weight: bold;
+    min-width: 28px;
+    overflow: hidden;
+    padding: 1px 6px;
+    position: relative;
+    top: 5px;
+  }
+
+
+  .mapLayersList {
+    -moz-user-select: none;
+    background: -moz-linear-gradient(center top , #FFFFFF, #E6E6E6) repeat scroll 0 0 transparent;
+    border: 1px solid #717B87;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    color: #000000;
+    direction: ltr;
+    font-family: Arial,sans-serif;
+    font-size: 13px;
+    font-weight: bold;
+    min-width: 28px;
+    overflow: hidden;
+    padding: 1px 6px;
+    position: relative;
+    top: 5px;
+    margin-left: 5px;
+  }
+
+  .focusMapLayersList {
+    -moz-user-select: none;
+    background: -moz-linear-gradient(center top , #FFFFFF, #E6E6E6) repeat scroll 0 0 transparent;
+    border: 1px solid #717B87;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    color: #000000;
+    direction: ltr;
+    font-family: Arial,sans-serif;
+    font-size: 13px;
+    font-weight: bold;
+    min-width: 28px;
+    overflow: hidden;
+    padding: 1px 6px;
+    margin-right: 5px;
+  }
+
+  #inclusionButtonInput,
+  #clearMapButtonControl,
+  #shareMapButtonControl, 
+  #deleteMapButtonControl,
+  #saveMapButtonControl {
+    -moz-user-select: none;
+    background: -moz-linear-gradient(center top , #FFFFFF, #E6E6E6) repeat scroll 0 0 transparent;
+    border: 1px solid #717B87;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    color: #000000;
+    direction: ltr;
+    font-family: Arial,sans-serif;
+    font-size: 13px;
+    font-weight: bold;
+    min-width: 28px;
+    overflow: hidden;
+    padding: 1px 6px;
+    position: relative;
+    text-align: center;
+    margin-top: 5px;  
+    cursor: pointer;
+  }
+
+  /** Used by the PURE Templates to hide element from the template. This is used by PURE directives */
+  .hidden 
+  {
+    display : none; 
+  } 
+
+  #showSelectedRecordsOnlyDiv {
+    height: 30px;
+  }
+
+  #showSelectedRecordsOnlyDiv span {
+    float: right;
+    margin-right: 25px;
+    font-weight: bold;
+  }
+
+  .contextmenu {
+    visibility:hidden;
+    background:#ffffff;
+    border:1px solid #8888FF;
+    z-index: 10;  
+    position: relative;
+    width: 140px;
+    cursor: pointer;
+  }
+
+  .contextmenu div {
+    padding-left: 5px
+  }
+
+  .context:hover {
+    background:#D0D0D0;
+  }

@@ -24,9 +24,9 @@
 			<![CDATA[
 				
 				import com.sd.semantic.core.*;
+				import com.sd.semantic.events.SemanticComponentLoadEvent;
 				import com.sd.semantic.settings.GeneralSettings;
 				import com.sd.semantic.settings.RelationBrowserSettings;
-        import com.sd.semantic.events.SemanticComponentLoadEvent;
 				
 				import eu.stefaner.flareextensions.render.StairStepEdgeRenderer;
 				import eu.stefaner.relationbrowser.RelationBrowser;
@@ -1753,7 +1753,28 @@
 						{    
 							/** Check if the linked node has to be ignored by the settings file */
 							if(settings.ignoreNodeTypes.indexOf(linkedSubject.type) == -1 && settings.ignoreNodeUris.indexOf(linkedSubject.uri) == -1)
-							{            
+							{
+								/** Check if the subject should be ignored by the sRelationBrowser */
+								var ignoredByStatements:Array = linkedSubject.getPredicateValues("http://purl.org/ontology/sco#ignoredBy");
+                
+								var ignoreConcept:Boolean = false;
+                
+								for each(var ignoredBy:Object in ignoredByStatements)
+								{
+								  if(ignoredBy.uri == "http://purl.org/ontology/sco#sRelationBrowser" ||
+								     ignoredBy.uri == "sco:sRelationBrowser" ||
+								     ignoredBy.uri == "sco_sRelationBrowser")
+								  {
+								    ignoreConcept = true;
+								    break;
+								  }
+								}         
+                
+								if(ignoreConcept)
+								{
+								  continue;
+								}
+                
 								/** Name of the linked subject node */
 								var linkedSubjectName:String = "";
 								

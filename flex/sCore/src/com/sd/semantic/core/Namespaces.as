@@ -40,6 +40,7 @@ package com.sd.semantic.core
       namespaces["http://purl.org/ontology/muni#"] = "muni_";
       namespaces["http://purl.org/ontology/census#"] = "census_";
       namespaces["http://purl.org/ontology/census-can#"] = "census-can_";
+      namespaces["http://purl.org/ontology/census-can-peg#"] = "census-can-peg_";
       namespaces["http://purl.org/ontology/sco#"] = "sco_";
       namespaces["http://www.w3.org/2003/01/geo/wgs84_pos#"] = "wgs84pos_";
       namespaces["http://purl.org/ontology/npi#"] = "npi_";
@@ -58,7 +59,7 @@ package com.sd.semantic.core
     {
       for(var ns:String in namespaces)
       {
-        if(variable.indexOf(namespaces[ns]) != -1)
+        if(variable.indexOf(namespaces[ns], 0) == 0)
         {
           return (variable.replace(namespaces[ns], ns));
         }
