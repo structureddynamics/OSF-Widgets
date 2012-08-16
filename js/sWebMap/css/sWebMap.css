@@ -302,6 +302,7 @@
     position: relative;
     top: 7px;  
     cursor: pointer;
+    height: 23px;
   }
 
   #saveMapIcon {
@@ -689,6 +690,7 @@
     position: relative;
     top: 5px;
     margin-left: 5px;
+    height: 23px;
   }
 
   .focusMapLayersList {
@@ -728,6 +730,7 @@
     text-align: center;
     margin-top: 5px;  
     cursor: pointer;
+    height: 23px;
   }
 
   /** Used by the PURE Templates to hide element from the template. This is used by PURE directives */
