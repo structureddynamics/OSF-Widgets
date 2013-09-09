@@ -26,6 +26,15 @@ function SWebMap()
   var options = arguments[1];
   
   // Initialize the control with all the options
+
+  /** Determines when the map is first initialized (the the search query has been sent and displayed to the user) */
+  this.mapInitialized = false;
+  
+  this.datasetFiltersInitialized = false;
+  this.typeFiltersInitialized = false;
+  this.attributeFiltersInitialized = false;  
+  this.resultsInitialized = false;
+
   
   /**
   * Possible configuration options that can be defined before the sWebMap get created.
@@ -64,7 +73,7 @@ function SWebMap()
   
   /** Displays the counts with the type filters */
   this.displayTypeFiltersCounts = (options.displayTypeFiltersCounts != undefined ? options.displayTypeFiltersCounts : false);
-  
+     
   /** 
   * Specifies if you want to enable the focus windows for the sWebMap control. If these windows are enabled
   * the behavior of the component will change accordingly.
@@ -89,6 +98,9 @@ function SWebMap()
   * all three focus windows will be queried, and data will be shown across all three windows.
   */
   this.queryFocusWindowOnly = (options.queryFocusWindowOnly != undefined ? options.queryFocusWindowOnly : true);
+  
+  /** Post initialization callback function to call */
+  this.postInitializationCallback = (options.postInitializationCallback != undefined ? options.postInitializationCallback : null);
     
   /** 
   * The default lat/long positions, and the default zoom level, of each focus window. 
@@ -932,7 +944,7 @@ function SWebMap()
           self.initializeMap();
           
           sessionInitialized = true;
-          
+                            
           self.stopWaiting();
           self.mapLoading = false;        
         }
@@ -1723,7 +1735,7 @@ function SWebMap()
               
               polygon.infobox = ib;
               
-              // Add a listener for displaying tooltips for the this.polygons
+              // Add a listener for displaying tooltips for the polygons
               google.maps.event.addListener(polygon, 'mouseout', function() {
                 this.infobox.hide();
               });
@@ -1747,7 +1759,7 @@ function SWebMap()
           }
         }
         
-        /** Make sure this this.polylines is not already displayed on the this.map */
+        /** Make sure this polylines is not already displayed on the map */
         if(!found)
         {
           for(var pl = 0; pl < self.polylines.length; pl++)   
@@ -1913,7 +1925,11 @@ function SWebMap()
       
     }
     
-    self.stopWaiting();     
+    self.stopWaiting();  
+
+    self.resultsInitialized = true;
+    
+    self.firePostInitializationCallback();                                
   }
   
   this.getCanvasXY = function getCanvasXY(caurrentLatLng, marker){  
@@ -3437,6 +3453,10 @@ function SWebMap()
       $('#quicksearchinput_filterdatasets').quicksearch('div#webMapFiltersDataset div');  
       $("#quicksearchinput_filterdatasets").val(inputValue);   
       $("#quicksearchinput_filterdatasets").keyup();
+      
+      this.datasetFiltersInitialized = true;
+      
+      this.firePostInitializationCallback();        
     }
   }    
 
@@ -3585,6 +3605,10 @@ function SWebMap()
       $('#quicksearchinput_filtertypes').quicksearch('div#webMapFiltersType div');  
       $("#quicksearchinput_filtertypes").val(inputValue);   
       $("#quicksearchinput_filtertypes").keyup();
+      
+      this.typeFiltersInitialized = true;
+      
+      this.firePostInitializationCallback();      
     }
   }
 
@@ -3642,7 +3666,7 @@ function SWebMap()
       this.dataRequestedByUser = true;
       this.forceAllFocusWindowsSearch = true;
       this.search();
-    }  
+    } 
   }
 
   /**
@@ -3768,6 +3792,10 @@ function SWebMap()
       $('#quicksearchinput_filterattributes').quicksearch('div#webMapFiltersAttribute div');  
       $("#quicksearchinput_filterattributes").val(inputValue);   
       $("#quicksearchinput_filterattributes").keyup();
+      
+      this.attributeFiltersInitialized = true;
+      
+      this.firePostInitializationCallback();      
     }
   }
 
@@ -5632,7 +5660,26 @@ function SWebMap()
       }
     }
         
-  }  
+  } 
+  
+  this.firePostInitializationCallback = function()
+  {
+    /*
+      Ensures that everything has been loaded before firering the post initialization
+      callback function
+    */
+    if(!this.mapInitialized)
+    {
+      if(this.datasetFiltersInitialized &&
+         this.typeFiltersInitialized &&
+         this.attributeFiltersInitialized && 
+         this.resultsInitialized)
+      {
+        this.mapInitialized = true;
+        this.postInitializationCallback();
+      }
+    }
+  } 
 }
 
 function SWebMapFocus()
