@@ -566,48 +566,98 @@
                * with the value of the attribute(s) for each of the records
                */
               
+              var csvMatrix:Array = [];
+              
+              for each(var column:String in processedSubjects)
+              {
+                csvMatrix[column] = [];
+                
+                for each(var aggrValue:String in aggregationOrderingValues)
+                {
+                  csvMatrix[column][aggrValue] = "";
+                }
+              }
+              
+              for each(var subject:Subject in _semanticDataProvider.subjects)
+              {
+                var column:String = subject.getPrefLabel();
+                
+                var aggregationValue:Array = subject.getPredicateValues(globalAggregationProperty);
+                
+                var targetAttributeValue:Array = subject.getPredicateValues(targetAttribute);
+                
+                if(targetAttributeValue.length > 0 && aggregationValue.length > 0)
+                {                
+                  csvMatrix[column][aggregationValue[0].value] = targetAttributeValue[0].value;
+                }
+              } 
+              
+              /** Now generate the CSV from the matrix */
+              
               aggregationOrderingValues.sort();
               
-              for each(var xAxisValue:Object in aggregationOrderingValues)
+              for each(var aggrValue:String in aggregationOrderingValues)
               {
-                csv = csv + '"' + xAxisValue + '"' + ",";
+                csv = csv + '"' + aggrValue + '",';
                 
-                /** 
-                * Get the value for the attribute for each record for that aggregation value,
-                * and the target attribute
-                */
-                var nbValuesAdded:int = 0;
-                for each(var subject:Subject in _semanticDataProvider.subjects)
+                for each(var column:String in processedSubjects)
                 {
-                  var aggregationValue:Array = subject.getPredicateValues(globalAggregationProperty);
-                  
-                  /** Make sure we are checking the proper pivot aggregation value */
-                  if(aggregationValue.length > 0 && aggregationValue[0].value == xAxisValue)
-                  {
-                    var targetAttributeValue:Array = subject.getPredicateValues(targetAttribute);
-                    
-                    if(targetAttributeValue.length > 0)
-                    {
-                      csv = csv + '"' + targetAttributeValue[0].value + '"' + ",";
-                    }
-                    else
-                    {
-                      csv = csv + '""' + ",";
-                    }
-                    
-                    nbValuesAdded++;
-                  }
+                  csv = csv + '"' + csvMatrix[column][aggrValue] + '",';   
                 }
-
-                /** Pad if needed */
-                for(var i = 0; i < ((columnId - 1) - nbValuesAdded); i++)
-                {
-                  csv = csv + '""' + ",";
-                }                
                 
                 /** replace the last "," by a new line */
-                csv = csv.substr(0, csv.length - 1) + "\n";
-              }              
+                csv = csv.substr(0, csv.length - 1) + "\n";                
+              }
+              
+              
+
+//              aggregationOrderingValues.sort();
+//              
+//              for each(var xAxisValue:Object in aggregationOrderingValues)
+//              {
+//                csv = csv + '"' + xAxisValue + '"' + ",";
+//                
+//                /** 
+//                * Get the value for the attribute for each record for that aggregation value,
+//                * and the target attribute
+//                */
+//                var nbValuesAdded:int = 0;
+//                for each(var subject:Subject in _semanticDataProvider.subjects)
+//                {
+//                  var aggregationValue:Array = subject.getPredicateValues(globalAggregationProperty);
+//                  
+//                  /** Make sure we are checking the proper pivot aggregation value */
+//                  if(aggregationValue.length > 0 && aggregationValue[0].value == xAxisValue)
+//                  {
+//                    var targetAttributeValue:Array = subject.getPredicateValues(targetAttribute);
+//                    
+//                    if(targetAttributeValue.length > 0)
+//                    {
+//                      csv = csv + '"' + targetAttributeValue[0].value + '"' + ",";
+//                    }
+//                    else
+//                    {
+//                      csv = csv + '""' + ",";
+//                    }
+//                    
+//                    nbValuesAdded++;
+//                  }
+//                  else
+//                  {
+//                    csv = csv + '""' + ",";
+//                    nbValuesAdded++;                    
+//                  }
+//                }
+//
+//                /** Pad if needed */
+//                for(var i = 0; i < ((columnId - 1) - nbValuesAdded); i++)
+//                {
+//                  csv = csv + '""' + ",";
+//                }                
+//                
+//                /** replace the last "," by a new line */
+//                csv = csv.substr(0, csv.length - 1) + "\n";
+//              }              
             }
             else
             {

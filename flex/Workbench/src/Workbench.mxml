@@ -400,22 +400,36 @@
       getStickyRecordsDescription(workbenchSettings.stickyRecords);
       
       /** Get the initial state of the structWSF data */
-      
+      /*
       var requestParameters:Object = {
         attributes: attributeFilters, 
         types: typeFilters, 
         datasets: datasetFilters, 
-        items: "300",
+        items: workbenchSettings.maximumRecords,
         page: "0", 
         include_aggregates:"true", 
         include_attributes_list: includeAttributesList.join(";")
       };
+      */
+      
+      var requestParameters:Object = {
+        ws: workbenchSettings.structWSFBaseURL + "/search/",
+          method: 'post',
+          accept: 'text/xml',               
+          params: 'attributes=' + encodeURIComponent(attributeFilters) +
+          '&types=' + encodeURIComponent(typeFilters) +
+          '&datasets=' + encodeURIComponent(datasetFilters) +
+          '&items=' + workbenchSettings.maximumRecords +
+          '&page=' + '0' +
+          '&include_aggregates=' + 'true' +
+          '&include_attributes_list=' + encodeURIComponent(includeAttributesList.join(";"))
+      };      
       
       var httpService:HTTPService = new HTTPService();
       
-      httpService.url = workbenchSettings.structWSFBaseURL + "/search/";
+      httpService.url = workbenchSettings.osfProxyEndpoint;
       httpService.method = "POST";
-      httpService.headers['Accept'] = 'text/xml;q=1';
+      httpService.headers['Accept'] = "text/xml";
       httpService.showBusyCursor = true;
       httpService.resultFormat = "e4x";
       httpService.addEventListener(ResultEvent.RESULT, filterResultsetHandler);
@@ -1279,10 +1293,17 @@
       var httpService:HTTPService = new HTTPService();
 
       var requestParameters:Object = {uri: "all"};
+      
+      var requestParameters:Object = {
+        ws: workbenchSettings.structWSFBaseURL + "/dataset/read/",
+          method: 'get',
+          accept: 'text/xml',               
+          params: 'uri=' + 'all'
+      };       
 
-      httpService.url = workbenchSettings.structWSFBaseURL + "/dataset/read/";
-      httpService.method = "GET";
-      httpService.headers['Accept'] = 'application/xml';
+      httpService.url = workbenchSettings.osfProxyEndpoint;
+      httpService.method = "POST";
+      httpService.headers['Accept'] = "text/xml";
       httpService.showBusyCursor = true;
       httpService.resultFormat = "e4x";
       httpService.addEventListener(ResultEvent.RESULT, processDatasetsReadHandler);
@@ -1725,24 +1746,41 @@
       {
         attributes = "all";
       }
-
+      /*
       var requestParameters:Object = {
         datasets: datasets, 
         types: types, 
         attributes: attributes, 
-        items: "300", 
+        items: workbenchSettings.maximumRecords, 
         page: "0",
         include_inference: "true", 
         include_aggregates:"true", 
         include_attributes_list: includeAttributesList.join(";"),
         attributes_boolean_operator: "and"
       };
+      */
+      
+      var requestParameters:Object = {
+        ws: workbenchSettings.structWSFBaseURL + "/search/",
+          method: 'post',
+          accept: 'text/xml',               
+          params: 'attributes=' + encodeURIComponent(attributeFilters) +
+          '&types=' + encodeURIComponent(types) +
+          '&datasets=' + encodeURIComponent(datasets) +
+          '&attributes=' + encodeURIComponent(attributes) +
+          '&items=' + workbenchSettings.maximumRecords +
+          '&page=' + '0' +
+          '&include_aggregates=' + 'include_inference' +
+          '&include_aggregates=' + 'true' +
+          '&attributes_boolean_operator=' + 'and' +
+          '&include_attributes_list=' + encodeURIComponent(includeAttributesList.join(";"))
+      };       
 
       var httpService:HTTPService = new HTTPService();
 
-      httpService.url = workbenchSettings.structWSFBaseURL + "/search/";
+      httpService.url = workbenchSettings.osfProxyEndpoint;
       httpService.method = "POST";
-      httpService.headers['Accept'] = 'text/xml;q=1';
+      httpService.headers['Accept'] = "text/xml";
       httpService.showBusyCursor = true;
       httpService.resultFormat = "e4x";
       httpService.addEventListener(ResultEvent.RESULT, filterResultsetHandler);
@@ -2145,10 +2183,17 @@
       var httpService:HTTPService = new HTTPService();
 
       var requestParameters:Object = {uri: targetRecordUri};
+      
+      var requestParameters:Object = {
+        ws: workbenchSettings.structWSFBaseURL + "/crud/read/",
+          method: 'post',
+          accept: 'text/xml',               
+          params: 'uri=' + encodeURIComponent(targetRecordUri)
+      };       
 
-      httpService.url = workbenchSettings.structWSFBaseURL + "/crud/read/";
-      httpService.method = "GET";
-      httpService.headers['Accept'] = 'application/xml';
+      httpService.url = workbenchSettings.osfProxyEndpoint;
+      httpService.method = "POST";
+      httpService.headers['Accept'] = "text/xml";
       httpService.showBusyCursor = true;
       httpService.resultFormat = "e4x";
       httpService.addEventListener(ResultEvent.RESULT, processCrudReadSelectionHandler);
@@ -2204,11 +2249,16 @@
        */
       var httpService:HTTPService = new HTTPService();
 
-      var requestParameters:Object = {uri: recordsToQuery};
-
-      httpService.url = workbenchSettings.structWSFBaseURL + "/crud/read/";
-      httpService.method = "GET";
-      httpService.headers['Accept'] = 'application/xml';
+      var requestParameters:Object = {
+        ws: workbenchSettings.structWSFBaseURL + "/search/",
+          method: 'post',
+          accept: 'text/xml',               
+          params: 'uri=' + encodeURIComponent(recordsToQuery)
+      };       
+      
+      httpService.url = workbenchSettings.osfProxyEndpoint;
+      httpService.method = "POST";
+      httpService.headers['Accept'] = "text/xml";
       httpService.showBusyCursor = true;
       httpService.resultFormat = "e4x";
       httpService.addEventListener(ResultEvent.RESULT, processCrudReadStickyHandler);

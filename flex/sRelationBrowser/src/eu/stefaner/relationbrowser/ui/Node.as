@@ -77,7 +77,21 @@
       {
         if(data.skin.textMultilines)
         {
-          title_tf.text = String(data.label).split(" ").join("\n");
+          var linesLength:int = (data.label.length / data.skin.textMaxNbLines);
+          var words:Array = String(data.label).split(" ");
+          var line:String = "";
+          
+          for each(var word:String in words)
+          {
+            line = line + word + " ";
+            
+            if(line.length > (linesLength * line.split("\n").length) && data.skin.textMaxNbLines >= line.split("\n").length)
+            {
+              line = line + "\n";
+            }
+          }
+          
+          title_tf.text = line;
         }
         else
         {

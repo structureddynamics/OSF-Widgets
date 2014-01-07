@@ -417,44 +417,84 @@
         this.removeEventListener(Event.COMPLETE, processStoryTextHandler);
       }
   
-      /** Story's GATE annotated text URL loader event handler */  
-      private function processStoryAnnotatedTextHandler(event:Event):void
-      {
-        /** error status */
-        var isError:Boolean = false;
         
-        /** Story's annotated text (in GATE XML) */
-        var storyAnnotatedTextXML:XML;
-  
-        try
+        /** SPARQL endpoint query Fault handler */
+        private function faultHandlerGetConcepts(event:FaultEvent):void
         {
-          storyAnnotatedTextXML = new XML(event.target.data);
+          Alert.show(event.message.faultString);
+          
+          this.removeEventListener(FaultEvent.FAULT, faultHandlerGetConcepts);
         }
-        catch(error:Error)
+        
+        private function splitCamelCase(str:String, capitaliseFirst:Boolean):String
         {
-          Alert.show("Error loading the annotated text of the story");
-          isError = true;
-        }
-  
-        /** if no load errors have been detected, we parse the annotations */      
-        if(!isError)
+          var r:RegExp = /(^[a-z]|[A-Z0-9])[a-z]*/g;
+          var result:Array = str.match(r);
+          
+          if (result.length > 0)
+          {
+            if (capitaliseFirst)
+              result[0] = String(result[0]).charAt(0).toUpperCase() + String(result[0]).substring(1);
+            
+            return result.join(" ");
+          }
+          
+          return str;
+        }        
+        
+        /** SPARQL endpoint query Result handler */
+        private function resultHandlerGetConcepts(event:ResultEvent):void
         {
+          /** HTTP querier */
+          var httpService:HTTPService =
+            event.target as HTTPService;
+          
+          /** SPARQL resultset */
+          var resultsetStr:String = event.message.body;
+          
+          resultsetStr = "<sparql>" + resultsetStr.substr((resultsetStr.indexOf(">") + 1),
+            resultsetStr.length - (resultsetStr.indexOf(">") + 1));
+          
+          /** SPARQL resultset in XML */
+          var resultset:XML = XML(resultsetStr);
+          
+          /** SPARQL variable that refers to the story' URI */
+          var targetVarStory:String = "story";
+          
+          /** SPARQL variable that refers to the story's name */
+          var targetVarPrefLabel:String = "prefLabel";
+          
+          /** Concepts */
+          var concepts:Array = new Array();
+          
+          for each(var result:XML in resultset.results.result)
+          {
+            /** Story's URI */
+            var uri:String = result.binding.(@name == 'concept').uri.toString();
+            
+            concepts.push(uri);
+          }
+
+          //////////////////////////////////////
+          //////////////////////////////////////
           /** get Annotations */
-          for each(var annotationSet:XML in storyAnnotatedTextXML.AnnotationSet)
+          for each(var annotationSet:XML in this.storyAnnotatedTextXML.AnnotationSet)
           {
             if(annotationSet.attribute("Name") == settings.conceptAnnotationSet)
             {
-              for each(annotation in annotationSet.Annotation)
+              for each(var annotation in annotationSet.Annotation)
               {
                 /** number of annotation features found */
                 var featuresFound:int = 0;
-  
+                var currentURI = '';
+                
                 for each(var feature:XML in annotation.Feature)
                 {
                   /** Make sure it is a URI feature */
                   if(feature.Name == "URI")
                   {
                     featuresFound++;
+                    currentURI = feature.Value;
                   }
   
                   /** Make sure it is a class type */
@@ -466,11 +506,14 @@
                   /** Once we made sure that we have a good annotation, we add it to the set of annotations */
                   if(featuresFound == 2)
                   {
-                    /** Annotation to add to the annotations set */
-                    var ann:Annotation =
-                      new Annotation(annotation.@Id, annotation.@StartNode, annotation.@EndNode, feature.Value);
-                    this.annotations.addAnnotation(ann);
-  
+                    if(concepts.length == 0 || concepts.indexOf(currentURI.toString()) != -1)
+                    {
+                      /** Annotation to add to the annotations set */
+                      var ann:Annotation =
+                        new Annotation(annotation.@Id, annotation.@StartNode, annotation.@EndNode, feature.Value);
+                      this.annotations.addAnnotation(ann);
+                    }
+                    
                     /** stop the processing and start processing the next annotation */
                     break;
                   }
@@ -480,7 +523,7 @@
           }
   
           /** get extracted named entities */
-          for each(var annotationSet:XML in storyAnnotatedTextXML.AnnotationSet)
+          for each(var annotationSet:XML in this.storyAnnotatedTextXML.AnnotationSet)
           {
             /** Make sure that the name of the annotation set is the one tha has been configured */
             if(annotationSet.attribute("Name") == settings.namedEntitiesAnnotationSet)
@@ -576,8 +619,18 @@
           }
           
           var i:int = -1;
+          
+          var isAboutsMerged:Array = this.annotations.getIsAbouts();
+          
+          for each(var uri in concepts)
+          {
+            if(isAboutsMerged.indexOf(uri) == -1)
+            {
+              isAboutsMerged.push(uri);
+            }
+          }          
   
-          for each(var isAbout:String in this.annotations.getIsAbouts())
+          for each(var isAbout:String in isAboutsMerged)
           {
             i += 1;
   
@@ -636,6 +689,8 @@
               }
   
               prefLabel = prefLabel.replace(/[^a-zA-Z0-9]/g, " ");
+              
+              prefLabel = this.splitCamelCase(prefLabel, true);
             }
   
             item["prefLabel"] = prefLabel;
@@ -842,7 +897,64 @@
             
             neCheckboxesListControl.dataProvider = namedEntities;
             neCheckboxesListControl.itemBackgroundColors = neItemColors;            
-          }
+          }          
+          //////////////////////////////////////
+          //////////////////////////////////////
+          
+          this.removeEventListener(ResultEvent.RESULT, resultHandler);
+        }
+          
+        
+      /** Story's annotated text (in GATE XML) */
+      private var storyAnnotatedTextXML:XML;        
+        
+      /** Story's GATE annotated text URL loader event handler */  
+      private function processStoryAnnotatedTextHandler(event:Event):void
+      {
+        /** error status */
+        var isError:Boolean = false;
+  
+        try
+        {
+          this.storyAnnotatedTextXML = new XML(event.target.data);
+        }
+        catch(error:Error)
+        {
+          Alert.show("Error loading the annotated text of the story");
+          isError = true;
+        }
+  
+        /** if no load errors have been detected, we parse the annotations */      
+        if(!isError)
+        {
+          
+          /** SPARQL query used to query a structWSF SPARQL endpoint to get related stories */
+          var sparqlQuery:String = "select distinct ?concept where" +
+            "{";
+          
+          sparqlQuery += "  <"+_semanticDataProvider.subjects[0]['uri']+"> <" + settings.relatedStoryRelation + "> ?concept .";
+          
+          sparqlQuery += "}";
+          
+          /** Get related stories from a SPARQL endpoint */
+          var requestParameters:Object = {
+              ws: settings.sparqlWebServiceEndpoint,
+              method: 'post',
+              accept: 'application/sparql-results+xml',               
+              params: 'query=' + encodeURIComponent(sparqlQuery) +
+              '&dataset=' + encodeURIComponent(settings.storiesDataset)
+          };          
+          
+          var httpService:HTTPService = new HTTPService();
+          
+          httpService.url = settings.osfProxyEndpoint;
+          httpService.method = "POST";
+          httpService.headers['Accept'] = "text/xml";
+          httpService.showBusyCursor = true;
+          httpService.addEventListener(ResultEvent.RESULT, resultHandlerGetConcepts);
+          httpService.addEventListener(FaultEvent.FAULT, faultHandlerGetConcepts);
+          
+          httpService.send(requestParameters);
         }
         
         this.removeEventListener(Event.COMPLETE, processStoryAnnotatedTextHandler);
@@ -1033,13 +1145,20 @@
                     "}";
   
                   /** Get related stories from a SPARQL endpoint */
-                  var requestParameters:Object = {query: sparqlQuery, dataset:settings.storiesDataset};
+                  var requestParameters:Object = {
+                      ws: settings.sparqlWebServiceEndpoint,
+                      method: 'post',
+                      accept: 'application/sparql-results+xml',               
+                      params: 'query=' + encodeURIComponent(sparqlQuery) +
+                      '&dataset=' + encodeURIComponent(settings.storiesDataset)
+                  };                  
+                  
   
                   var httpService:HTTPService = new HTTPService();
   
-                  httpService.url = settings.sparqlWebServiceEndpoint;
+                  httpService.url = settings.osfProxyEndpoint;
                   httpService.method = "POST";
-                  httpService.headers['Accept'] = "application/sparql-results+xml;q=1";
+                  httpService.headers['Accept'] = "text/xml";
                   httpService.showBusyCursor = true;
                   httpService.addEventListener(ResultEvent.RESULT, resultHandler);
                   httpService.addEventListener(FaultEvent.FAULT, faultHandler);
@@ -1091,9 +1210,7 @@
                   var storyPrefLabel:String = nbStories + ". " + result.binding.(@name == targetVarPrefLabel).literal.toString();
   
                   /** Story's link */
-                  var storyPageLink:String = settings.structViewUrl + "?" +
-                    "uri=" + escape(storyURI) +
-                    "&dataset=" + escape(settings.storiesDataset);
+                  var storyPageLink:String = settings.structViewUrl + encodeURIComponent(encodeURIComponent(storyURI)); 
   
                   links.push({prefLabel: storyPrefLabel, link:storyPageLink});
                   

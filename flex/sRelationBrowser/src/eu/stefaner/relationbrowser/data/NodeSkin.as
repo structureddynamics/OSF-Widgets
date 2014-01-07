@@ -20,6 +20,7 @@ package eu.stefaner.relationbrowser.data
     public var textOffsetX:int = -1;
     public var textOffsetY:int = -1;
     public var textMultilines:Boolean = true;
+    public var textMaxNbLines:int = 2;
     public var textMaxWidth:int = 256;
     public var textMaxHeight:int = 256;
     public var automaticCentering:Boolean = true;

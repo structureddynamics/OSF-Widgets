@@ -15,6 +15,8 @@ package settings
 
     /** structWSF instance base URL */
     public var structWSFBaseURL:String = "";
+    
+    public var osfProxyEndpoint:String = "";
 
     /** behavior of the browser when the user click on a story or wikipedia link */
     public var navigatorBehavior:String = "_blank";
@@ -66,6 +68,8 @@ package settings
     /** Array of datasets URIs used as starting filters to load in the filter control */
     public var filterDatasets:Array /* of String URIs */ = [];
 
+    public var maximumRecords:String = "300";
+    
     /**
      * Create a new setting object by reading an input XML settings file
      *  

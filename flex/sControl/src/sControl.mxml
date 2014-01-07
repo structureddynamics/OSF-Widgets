@@ -969,11 +969,11 @@ description.
              * The sLinearChart component is in a Workbench context, so we enable some additional
              * contextual menus.
              */            
-            var menuItemRenameTitle:ContextMenuItem = new ContextMenuItem("Rename title...");            
+            //var menuItemRenameTitle:ContextMenuItem = new ContextMenuItem("Rename title...");            
             var menuItemChangeScales:ContextMenuItem = new ContextMenuItem("Change Scales...");
             var menuItemChangeVerticalAxisLabel:ContextMenuItem = new ContextMenuItem("Change vertical axis label...");
             
-            menuItemRenameTitle.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, this.parent.document.parent.document.renamePodTitle);
+            //menuItemRenameTitle.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, this.parent.document.parent.document.renamePodTitle);
             menuItemChangeScales.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, changeGraphScale);
             menuItemChangeVerticalAxisLabel.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, changeVerticalAxisLabel);
             
@@ -983,7 +983,7 @@ description.
             customContextMenu.hideBuiltInItems();
             customContextMenu.customItems.push(menuItemChangeVerticalAxisLabel);  
             customContextMenu.customItems.push(menuItemChangeScales);  
-            customContextMenu.customItems.push(menuItemRenameTitle);  
+            //customContextMenu.customItems.push(menuItemRenameTitle);  
             
             if(displayControls.length > 0)
             {            
@@ -1043,11 +1043,11 @@ description.
              * The sBarChart component is in a Workbench context, so we enable some additional
              * contextual menus.
              */
-            var menuItemRenameTitle:ContextMenuItem = new ContextMenuItem("Rename title...");            
+            //var menuItemRenameTitle:ContextMenuItem = new ContextMenuItem("Rename title...");            
             var menuItemChangeScales:ContextMenuItem = new ContextMenuItem("Change Scales...");
             var menuItemChangeVerticalAxisLabel:ContextMenuItem = new ContextMenuItem("Change vertical axis label...");
             
-            menuItemRenameTitle.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, this.parent.document.parent.document.renamePodTitle);
+            //menuItemRenameTitle.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, this.parent.document.parent.document.renamePodTitle);
             menuItemChangeScales.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, changeGraphScale);
             menuItemChangeVerticalAxisLabel.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, changeVerticalAxisLabel);
             
@@ -1057,7 +1057,7 @@ description.
             customContextMenu.hideBuiltInItems();
             customContextMenu.customItems.push(menuItemChangeVerticalAxisLabel);  
             customContextMenu.customItems.push(menuItemChangeScales);  
-            customContextMenu.customItems.push(menuItemRenameTitle);  
+            //customContextMenu.customItems.push(menuItemRenameTitle);  
 
             if(displayControls.length > 0)
             {            

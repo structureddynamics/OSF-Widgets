@@ -557,7 +557,12 @@
 								nodeSkin.textMultilines = false; 
 							}
 						}          
-						
+            
+            if(node.textMaxNbLines != undefined)
+            {
+              nodeSkin.textMaxNbLines = int(node.textMaxNbLines.toString()); 
+            }          
+            
 						skinsManager.addNodeSkin(nodeSkin);
 					}
 					
@@ -673,6 +678,31 @@
 					{
 					}
 				}
+        
+        public function selectNodeByIDExplicitLoad(id:String = null):void
+        {
+          try
+          {
+            relationBrowser.selectNodeByIDExplicitLoad(id);
+            
+            var n:Node = relationBrowser.getNodeByID(id);
+            
+            if(ExternalInterface.available)
+            {
+              if(n.data.props.jsReturnObject)
+              {
+                ExternalInterface.call("nodeAttributesValues", n.data.props.jsReturnObject);
+              }
+              else
+              {
+                ExternalInterface.call("nodeAttributesValues", []);
+              }
+            }
+          }
+          catch(e:Error)
+          {
+          }
+        }        
 				
 				/** Start the relation browser once everything got initialized. */
 				protected function startUp():void
@@ -700,6 +730,7 @@
 						if(settings.displayBreadcrumbHTML)
 						{
 							ExternalInterface.addCallback("selectNodeByID", selectNodeByID);
+              ExternalInterface.addCallback("selectNodeByIDExplicitLoad", selectNodeByIDExplicitLoad);
 						}
 					}
 				}
@@ -1054,7 +1085,7 @@
 				 * Create the nodes &amp; arcs for a given conceptual view (target concept &amp; related concepts to that one).
 				 * The network is created by using the schema structure. 
 				 */
-				protected function loadData(targetRecord:String):void
+				public function loadData(targetRecord:String):void
 				{
 					/** Get the record description of that node. */
 					
@@ -1091,15 +1122,18 @@
 						
 						/** Get related things from a SPARQL endpoint */
 						var requestParameters:Object = {
-							query:sparqlQuery,
-							dataset:settings.conceptsDataset
+                ws: settings.sparqlWebServiceEndpoint,
+                method: 'post',
+                accept: 'application/sparql-results+xml',               
+                params: 'query=' + encodeURIComponent(sparqlQuery) +
+                        '&dataset=' + encodeURIComponent(settings.conceptsDataset)
 						};
 						
 						var httpService:HTTPService = new HTTPService();     
 						
-						httpService.url = settings.sparqlWebServiceEndpoint;
+            httpService.url = settings.osfProxyEndpoint;
 						httpService.method = "POST";
-						httpService.headers['Accept'] = "application/sparql-results+xml;q=1";
+            httpService.headers['Accept'] = "text/xml";
 						httpService.showBusyCursor = true;
 						
 						httpService.addEventListener(ResultEvent.RESULT, nodeSelectionResultHandler);
@@ -2199,16 +2233,19 @@
 							//trace("Related Things StructXML Resultset: \n" + sparqlQuery);
 							
 							/** Get related things from a SPARQL endpoint */
-							var requestParameters:Object = {
-								query:sparqlQuery,
-								dataset:settings.thingsDataset
-							};
+              var requestParameters:Object = {
+                ws: settings.sparqlWebServiceEndpoint,
+                  method: 'post',
+                  accept: 'application/sparql-results+xml',               
+                  params: 'query=' + encodeURIComponent(sparqlQuery) +
+                  '&dataset=' + encodeURIComponent(settings.thingsDataset)
+              };
 							
-							var httpService:HTTPService = new HTTPService();     
+							var httpService:HTTPService = new HTTPService();   
 							
-							httpService.url = settings.sparqlWebServiceEndpoint;
+              httpService.url = settings.osfProxyEndpoint;
 							httpService.method = "POST";
-							httpService.headers['Accept'] = "application/sparql-results+xml;q=1";
+              httpService.headers['Accept'] = "text/xml";
 							httpService.showBusyCursor = true;
 							
 							httpService.addEventListener(ResultEvent.RESULT, thingsResultHandler);
@@ -2249,9 +2286,7 @@
 						var thingURI:String = result.binding.(@name == targetVarThing).uri.toString();
 						var thingPrefLabel:String = result.binding.(@name == targetVarPrefLabel).literal.toString();
 						
-						var thingPageLink:String = settings.structViewUrl + "?" +
-							"uri=" + escape(thingURI) +
-							"&dataset=" + escape(settings.thingsDataset);
+						var thingPageLink:String = settings.structViewUrl + encodeURIComponent(encodeURIComponent(thingURI));
 						
 						links.push({prefLabel: thingPrefLabel, link: thingPageLink});
 					}
@@ -2395,7 +2430,7 @@
 					var subject:Subject = targetRecordResultset.getSubjectByURI(nodeID);
 					
 					/** Populate the new details structure to send to the JS application */
-					newDetails = {
+					var newDetails:Object = {
             prefLabel: subject.getPrefLabel(this.document.generalSettings.prefLabelAttributes), 
 						prefURL: subject.getPrefURL(), 
 						description: subject.getDescription(),

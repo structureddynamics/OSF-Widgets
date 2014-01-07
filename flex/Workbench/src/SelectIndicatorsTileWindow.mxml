@@ -58,16 +58,29 @@
         var typeFilters:String = "all";
         
         /** Get the initial state of the structWSF data */
-        
+        /*
         var requestParameters
         :Object = {attributes: attributeFilters, types: typeFilters, datasets: datasetFilters, items: "0",
           page: "0", include_aggregates:"true"};
+        */
+        
+        var requestParameters:Object = {
+            ws: this.parent.document.workbenchSettings.structWSFBaseURL + "/search/",
+            method: 'post',
+            accept: 'text/xml',               
+            params: 'attributes=' + encodeURIComponent(attributeFilters) +
+                    '&types=' + encodeURIComponent(typeFilters) +
+                    '&datasets=' + encodeURIComponent(datasetFilters) +
+                    '&items=' + '0' +
+                    '&page=' + '0' +
+                    '&include_aggregates=' + 'true'
+        };           
         
         var httpService:HTTPService = new HTTPService();
         
-        httpService.url = this.parent.document.workbenchSettings.structWSFBaseURL + "/search/";
+        httpService.url = this.parent.document.workbenchSettings.osfProxyEndpoint;
         httpService.method = "POST";
-        httpService.headers['Accept'] = 'text/xml;q=1';
+        httpService.headers['Accept'] = "text/xml";
         httpService.showBusyCursor = true;
         httpService.resultFormat = "e4x";
         httpService.addEventListener(ResultEvent.RESULT, sessionsLoadResultsetHandler);

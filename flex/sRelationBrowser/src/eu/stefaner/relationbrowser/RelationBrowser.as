@@ -29,6 +29,7 @@ package eu.stefaner.relationbrowser
   import flash.net.URLRequest;
   import flash.net.navigateToURL;
   import flash.utils.Dictionary; 
+  import mx.controls.Alert;
 
   public class RelationBrowser extends Visualization
   {
@@ -62,6 +63,12 @@ package eu.stefaner.relationbrowser
       super();
     }
 
+    public function selectNodeByIDExplicitLoad(id:String):void
+    {
+      this.parent.parent.parent.parent.parent.loadData(id);
+    }
+    
+    
     public function selectNodeByID(id:String):void
     {
       var n:Node = nodesByID[id] as Node;

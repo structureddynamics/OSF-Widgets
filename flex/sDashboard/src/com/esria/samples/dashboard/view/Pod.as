@@ -177,7 +177,7 @@ public class Pod extends Panel
     this.fullTitle = title;
     this.titleTextField.text = this.fullTitle;
     this.titleBar.toolTip = "";    
-//    this.title = title;
+    this.title = title;
   }
 	
 	private function addEventListeners():void

@@ -33,8 +33,11 @@ package
     /** URI of the dataset where the stories records are indexed */
     public var storiesDataset:String = "";
   
-    /** structWSF sparql web service endpoint */
+    /** OSF Web Services SPARQL web service endpoint */
     public var sparqlWebServiceEndpoint:String = "";
+    
+    /** OSF for Drupal proxy endpoint */
+    public var osfProxyEndpoint:String = "";
   
     /** URL of the structView module where the stories can be viewed when clicked by the user */
     public var structViewUrl:String = "";
