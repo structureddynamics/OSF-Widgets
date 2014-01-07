@@ -23,9 +23,9 @@ Lastly, there are three main categories of filters that can be used to display t
 # Type filters
 # Attribute/value filters.
 
-== structWSF ==
+== OSF ==
 
-The <code>sWebMap</code> control communicates with an OSF (Open Semantic Framework) instance. More specifically, a <code>sWebMap</code> control will send [http://techwiki.openstructs.org/index.php/Search Search] queries to a geo-enabled structWSF Search web service endpoint.
+The <code>sWebMap</code> control communicates with an OSF (Open Semantic Framework) instance. More specifically, a <code>sWebMap</code> control will send [http://techwiki.openstructs.org/index.php/Search Search] queries to a geo-enabled OSF Search web service endpoint.
 
 Depending on the options you had specified when you created the <code>sWebMap</code> control, each time you move (option), zoom (option) or change the filtering criterias, this will send a query to the Search endpoint. The <code>sWebMap</code> control then requests JSON formatted resultset and display the results to the user.
 

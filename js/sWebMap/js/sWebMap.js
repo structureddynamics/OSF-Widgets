@@ -235,8 +235,11 @@ function SWebMap()
   */
   this.focusMapShowStreetViewControl = (options.focusMapShowStreetViewControl != undefined ? options.focusMapShowStreetViewControl : true);
   
-  /** Base URI of the structWSF endpoints. It as to end with a slash character. */
-  this.structWSFAddress = (options.structWSFAddress != undefined ? options.structWSFAddress : "http://localhost/ws/search/");
+  /** URL of the OSF for Drupal proxy that is used to send all queries to a OSF Web Services instance. */
+  this.OSFDrupalProxy = (options.OSFDrupalProxy != undefined ? options.OSFDrupalProxy : "http://localhost/osf/proxy");
+  
+  /** Base URL where to reach the OSF Web Services endpoints */
+  this.OSFBaseWebServicesURL = (options.OSFBaseWebServicesURL != undefined ? options.OSFBaseWebServicesURL : "http://localhost/ws/");
    
   /** Additional CSS that have to be loaded when the content of a record is displayed in the popup window */
   this.recordDisplayCss = (options.recordDisplayCss != undefined ? options.recordDisplayCss : "");
@@ -1135,18 +1138,23 @@ function SWebMap()
               
     $.ajax({
       type: "POST",
-      url: this.structWSFAddress.replace(/\/+$/,"") + "/search/",
-      data: "query=" + ($("#searchInput").val() == this.labels.searchInput ? "" : $("#searchInput").val()) +
-            "&datasets=" + datasets +
-            "&types=" + types +
-            "&attributes=" + attributes +
-            "&items=" + (this.dataRequestedByUser ? this.mapResultsPerPage : "0") +
-            "&page=" + (this.dataRequestedByUser ? (this.currentResultsetPage * this.mapResultsPerPage) : "0") +
-            "&inference=" + (this.session.inference != undefined && this.session.inference == "on" ? "on" : "off") +
-            "&attributes_boolean_operator=" + this.session.attributes_boolean_operator +
-            "&include_aggregates=" + (this.displayFilters ? "true" : "false") +
-            "&results_location_aggregator=" + targetMap.getCenter().lat() + ',' + targetMap.getCenter().lng() +
-            "&range_filter=" + (this.searchPlugins.length > 1 && this.searchPlugins[$('#searchPluginsSelect').val()].reach.toLowerCase() == "global" ? "" : topRight.lat()+";"+topRight.lng()+";"+bottomLeft.lat()+";"+bottomLeft.lng()),
+      url: this.OSFDrupalProxy,
+      "data": {
+        ws: this.OSFBaseWebServicesURL.replace(/\/+$/,"") + "/search/",
+        method: "post",
+        accept: "application/json", 
+        params: "query=" + ($("#searchInput").val() == this.labels.searchInput ? "" : $("#searchInput").val()) +
+                "&datasets=" + datasets +
+                "&types=" + types +
+                "&attributes=" + attributes +
+                "&items=" + (this.dataRequestedByUser ? this.mapResultsPerPage : "0") +
+                "&page=" + (this.dataRequestedByUser ? (this.currentResultsetPage * this.mapResultsPerPage) : "0") +
+                "&inference=" + (this.session.inference != undefined && this.session.inference == "on" ? "on" : "off") +
+                "&attributes_boolean_operator=" + this.session.attributes_boolean_operator +
+                "&include_aggregates=" + (this.displayFilters ? "true" : "false") +
+                "&results_location_aggregator=" + targetMap.getCenter().lat() + ',' + targetMap.getCenter().lng() +
+                "&range_filter=" + (this.searchPlugins.length > 1 && this.searchPlugins[$('#searchPluginsSelect').val()].reach.toLowerCase() == "global" ? "" : topRight.lat()+";"+topRight.lng()+";"+bottomLeft.lat()+";"+bottomLeft.lng())
+      },      
       dataType: "json",
       targetMap: targetMap,
       success: function(rset)
@@ -1232,14 +1240,14 @@ function SWebMap()
       var datasetAggregate = datasetsAggregates[da];
       
       var datasetURI = datasetAggregate.predicate[1]["http://purl.org/ontology/aggregate#object"].uri;
-      var nbRecords = datasetAggregate.predicate[2]["http://purl.org/ontology/aggregate#count"];
+      var nbRecords = datasetAggregate.predicate[0]["http://purl.org/ontology/aggregate#count"];
 
       
       if(!self.datasetsTitles[datasetURI])
       {
         /** 
          * If the dataset title is not existing, it means that the titles come from the local cache
-         * and that a new dataset appeared on the structWSF instance.
+         * and that a new dataset appeared on the OSF instance.
          *   
          * This means that we have to re-fetch the dataset titles from the DatasetRead web service
          */
@@ -1295,7 +1303,7 @@ function SWebMap()
       var typeAggregate = typesAggregates[ta];
 
       var typeURI = typeAggregate.predicate[1]["http://purl.org/ontology/aggregate#object"].uri;
-      var nbRecords = typeAggregate.predicate[2]["http://purl.org/ontology/aggregate#count"];
+      var nbRecords = typeAggregate.predicate[0]["http://purl.org/ontology/aggregate#count"];
       var prefLabel = typeURI;
       
       for(var s = 0; s < self.schemas.length; s++)
@@ -1369,7 +1377,7 @@ function SWebMap()
       var attributeAggregate = attributesAggregates[ta];
 
       var attributeURI = attributeAggregate.predicate[1]["http://purl.org/ontology/aggregate#object"].uri;
-      var nbRecords = attributeAggregate.predicate[2]["http://purl.org/ontology/aggregate#count"];
+      var nbRecords = attributeAggregate.predicate[0]["http://purl.org/ontology/aggregate#count"];
       var prefLabel = attributeURI;
       
       for(var s = 0; s < self.schemas.length; s++)
@@ -2700,7 +2708,7 @@ function SWebMap()
             }
             else
             {
-              window.open(self.taggedResults[$(this).data('id')].uri, '_blank');
+              window.open(self.results[$(this).data('id')].uri, '_blank');
             }            
           });          
         }
@@ -2743,7 +2751,7 @@ function SWebMap()
   * Tag a new record on the map.
   * 
   * @param obj The object of the HTML Element that hold the record in the resultset list. If the object is empty ("{}")
-  *            then the record being tagged will get fetched from the structWSF instance because it is not part of the
+  *            then the record being tagged will get fetched from the OSF instance because it is not part of the
   *            current resultset.
   * @param uri URI of the record to tag on the map.
   */
@@ -2827,10 +2835,17 @@ function SWebMap()
       else
       {
         // We go out to get it from the Crud Read endpoint
-        unparsedResultset = $.ajax({type: "GET",
-                              url: this.structWSFAddress.replace(/\/+$/,"") + "/crud/read/?uri=" + this.urlencode(uri),
+        unparsedResultset = $.ajax({
+                              type: "POST",
+                              url: this.OSFDrupalProxy,
+                              "data": {
+                                ws: this.OSFBaseWebServicesURL.replace(/\/+$/,"") + "/crud/read/",
+                                method: "get",
+                                accept: "application/json", 
+                                params: "uri=" + this.urlencode(uri)
+                              },
                               dataType: "json",
-                              async: false}).responseText;
+                              async: false}).responseText;      
     
         var resultset = new Resultset(JSON.parse(unparsedResultset));
         
@@ -4694,7 +4709,7 @@ function SWebMap()
     }
     
     filterAc = $("#webMapFiltersInputText_"+id).autocomplete({ 
-      serviceUrl: this.structWSFAddress + "search/",
+      serviceUrl: this.OSFBaseWebServicesURL.replace(/\/+$/,"") + "/search/",
       sWebMapRef: self,
       minChars:0, 
       maxHeight:400,
@@ -4813,11 +4828,19 @@ function SWebMap()
   /**
   * Get the title of all the datasets accessible to that user
   */
-  this.getDatasetsTitles = function getDatasetsTitles() {                                             
-    unparsedResultset = $.ajax({type: "GET",
-                                url: this.structWSFAddress.replace(/\/+$/,"") + "/dataset/read/?uri=all",
-                                dataType: "json",
-                                async: false}).responseText;
+  this.getDatasetsTitles = function getDatasetsTitles() {                                   
+                                
+    unparsedResultset = $.ajax({
+                          type: "POST",
+                          url: this.OSFDrupalProxy,
+                          "data": {
+                            ws: this.OSFBaseWebServicesURL.replace(/\/+$/,"") + "/dataset/read/",
+                            method: "get",
+                            accept: "application/json", 
+                            params: "uri=all"
+                          },
+                          dataType: "json",
+                          async: false}).responseText;                                
     
     var resultset = new Resultset(JSON.parse(unparsedResultset));
     
@@ -5343,7 +5366,7 @@ function SWebMap()
   
   /**
   * Open an overlay that display the description of the record
-  * The content of this overlay is the templated version of the record by conStruct
+  * The content of this overlay is the templated version of the record by OSF for Drupal
   * 
   * @param subjectID The ID of the subject to display in the overlay. This ID is the ID of the item in the resultset
   *                  list in the user interface.
@@ -5374,14 +5397,14 @@ function SWebMap()
     
     if(tagged)
     {
-      resourceSource = "http://"+document.domain+"/conStruct/view/?uri="+this.urlencode(this.taggedResults[subjectID].uri)+"&dataset="+this.urlencode(this.taggedResults[subjectID].dataset);       
+      resourceSource = "http://"+document.domain+"/resources/"+this.urlencode(this.urlencode(this.taggedResults[subjectID].uri));       
     }
     else
     {
-      resourceSource = "http://"+document.domain+"/conStruct/view/?uri="+this.urlencode(this.results[subjectID].uri)+"&dataset="+this.urlencode(this.results[subjectID].dataset);       
+      resourceSource = "http://"+document.domain+"/resources/"+this.urlencode(this.urlencode(this.results[subjectID].uri));       
     }
     
-    var resourceSourceTemplate = resourceSource + '&mime=template%2Fhtml';       
+    var resourceSourceTemplate = resourceSource + '?mime=template%2Fhtml';       
     
     $('#recordDescriptionOverlay').html('\
          <div style="width: 100%; height: 100%">\
@@ -5676,7 +5699,11 @@ function SWebMap()
          this.resultsInitialized)
       {
         this.mapInitialized = true;
-        this.postInitializationCallback();
+        
+        if(this.postInitializationCallback)
+        {
+          this.postInitializationCallback();
+        }
       }
     }
   } 

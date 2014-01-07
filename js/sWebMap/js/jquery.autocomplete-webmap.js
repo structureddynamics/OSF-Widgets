@@ -269,10 +269,17 @@
         me.options.params.attributes = me.options.params.attributes + "::" + this.urlencode(q + "*") +";" + me.options.params.constrainedAttributes;
         me.options.params.constrainedAttributes = "";
         
+        var queryData = {
+          ws: this.serviceUrl,
+          method: "post",
+          accept: "application/json", 
+          params: me.options.params
+        }
+        
         $.ajax({
           type: "POST",
-          url: this.serviceUrl,
-          data: me.options.params,
+          url: this.sWebMapRef.OSFDrupalProxy,
+          data: queryData,
           dataType: "json",
           query: q,
           
