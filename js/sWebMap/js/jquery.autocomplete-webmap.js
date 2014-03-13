@@ -255,9 +255,6 @@
           q = "";
         }                    
                                                                   
-        //me.options.params.query = q;
-        me.options.params.query = "";
-        
         toggleWaitingIcon(me.options.params.filterID, me);
         
         if(me.options.params.attributes.search("::") != -1)

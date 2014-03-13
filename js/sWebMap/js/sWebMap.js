@@ -4720,7 +4720,7 @@ function SWebMap()
         $("#webMapFiltersInputText_"+id).val(value.substring(0, value.lastIndexOf(" (")));
       },
       deferRequestBy: 0, //miliseconds
-      params: { q: ($("#searchInput").val() == this.labels.searchInput ? "" : $("#searchInput").val()),
+      params: { query: ($("#searchInput").val() == this.labels.searchInput ? "" : $("#searchInput").val()),
                 datasets: acDatasets,
                 attributes: this.urlencode(this.filtersAttributes[id].uri),
                 constrainedAttributes: attributeValueFiltersWSString,
