@@ -412,6 +412,8 @@ function SWebMap()
     "autoswitch": ""
   }]);
   
+  this.autoswitchFired = false;
+  
   /**
   * Internal variables of all kind.
   */
@@ -1924,6 +1926,8 @@ function SWebMap()
       {
         if(self.searchPlugins[$('#searchPluginsSelect').val()].autoswitch.toLowerCase() == self.searchPlugins[i].name.toLowerCase())
         {
+          self.autoswitchFired = true;
+
           $('#searchInput').val('');
           $('#searchPluginsSelect').val(i);
           $('#searchPluginsSelect').change();
@@ -3842,6 +3846,12 @@ function SWebMap()
     </table>');
     
     $('#searchPluginsSelect').change(function(){
+      
+      if(self.autoswitchFired == true)
+      {
+        self.autoswitchFired = false;
+        return;
+      }
       
       self.dataRequestedByUser = false;
       self.displayFiltersByDefault = true;
